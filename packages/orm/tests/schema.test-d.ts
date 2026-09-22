@@ -20,3 +20,8 @@ void invalidUser;
 
 const parsedUser: User = userSchema.parse({ name: 'Ada', role: 'member' });
 void parsedUser;
+
+const groupSchema = orm.schema({ name: orm.string() });
+const memberSchema = orm.schema({ group: orm.ref(() => groupSchema) });
+const targetGroup: typeof groupSchema = memberSchema.refs.group.resolve();
+void targetGroup;
