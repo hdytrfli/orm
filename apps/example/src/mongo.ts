@@ -40,7 +40,14 @@ try {
   const found = await users.find({ _id: created._id });
   console.log('found:', found);
 
-  console.log('filtered:', await users.filter({ role: { $in: ['admin'] } }));
+  console.log(
+    'filtered:',
+    await users.filter({
+      role: { $in: ['admin'] },
+      age: { $lte: 20 },
+    }),
+  );
+
   console.log('updated:', await users.update({ _id: created._id }, { role: 'admin', age: 20 }));
   console.log('deleted:', await users.delete({ _id: created._id }));
 

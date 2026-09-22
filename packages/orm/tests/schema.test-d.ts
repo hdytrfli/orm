@@ -57,3 +57,9 @@ await users.find({ unknown: true });
 await users.find({ role: { $in: ['owner'] } });
 // @ts-expect-error Updates cannot add unknown fields.
 await users.update({}, { unknown: true });
+
+const metricSchema = orm.schema({ age: orm.number() });
+const metrics = db.model('metrics', metricSchema);
+await metrics.filter({ age: { $gte: 18 } });
+// @ts-expect-error Number operators reject string values.
+await metrics.filter({ age: { $gte: 'adult' } });
