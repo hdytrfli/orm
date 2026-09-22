@@ -1,7 +1,7 @@
 import type { SchemaShape } from './schema/contracts.js';
 import { createRef } from './schema/relations.js';
 import type { RefField, SchemaLike } from './schema/relations.js';
-import { boolean, date, enumeration, number, string } from './schema/scalars.js';
+import { boolean, date, enumeration, number, objectId, string } from './schema/scalars.js';
 import { Schema } from './schema/schema.js';
 
 /** The public schema-construction API. */
@@ -16,6 +16,8 @@ export interface OrmApi {
   boolean: typeof boolean;
   /** Create a date field. */
   date: typeof date;
+  /** Create a MongoDB ObjectId field. */
+  objectId: typeof objectId;
   /** Create a string enum field. */
   enum: typeof enumeration;
   /** Create a string ID field linked to another schema. */
@@ -29,6 +31,7 @@ export const orm: OrmApi = {
   number,
   boolean,
   date,
+  objectId,
   enum: enumeration,
   ref: createRef,
 };

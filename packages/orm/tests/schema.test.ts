@@ -1,3 +1,4 @@
+import { ObjectId } from 'mongodb';
 import { describe, expect, it } from 'vitest';
 
 import { orm } from '../src/index.js';
@@ -14,6 +15,8 @@ describe('schema', () => {
     const user = orm.schema({ group: orm.ref(() => group) });
 
     expect(user.refs.group.resolve()).toBe(group);
-    expect(user.parse({ group: 'group-1' })).toEqual({ group: 'group-1' });
+    const groupId = new ObjectId();
+    expect(user.parse({ group: groupId })).toEqual({ group: groupId });
+    expect(() => user.parse({ group: 'group-1' })).toThrow();
   });
 });

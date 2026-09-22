@@ -1,3 +1,4 @@
+import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
 import type { SchemaShape } from './contracts.js';
@@ -12,7 +13,7 @@ export interface RefDefinition<Target extends SchemaLike = SchemaLike> {
 }
 
 /** A string identifier field carrying a typed relation target. */
-export type RefField<Target extends SchemaLike = SchemaLike> = z.ZodString & {
+export type RefField<Target extends SchemaLike = SchemaLike> = z.ZodType<ObjectId> & {
   readonly __ref?: RefDefinition<Target>;
 };
 
@@ -25,7 +26,7 @@ export type RelationMap<Shape extends SchemaShape> = {
 
 /** Create a string ID field linked to a lazily resolved target schema. */
 export const createRef = <Target extends SchemaLike>(resolve: () => Target): RefField<Target> => {
-  const field = z.string() as RefField<Target>;
+  const field = z.instanceof(ObjectId) as RefField<Target>;
   Object.defineProperty(field, '__ref', {
     configurable: false,
     enumerable: false,

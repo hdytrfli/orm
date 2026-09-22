@@ -1,3 +1,5 @@
+import type { ObjectId } from 'mongodb';
+
 import type { Infer } from '../src/index.js';
 import { orm } from '../src/index.js';
 
@@ -25,3 +27,5 @@ const groupSchema = orm.schema({ name: orm.string() });
 const memberSchema = orm.schema({ group: orm.ref(() => groupSchema) });
 const targetGroup: typeof groupSchema = memberSchema.refs.group.resolve();
 void targetGroup;
+const member: Infer<typeof memberSchema> = { group: null as unknown as ObjectId };
+void member;

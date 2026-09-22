@@ -1,8 +1,9 @@
 import { orm, type Infer } from '@mongorm/orm';
+import { ObjectId } from 'mongodb';
 
 const groupSchema = orm.schema({
   name: orm.string(),
-})
+});
 
 const userSchema = orm.schema({
   name: orm.string(),
@@ -17,7 +18,7 @@ const user: User = {
   name: 'Ada Lovelace',
   age: 36,
   role: 'admin',
-  group: 'group-language',
+  group: new ObjectId(),
 };
 
 console.log('parsed user:', userSchema.parse(user));
@@ -26,9 +27,9 @@ console.log('relation target:', userSchema.refs.group.resolve() === groupSchema)
 try {
   userSchema.parse({
     name: 'Not valid',
-    age: 'thirty-six',
+    age: 36,
     role: 'admin',
-    group: 'group-language',
+    group: new ObjectId(),
   });
 } catch (error) {
   console.log('validation error:', error instanceof Error ? error.message : error);
