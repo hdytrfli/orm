@@ -97,6 +97,22 @@ explicitAccount?.password;
 await accounts.filter().select(['_id']);
 // @ts-expect-error Only hidden fields can be shown.
 await accounts.filter().show(['name']);
+
+const schemas = orm.registry({
+  group: (ref) => ({
+    name: orm.string(),
+    creator: ref('user'),
+  }),
+  user: (ref) => ({
+    name: orm.string(),
+    group: ref('group').optional(),
+  }),
+});
+const registeredGroup = schemas.get('group');
+const registeredUser = schemas.get('user');
+void registeredGroup;
+void registeredUser;
+
 await users.filter({
   $or: [{ role: 'admin' }, { name: { $regex: /^Ada/ } }],
 });

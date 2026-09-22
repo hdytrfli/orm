@@ -29,4 +29,22 @@ describe('schema', () => {
     });
     expect(() => user.parse({ group: 'group-1' })).toThrow();
   });
+
+  it('constructs circular schemas through a registry', () => {
+    const schemas = orm.registry({
+      group: (ref) => ({
+        name: orm.string(),
+        creator: ref('user'),
+      }),
+      user: (ref) => ({
+        name: orm.string(),
+        group: ref('group').optional(),
+      }),
+    });
+
+    const group = schemas.get('group');
+    const user = schemas.get('user');
+    expect(group.refs.creator.resolve()).toBe(user);
+    expect(user.refs.group.resolve()).toBe(group);
+  });
 });

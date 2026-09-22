@@ -1,15 +1,20 @@
 import { ObjectId, orm, type Infer } from '@mongorm/orm';
 
-const groupSchema = orm.schema({
-  name: orm.string(),
+const schemas = orm.registry({
+  group: (ref) => ({
+    name: orm.string(),
+    creator: ref('user'),
+  }),
+  user: (ref) => ({
+    name: orm.string(),
+    age: orm.number(),
+    role: orm.enum(['admin', 'member']),
+    group: ref('group').optional(),
+  }),
 });
 
-const userSchema = orm.schema({
-  name: orm.string(),
-  age: orm.number(),
-  role: orm.enum(['admin', 'member']),
-  group: orm.ref(() => groupSchema).optional(),
-});
+const groupSchema = schemas.get('group');
+const userSchema = schemas.get('user');
 
 type User = Infer<typeof userSchema>;
 
