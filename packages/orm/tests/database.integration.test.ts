@@ -14,6 +14,7 @@ const ticketSchema = orm.schema({
   status: orm.enum(['open', 'closed']),
   priority: orm.number(),
   owner: orm.objectId(),
+  secret: orm.string().hidden(),
 });
 
 const tickets = database.model('tickets', ticketSchema);
@@ -31,21 +32,26 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
       status: 'open',
       priority: 1,
       owner,
+      secret: 'first-secret',
     });
     await tickets.create({
       title: 'Implement API',
       status: 'open',
       priority: 2,
       owner,
+      secret: 'second-secret',
     });
     await tickets.create({
       title: 'Document API',
       status: 'closed',
       priority: 3,
       owner: otherOwner,
+      secret: 'third-secret',
     });
 
     expect(first._id).toBeInstanceOf(ObjectId);
+    expect((await tickets.filter({}))[0]).not.toHaveProperty('secret');
+    expect((await tickets.filter({}).select(['*', 'secret']))[0]).toHaveProperty('secret');
     expect(await tickets.filter({ status: 'open', owner })).toHaveLength(2);
     expect(await tickets.filter()).toEqual(await tickets.filter({}));
     expect(await tickets.filter({ status: 'open' }).count()).toBe(2);

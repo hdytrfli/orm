@@ -13,10 +13,18 @@ export class Schema<Shape extends SchemaShape> {
   /** The lazily resolved relation metadata declared by this schema. */
   readonly refs: RelationMap<Shape>;
 
+  /** Field names excluded from default query results. */
+  readonly hiddenFields: readonly (keyof Shape & string)[];
+
+  /** Field names declared by this schema. */
+  readonly fields: readonly (keyof Shape & string)[];
+
   /** Construct a schema from a Zod object shape. */
   constructor(shape: Shape) {
     this.definition = z.object(shape);
     this.refs = collectRefs(shape);
+    this.fields = Object.keys(shape) as (keyof Shape & string)[];
+    this.hiddenFields = this.fields.filter((field) => '__hidden' in shape[field]);
   }
 
   /** Parse unknown input and return the inferred document type. */

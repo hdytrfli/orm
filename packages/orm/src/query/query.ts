@@ -38,25 +38,38 @@ export type ModelSort<Shape extends SchemaShape> = Partial<
   Record<Extract<keyof Infer<Schema<Shape>>, string>, SortDirection>
 >;
 type ModelDocument<Shape extends SchemaShape> = Infer<Schema<Shape>>;
-type SelectableKey<Shape extends SchemaShape> = Extract<keyof ModelDocument<Shape>, string>;
-type SelectedDocument<Shape extends SchemaShape, Key extends SelectableKey<Shape>> = Pick<
+type SelectableKey<Shape extends SchemaShape> = Extract<keyof ModelDocument<Shape>, string> | '*';
+type HiddenKey<Shape extends SchemaShape> = {
+  [Key in keyof Shape]: Shape[Key] extends { readonly __hidden: true } ? Key : never;
+}[keyof Shape];
+type VisibleDocument<Shape extends SchemaShape> = Omit<
   ModelDocument<Shape>,
-  Key | '_id'
+  Extract<HiddenKey<Shape>, keyof ModelDocument<Shape>>
 >;
+type SelectedDocument<Shape extends SchemaShape, Key extends SelectableKey<Shape>> = [Key] extends [
+  never,
+]
+  ? VisibleDocument<Shape>
+  : '*' extends Key
+    ? ModelDocument<Shape>
+    : Pick<ModelDocument<Shape>, Exclude<Key, '*'> | '_id'>;
 
 /** A typed, awaitable MongoDB find query. */
 export class ModelQuery<
   Shape extends SchemaShape,
-  Result extends object = ModelDocument<Shape>,
+  Result extends object = VisibleDocument<Shape>,
 > implements PromiseLike<Result[]> {
   private sortSpec: ModelSort<Shape> | undefined;
   private skipCount: number | undefined;
   private limitCount: number | undefined;
   private selectSpec: Record<string, 1> | undefined;
+  private selectAll = false;
 
   constructor(
     private readonly collection: Collection<StoredDocument<Shape>>,
     private readonly filterSpec: ModelFilter<Shape>,
+    private readonly fields: readonly string[],
+    private readonly hiddenFields: readonly string[],
   ) {}
 
   /** Sort results by one or more schema fields. */
@@ -87,7 +100,15 @@ export class ModelQuery<
   select<Keys extends SelectableKey<Shape>>(
     fields: readonly Keys[],
   ): ModelQuery<Shape, SelectedDocument<Shape, Keys>> {
-    this.selectSpec = Object.fromEntries(fields.map((field) => [field, 1]));
+    this.selectAll = fields.includes('*' as Keys);
+    this.selectSpec = this.selectAll
+      ? undefined
+      : Object.fromEntries(
+          (fields.length > 0
+            ? fields
+            : this.fields.filter((field) => !this.hiddenFields.includes(field))
+          ).map((field) => [field, 1]),
+        );
     return this as unknown as ModelQuery<Shape, SelectedDocument<Shape, Keys>>;
   }
 
@@ -113,8 +134,15 @@ export class ModelQuery<
     if (this.limitCount !== undefined) {
       cursor = cursor.limit(this.limitCount);
     }
-    if (this.selectSpec) {
-      cursor = cursor.project(this.selectSpec);
+    if (!this.selectAll && (this.selectSpec || this.hiddenFields.length > 0)) {
+      const projection =
+        this.selectSpec ??
+        Object.fromEntries(
+          this.fields
+            .filter((field) => !this.hiddenFields.includes(field))
+            .map((field) => [field, 1]),
+        );
+      cursor = cursor.project(projection);
     }
     return cursor.toArray() as unknown as Promise<Result[]>;
   }
@@ -130,26 +158,47 @@ export class ModelQuery<
 /** A typed, awaitable MongoDB single-document query. */
 export class ModelFindQuery<
   Shape extends SchemaShape,
-  Result extends object = ModelDocument<Shape>,
+  Result extends object = VisibleDocument<Shape>,
 > implements PromiseLike<Result | null> {
   private selectSpec: Record<string, 1> | undefined;
+  private selectAll = false;
 
   constructor(
     private readonly collection: Collection<StoredDocument<Shape>>,
     private readonly filterSpec: ModelFilter<Shape>,
+    private readonly fields: readonly string[],
+    private readonly hiddenFields: readonly string[],
   ) {}
 
   /** Return only selected fields, while retaining MongoDB's default `_id`. */
   select<Keys extends SelectableKey<Shape>>(
     fields: readonly Keys[],
   ): ModelFindQuery<Shape, SelectedDocument<Shape, Keys>> {
-    this.selectSpec = Object.fromEntries(fields.map((field) => [field, 1]));
+    this.selectAll = fields.includes('*' as Keys);
+    this.selectSpec = this.selectAll
+      ? undefined
+      : Object.fromEntries(
+          (fields.length > 0
+            ? fields
+            : this.fields.filter((field) => !this.hiddenFields.includes(field))
+          ).map((field) => [field, 1]),
+        );
     return this as unknown as ModelFindQuery<Shape, SelectedDocument<Shape, Keys>>;
   }
 
   private execute(): Promise<Result | null> {
+    const projection =
+      this.selectSpec ??
+      Object.fromEntries(
+        this.fields
+          .filter((field) => !this.hiddenFields.includes(field))
+          .map((field) => [field, 1]),
+      );
     return this.collection.findOne(this.filterSpec as MongoFilter<StoredDocument<Shape>>, {
-      projection: this.selectSpec,
+      projection:
+        this.selectAll || (!this.selectSpec && this.hiddenFields.length === 0)
+          ? undefined
+          : projection,
     }) as unknown as Promise<Result | null>;
   }
 

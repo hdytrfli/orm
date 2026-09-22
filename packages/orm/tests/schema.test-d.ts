@@ -63,6 +63,20 @@ selectedUser?.name;
 selectedUser?._id;
 // @ts-expect-error Unselected fields are omitted from the result type.
 selectedUser?.role;
+
+const accountSchema = orm.schema({
+  name: orm.string(),
+  password: orm.string().hidden(),
+});
+const accounts = db.model('accounts', accountSchema);
+const visibleAccounts = await accounts.filter();
+visibleAccounts[0].name;
+// @ts-expect-error Hidden fields are omitted from default results.
+visibleAccounts[0].password;
+const allAccounts = await accounts.filter().select(['*']);
+allAccounts[0].password;
+const explicitAccount = await accounts.find({}).select(['name', 'password']);
+explicitAccount?.password;
 await users.filter({
   $or: [{ role: 'admin' }, { name: { $regex: /^Ada/ } }],
 });

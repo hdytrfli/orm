@@ -16,6 +16,7 @@ const userSchema = orm.schema({
   name: orm.string(),
   age: orm.number(),
   role: orm.enum(['admin', 'member']),
+  password: orm.string().hidden(),
   group: orm.ref(() => groupSchema),
 });
 
@@ -34,6 +35,7 @@ try {
     name: 'Ada Lovelace',
     age: 11,
     role: 'admin',
+    password: 'ada-secret',
     group: group._id,
   };
 
@@ -47,6 +49,7 @@ try {
     name: 'Alan Turing',
     age: 36,
     role: 'member',
+    password: 'alan-secret',
     group: group._id,
   });
 
@@ -56,6 +59,7 @@ try {
         name: faker.person.fullName(),
         age: faker.number.int({ min: 18, max: 65 }),
         role: faker.helpers.arrayElement(['admin', 'member'] as const),
+        password: faker.internet.password(),
         group: group._id,
       }),
     ),
@@ -63,6 +67,7 @@ try {
 
   const found = await users.find({ _id: user._id }).select(['name', 'group']);
   console.log('found:', found);
+  console.log('with hidden field:', await users.find({ _id: user._id }).select(['*', 'password']));
 
   console.log(
     'filtered simple:',
@@ -114,11 +119,6 @@ try {
       })
       .limit(2),
   );
-
-  console.log('counts:', {
-    admins: await users.filter({ role: 'admin' }).count(),
-    estimatedTotal: await users.filter().count(true),
-  });
 
   console.log('updated:', await users.update({ _id: user._id }, { role: 'admin', age: 20 }));
   console.log('deleted:', await users.delete({ _id: { $in: [user._id, another._id] } }));

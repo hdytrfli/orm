@@ -40,12 +40,17 @@ export class Model<Shape extends SchemaShape> {
 
   /** Build a query for all documents matching a MongoDB filter. */
   filter(filter: ModelFilter<Shape> = {}): ModelQuery<Shape> {
-    return new ModelQuery(this.collection, filter);
+    return new ModelQuery(this.collection, filter, this.schema.fields, this.schema.hiddenFields);
   }
 
   /** Build a query for the first document matching a MongoDB filter. */
   find(filter: ModelFilter<Shape> = {}): ModelFindQuery<Shape> {
-    return new ModelFindQuery(this.collection, filter);
+    return new ModelFindQuery(
+      this.collection,
+      filter,
+      this.schema.fields,
+      this.schema.hiddenFields,
+    );
   }
 
   /** Validate and apply a partial update to the first matching document. */
