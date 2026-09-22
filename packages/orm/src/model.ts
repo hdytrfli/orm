@@ -6,6 +6,7 @@ import {
   type Filter as MongoFilter,
   type OptionalUnlessRequiredId,
   type Condition,
+  type RootFilterOperators,
   type UpdateFilter,
 } from 'mongodb';
 
@@ -14,9 +15,26 @@ import type { Infer, InferShape, Schema, SchemaShape } from './schema/index.js';
 
 type StoredDocument<Shape extends SchemaShape> = Infer<Schema<Shape>> & Document;
 type UpdateInput<Shape extends SchemaShape> = Partial<Omit<InferShape<Schema<Shape>>, '_id'>>;
-type ModelFilter<Shape extends SchemaShape> = Partial<{
-  [Key in keyof Infer<Schema<Shape>>]: Condition<Infer<Schema<Shape>>[Key]>;
-}>;
+type ModelFilterForDocument<
+  DocumentShape extends Document,
+  FieldShape extends object = DocumentShape,
+> = Partial<{
+  [Key in keyof FieldShape]: Condition<FieldShape[Key]>;
+}> &
+  Partial<
+    Pick<
+      RootFilterOperators<DocumentShape>,
+      '$comment' | '$expr' | '$jsonSchema' | '$text' | '$where'
+    >
+  > & {
+    $and?: ModelFilterForDocument<DocumentShape, FieldShape>[];
+    $nor?: ModelFilterForDocument<DocumentShape, FieldShape>[];
+    $or?: ModelFilterForDocument<DocumentShape, FieldShape>[];
+  };
+type ModelFilter<Shape extends SchemaShape> = ModelFilterForDocument<
+  StoredDocument<Shape>,
+  Infer<Schema<Shape>>
+>;
 
 /** A MongoDB collection with CRUD operations derived from a schema. */
 export class Model<Shape extends SchemaShape> {

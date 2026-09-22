@@ -48,6 +48,12 @@ const users = db.model('users', userSchema);
 await users.create({ name: 'Ada', role: 'member' });
 await users.filter({ role: 'member' });
 await users.filter({ role: { $in: ['admin', 'member'] } });
+await users.filter({
+  $or: [{ role: 'admin' }, { name: { $regex: /^Ada/ } }],
+});
+await users.filter({
+  $and: [{ role: { $ne: 'member' } }, { name: { $exists: true } }],
+});
 await users.find({ name: 'Ada' });
 await users.update({ role: 'member' }, { name: 'Ada Lovelace' });
 await users.delete({ role: 'member' });
@@ -63,3 +69,5 @@ const metrics = db.model('metrics', metricSchema);
 await metrics.filter({ age: { $gte: 18 } });
 // @ts-expect-error Number operators reject string values.
 await metrics.filter({ age: { $gte: 'adult' } });
+// @ts-expect-error Logical filters still validate each branch.
+await users.filter({ $or: [{ role: 'owner' }] });

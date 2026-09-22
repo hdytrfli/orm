@@ -34,22 +34,50 @@ try {
   const validated = userSchema.parse(userData);
   console.log('validated:', validated);
 
-  const created = await users.create(validated);
-  console.log('created:', created);
+  const user = await users.create(validated);
+  console.log('created:', user);
 
-  const found = await users.find({ _id: created._id });
+  const another = await users.create({
+    name: 'Alan Turing',
+    age: 36,
+    role: 'member',
+    group: group._id,
+  });
+
+  const found = await users.find({ _id: user._id });
   console.log('found:', found);
 
   console.log(
-    'filtered:',
+    'filtered simple:',
     await users.filter({
-      role: { $in: ['admin'] },
-      age: { $lte: 20 },
+      role: 'admin',
     }),
   );
 
-  console.log('updated:', await users.update({ _id: created._id }, { role: 'admin', age: 20 }));
-  console.log('deleted:', await users.delete({ _id: created._id }));
+  console.log(
+    'filtered with or:',
+    await users.filter({
+      $or: [
+        // one of the following conditions must be true
+        { role: 'admin' },
+        { age: { $gte: 18 } },
+      ],
+    }),
+  );
+
+  console.log(
+    'filtered with and:',
+    await users.filter({
+      $and: [
+        // both of the following conditions must be true
+        { role: 'member' },
+        { age: { $gte: 18 } },
+      ],
+    }),
+  );
+
+  console.log('updated:', await users.update({ _id: user._id }, { role: 'admin', age: 20 }));
+  console.log('deleted:', await users.delete({ _id: { $in: [user._id, another._id] } }));
 
   if (found) {
     const groupRef = userSchema.refs.group;
