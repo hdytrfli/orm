@@ -47,6 +47,8 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
 
     expect(first._id).toBeInstanceOf(ObjectId);
     expect(await tickets.filter({ status: 'open', owner })).toHaveLength(2);
+    const sorted = await tickets.filter({ status: 'open' }).sort({ priority: 'desc' });
+    expect(sorted.map((ticket) => ticket.priority)).toEqual([2, 1]);
     expect((await tickets.find({ title: 'Design API' }))?._id).toEqual(first._id);
 
     const updated = await tickets.update({ _id: first._id }, { status: 'closed' });

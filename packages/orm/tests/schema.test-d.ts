@@ -48,6 +48,7 @@ const users = db.model('users', userSchema);
 await users.create({ name: 'Ada', role: 'member' });
 await users.filter({ role: 'member' });
 await users.filter({ role: { $in: ['admin', 'member'] } });
+await users.filter({}).sort({ name: 'asc', role: -1 });
 await users.filter({
   $or: [{ role: 'admin' }, { name: { $regex: /^Ada/ } }],
 });
@@ -71,3 +72,7 @@ await metrics.filter({ age: { $gte: 18 } });
 await metrics.filter({ age: { $gte: 'adult' } });
 // @ts-expect-error Logical filters still validate each branch.
 await users.filter({ $or: [{ role: 'owner' }] });
+// @ts-expect-error Sort fields are narrowed to schema fields.
+await users.filter({}).sort({ unknown: 'asc' });
+// @ts-expect-error Sort directions are restricted to MongoDB directions.
+await users.filter({}).sort({ name: 'ascending' });

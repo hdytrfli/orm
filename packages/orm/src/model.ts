@@ -7,6 +7,7 @@ import {
   type OptionalUnlessRequiredId,
   type Condition,
   type RootFilterOperators,
+  type Sort,
   type UpdateFilter,
 } from 'mongodb';
 
@@ -35,6 +36,41 @@ type ModelFilter<Shape extends SchemaShape> = ModelFilterForDocument<
   StoredDocument<Shape>,
   Infer<Schema<Shape>>
 >;
+type SortDirection = 1 | -1 | 'asc' | 'desc';
+type ModelSort<Shape extends SchemaShape> = Partial<
+  Record<Extract<keyof Infer<Schema<Shape>>, string>, SortDirection>
+>;
+
+/** A typed, awaitable MongoDB find query. */
+export class ModelQuery<Shape extends SchemaShape> implements PromiseLike<Infer<Schema<Shape>>[]> {
+  private sortSpec: ModelSort<Shape> | undefined;
+
+  constructor(
+    private readonly collection: Collection<StoredDocument<Shape>>,
+    private readonly filterSpec: ModelFilter<Shape>,
+  ) {}
+
+  /** Sort results by one or more schema fields. */
+  sort(spec: ModelSort<Shape>): this {
+    this.sortSpec = spec;
+    return this;
+  }
+
+  private execute(): Promise<Infer<Schema<Shape>>[]> {
+    let cursor = this.collection.find(this.filterSpec as MongoFilter<StoredDocument<Shape>>);
+    if (this.sortSpec) {
+      cursor = cursor.sort(this.sortSpec as Sort);
+    }
+    return cursor.toArray() as unknown as Promise<Infer<Schema<Shape>>[]>;
+  }
+
+  then<TResult1 = Infer<Schema<Shape>>[], TResult2 = never>(
+    onfulfilled?: ((value: Infer<Schema<Shape>>[]) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+  ): PromiseLike<TResult1 | TResult2> {
+    return this.execute().then(onfulfilled, onrejected);
+  }
+}
 
 /** A MongoDB collection with CRUD operations derived from a schema. */
 export class Model<Shape extends SchemaShape> {
@@ -61,11 +97,9 @@ export class Model<Shape extends SchemaShape> {
     return document;
   }
 
-  /** Return all documents matching a MongoDB filter. */
-  async filter(filter: ModelFilter<Shape> = {}): Promise<Infer<Schema<Shape>>[]> {
-    return (await this.collection
-      .find(filter as MongoFilter<StoredDocument<Shape>>)
-      .toArray()) as unknown as Infer<Schema<Shape>>[];
+  /** Build a query for all documents matching a MongoDB filter. */
+  filter(filter: ModelFilter<Shape> = {}): ModelQuery<Shape> {
+    return new ModelQuery(this.collection, filter);
   }
 
   /** Return the first matching document, or `null` when none exists. */
