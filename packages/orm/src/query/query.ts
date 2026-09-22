@@ -122,6 +122,13 @@ type RuntimePopulateSpec = {
   select?: readonly string[];
   populate?: readonly RuntimePopulateSpec[];
 };
+
+const normalizeProjectionFields = (fields: readonly string[]): string[] => {
+  const unique = [...new Set(fields)];
+  return unique.filter(
+    (field) => !unique.some((parent) => parent !== field && field.startsWith(`${parent}.`)),
+  );
+};
 export type PopulatedResult<
   Result extends object,
   Relations extends SchemaRelationMap,
@@ -350,7 +357,9 @@ export class ModelQuery<
           this.selectedFields ?? this.fields.filter((field) => !this.hiddenFields.includes(field)),
         );
         this.shownFields.forEach((field) => fields.add(field));
-        cursor = cursor.project(Object.fromEntries([...fields].map((field) => [field, 1])));
+        cursor = cursor.project(
+          Object.fromEntries(normalizeProjectionFields([...fields]).map((field) => [field, 1])),
+        );
       }
       return cursor;
     }, this.limitCount);
@@ -372,7 +381,9 @@ export class ModelQuery<
         this.selectedFields ?? this.fields.filter((field) => !this.hiddenFields.includes(field)),
       );
       this.shownFields.forEach((field) => fields.add(field));
-      const projection = Object.fromEntries([...fields].map((field) => [field, 1]));
+      const projection = Object.fromEntries(
+        normalizeProjectionFields([...fields]).map((field) => [field, 1]),
+      );
       cursor = cursor.project(projection);
     }
     return cursor
@@ -406,19 +417,21 @@ export class ModelQuery<
     const nestedRelationFields = (spec.populate ?? []).map(
       (nested) => targetRelations[nested.ref].localField,
     );
-    const projectionFields = [
+    const projectionFields = normalizeProjectionFields([
       ...new Set(
         spec.select ?? target.fields.filter((field) => !target.hiddenFields.includes(field)),
       ),
       ...nestedRelationFields,
-    ];
+    ]);
     const related = value
-      ? await this.db
-          .collectionFor(target)
-          .findOne(
-            { [relation.foreignField]: value },
-            { projection: Object.fromEntries(projectionFields.map((field) => [field, 1])) },
-          )
+      ? await this.db.collectionFor(target).findOne(
+          { [relation.foreignField]: value },
+          {
+            projection: Object.fromEntries(
+              normalizeProjectionFields(projectionFields).map((field) => [field, 1]),
+            ),
+          },
+        )
       : null;
     if (related && spec.populate) {
       for (const nested of spec.populate) {
@@ -546,11 +559,11 @@ export class ModelFindQuery<
       this.selectedFields || this.hiddenFields.length > 0
         ? {
             projection: Object.fromEntries(
-              [
+              normalizeProjectionFields([
                 ...(this.selectedFields ??
                   this.fields.filter((field) => !this.hiddenFields.includes(field))),
                 ...this.shownFields,
-              ].map((field) => [field, 1]),
+              ]).map((field) => [field, 1]),
             ),
           }
         : undefined;
@@ -578,19 +591,21 @@ export class ModelFindQuery<
     const nestedRelationFields = (spec.populate ?? []).map(
       (nested) => targetRelations[nested.ref].localField,
     );
-    const projectionFields = [
+    const projectionFields = normalizeProjectionFields([
       ...new Set(
         spec.select ?? target.fields.filter((field) => !target.hiddenFields.includes(field)),
       ),
       ...nestedRelationFields,
-    ];
+    ]);
     const related = value
-      ? await this.db
-          .collectionFor(target)
-          .findOne(
-            { [relation.foreignField]: value },
-            { projection: Object.fromEntries(projectionFields.map((field) => [field, 1])) },
-          )
+      ? await this.db.collectionFor(target).findOne(
+          { [relation.foreignField]: value },
+          {
+            projection: Object.fromEntries(
+              normalizeProjectionFields(projectionFields).map((field) => [field, 1]),
+            ),
+          },
+        )
       : null;
     if (related && spec.populate) {
       for (const nested of spec.populate) {
