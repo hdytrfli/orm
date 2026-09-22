@@ -3,7 +3,14 @@ import { z } from 'zod';
 import type { SchemaDefinition, SchemaShape } from './contracts.js';
 import type { Infer, InferShape } from './inference.js';
 import { collectRefs } from './relations.js';
-import type { RelationMap, SchemaRelation, SchemaRelationMap, SchemaLike } from './relations.js';
+import type {
+  RelationInput,
+  RelationInputTarget,
+  RelationMap,
+  SchemaRelation,
+  SchemaRelationMap,
+  SchemaLike,
+} from './relations.js';
 
 /** A typed, runtime-validated schema definition. */
 export class Schema<Shape extends SchemaShape, Relations extends SchemaRelationMap = {}> {
@@ -14,7 +21,7 @@ export class Schema<Shape extends SchemaShape, Relations extends SchemaRelationM
   readonly refs: RelationMap<Shape>;
 
   /** One-way relation metadata declared for this schema. */
-  readonly relations: Relations;
+  readonly relationMap: Relations;
 
   /** Field names excluded from default query results. */
   readonly hiddenFields: readonly (keyof Shape & string)[];
@@ -26,30 +33,52 @@ export class Schema<Shape extends SchemaShape, Relations extends SchemaRelationM
   constructor(shape: Shape, relations = {} as Relations) {
     this.definition = z.object(shape);
     this.refs = collectRefs(shape);
-    this.relations = relations;
+    this.relationMap = relations;
     this.fields = Object.keys(shape) as (keyof Shape & string)[];
     this.hiddenFields = this.fields.filter((field) => '__hidden' in shape[field]);
   }
 
-  /** Add a one-way relation without requiring circular schema declarations. */
-  relation<
-    Name extends string,
-    Target extends SchemaLike,
-    LocalField extends Extract<keyof InferShape<this>, string>,
-    ForeignField extends Extract<keyof Infer<Target>, string>,
+  /** Add one or more one-way relations without requiring circular schema declarations. */
+  relations<
+    const Definitions extends Partial<
+      Record<Extract<keyof InferShape<this>, string>, RelationInput>
+    >,
   >(
-    name: Name,
-    resolve: () => Target,
-    options: { localField: LocalField; foreignField: ForeignField },
-  ): Schema<Shape, Relations & Record<Name, SchemaRelation<Target, LocalField, ForeignField>>> {
-    (this.relations as SchemaRelationMap)[name] = {
-      resolve,
-      localField: options.localField,
-      foreignField: options.foreignField,
-    };
+    definitions: Definitions,
+  ): Schema<
+    Shape,
+    Relations & {
+      [Name in keyof Definitions]: SchemaRelation<
+        RelationInputTarget<NonNullable<Definitions[Name]>>,
+        Extract<Name, string>,
+        NonNullable<Definitions[Name]> extends { foreignField: infer Foreign extends string }
+          ? Foreign
+          : '_id'
+      >;
+    }
+  > {
+    for (const [name, input] of Object.entries(definitions)) {
+      const definition = (typeof input === 'function' ? { target: input } : input) as {
+        target: () => SchemaLike;
+        foreignField?: string;
+      };
+      (this.relationMap as SchemaRelationMap)[name] = {
+        resolve: definition.target,
+        localField: name,
+        foreignField: definition.foreignField ?? '_id',
+      };
+    }
     return this as unknown as Schema<
       Shape,
-      Relations & Record<Name, SchemaRelation<Target, LocalField, ForeignField>>
+      Relations & {
+        [Name in keyof Definitions]: SchemaRelation<
+          RelationInputTarget<NonNullable<Definitions[Name]>>,
+          Extract<Name, string>,
+          NonNullable<Definitions[Name]> extends { foreignField: infer Foreign extends string }
+            ? Foreign
+            : '_id'
+        >;
+      }
     >;
   }
 

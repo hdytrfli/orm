@@ -103,11 +103,10 @@ const relationUserSchema = orm.schema({
   name: orm.string(),
   groupId: orm.objectId().optional(),
 });
-const relatedUserSchema = relationUserSchema.relation('group', () => relationGroupSchema, {
-  localField: 'groupId',
-  foreignField: '_id',
+const relatedUserSchema = relationUserSchema.relations({
+  groupId: () => relationGroupSchema,
 });
-void relatedUserSchema.relations.group;
+void relatedUserSchema.relationMap.groupId;
 
 await users.filter({
   $or: [{ role: 'admin' }, { name: { $regex: /^Ada/ } }],

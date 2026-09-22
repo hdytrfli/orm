@@ -17,12 +17,11 @@ const userSchema = orm.schema({
   age: orm.number(),
   role: orm.enum(['admin', 'member']),
   password: orm.string().hidden(),
-  groupId: orm.objectId(),
+  group: orm.objectId(),
 });
 
-const relatedUserSchema = userSchema.relation('group', () => groupSchema, {
-  localField: 'groupId',
-  foreignField: '_id',
+const relatedUserSchema = userSchema.relations({
+  group: () => groupSchema,
 });
 
 const groups = db.model('groups', groupSchema);
@@ -41,7 +40,7 @@ try {
     age: 11,
     role: 'admin',
     password: 'ada-secret',
-    groupId: group._id,
+    group: group._id,
   };
 
   const validated = userSchema.parse(userData);
@@ -55,7 +54,7 @@ try {
     age: 36,
     role: 'member',
     password: 'alan-secret',
-    groupId: group._id,
+    group: group._id,
   });
 
   await Promise.all(
@@ -65,12 +64,12 @@ try {
         age: faker.number.int({ min: 18, max: 65 }),
         role: faker.helpers.arrayElement(['admin', 'member'] as const),
         password: faker.internet.password(),
-        groupId: group._id,
+        group: group._id,
       }),
     ),
   );
 
-  const found = await users.find({ _id: user._id }).select(['name', 'groupId']);
+  const found = await users.find({ _id: user._id }).select(['name', 'group']);
   console.log('found:', found);
   console.log('with hidden field:', await users.find({ _id: user._id }).show(['password']));
 
@@ -149,13 +148,13 @@ try {
   console.log('deleted:', await users.delete({ _id: { $in: [user._id, another._id] } }));
 
   if (found) {
-    const groupRelation = relatedUserSchema.relations.group;
+    const groupRelation = relatedUserSchema.relationMap.group;
     const relatedGroupModel = db.model('groups', groupRelation.resolve());
 
     console.log('relation path:', 'group');
-    console.log('relation value:', found.groupId);
+    console.log('relation value:', found.group);
 
-    const relatedGroup = await relatedGroupModel.find({ _id: found.groupId });
+    const relatedGroup = await relatedGroupModel.find({ _id: found.group });
     console.log('related group:', relatedGroup);
   }
 

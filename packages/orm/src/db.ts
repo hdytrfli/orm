@@ -1,8 +1,14 @@
-import { MongoClient, type MongoClientOptions, type Db as MongoDatabase } from 'mongodb';
+import {
+  MongoClient,
+  type Collection,
+  type Document,
+  type MongoClientOptions,
+  type Db as MongoDatabase,
+} from 'mongodb';
 
 import { DatabaseNotConnectedError } from './errors/errors.js';
 import { Model } from './model.js';
-import type { Schema, SchemaShape, SchemaRelationMap } from './schema/index.js';
+import type { Schema, SchemaLike, SchemaShape, SchemaRelationMap } from './schema/index.js';
 
 /** Configuration for a MongoDB connection. */
 export interface DbOptions {
@@ -18,6 +24,7 @@ export interface DbOptions {
 export class Db {
   private readonly client: MongoClient;
   private database: MongoDatabase | null = null;
+  private readonly schemaCollections = new Map<SchemaLike, string>();
 
   /** Create a disconnected database handle. */
   constructor(private readonly options: DbOptions) {
@@ -41,7 +48,15 @@ export class Db {
     name: string,
     schema: Schema<Shape, Relations>,
   ): Model<Shape, Relations> {
+    this.schemaCollections.set(schema, name);
     return new Model(this, name, schema);
+  }
+
+  /** Resolve a registered schema to its MongoDB collection. */
+  collectionFor(schema: SchemaLike): Collection<Document> {
+    const name = this.schemaCollections.get(schema);
+    if (!name) throw new Error('Schema is not registered with this database');
+    return this.native.collection<Document>(name);
   }
 
   /** Return the selected database, failing if `connect()` was not called. */

@@ -26,6 +26,21 @@ export interface SchemaRelation<
 /** Relation metadata attached to a schema. */
 export type SchemaRelationMap = Record<string, SchemaRelation>;
 
+/** A relation target declaration accepted by Schema.relations(). */
+export type RelationInput<Target extends SchemaLike = SchemaLike> =
+  | (() => Target)
+  | {
+      target: () => Target;
+      foreignField?: string;
+    };
+
+/** Extract a relation target from a relation declaration. */
+export type RelationInputTarget<Input> = Input extends () => infer Target
+  ? Target
+  : Input extends { target: () => infer Target }
+    ? Target
+    : never;
+
 /** A string identifier field carrying a typed relation target. */
 export type RefField<Target extends SchemaLike = SchemaLike> = z.ZodType<ObjectId> & {
   readonly __ref?: RefDefinition<Target>;

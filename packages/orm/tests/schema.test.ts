@@ -32,13 +32,12 @@ describe('schema', () => {
 
   it('declares one-way relations after schema construction', () => {
     const group = orm.schema({ name: orm.string() });
-    const user = orm.schema({ name: orm.string(), groupId: orm.objectId().optional() });
-    const userWithRelations = user.relation('group', () => group, {
-      localField: 'groupId',
-      foreignField: '_id',
+    const user = orm.schema({ name: orm.string(), group: orm.objectId().optional() });
+    const userWithRelations = user.relations({
+      group: () => group,
     });
 
-    expect(userWithRelations.relations.group.resolve()).toBe(group);
-    expect(userWithRelations.relations.group.localField).toBe('groupId');
+    expect(userWithRelations.relationMap.group.resolve()).toBe(group);
+    expect(userWithRelations.relationMap.group.localField).toBe('group');
   });
 });

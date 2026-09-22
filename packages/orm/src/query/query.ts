@@ -10,8 +10,15 @@ import {
   type WithId,
 } from 'mongodb';
 
+import type { Db } from '../db.js';
 import { CursorQueryError, EstimatedCountError } from '../errors/errors.js';
-import type { Infer, Schema, SchemaShape } from '../schema/index.js';
+import type {
+  Infer,
+  Schema,
+  SchemaRelation,
+  SchemaRelationMap,
+  SchemaShape,
+} from '../schema/index.js';
 
 export type StoredDocument<Shape extends SchemaShape> = Infer<Schema<Shape>> & Document;
 
@@ -68,6 +75,33 @@ type SelectedDocument<Shape extends SchemaShape, Key extends SelectableKey<Shape
 ]
   ? VisibleDocument<Shape>
   : Pick<ModelDocument<Shape>, Key | '_id'>;
+type RelationTarget<Relation> = Relation extends SchemaRelation<infer Target> ? Target : never;
+type RelationDocument<Relation> =
+  RelationTarget<Relation> extends Schema<infer TargetShape, any>
+    ? Infer<Schema<TargetShape>>
+    : never;
+type RelationMapOf<Relation> =
+  RelationTarget<Relation> extends Schema<any, infer TargetRelations> ? TargetRelations : {};
+type RelationSelect<Relation> =
+  RelationTarget<Relation> extends Schema<infer TargetShape, any>
+    ? Exclude<Extract<keyof Infer<Schema<TargetShape>>, string>, '_id'>
+    : never;
+
+export type PopulateSpec<Relations extends SchemaRelationMap> = {
+  [Name in Extract<keyof Relations, string>]: {
+    ref: Name;
+    select?: readonly RelationSelect<Relations[Name]>[];
+    populate?: PopulateSpec<RelationMapOf<Relations[Name]>>;
+  };
+}[Extract<keyof Relations, string>];
+export type PopulateSpecs<Relations extends SchemaRelationMap> = readonly PopulateSpec<Relations>[];
+type PopulatedResult<
+  Result extends object,
+  Relations extends SchemaRelationMap,
+  Specs extends PopulateSpecs<Relations>,
+> = Result & {
+  [Spec in Specs[number] as Spec['ref']]: RelationDocument<Relations[Spec['ref']]> | null;
+};
 
 /** A lazy async iterable for one cursor-pagination page. */
 export class ModelCursor<
