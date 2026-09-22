@@ -50,6 +50,7 @@ await users.filter({ role: 'member' });
 await users.filter({ role: { $in: ['admin', 'member'] } });
 await users.filter({}).sort({ name: 'asc', role: 'desc' });
 await users.filter({}).sort({ name: 'asc' }).skip(1);
+await users.filter({}).sort({ name: 'asc' }).skip(1).limit(2);
 await users.filter({
   $or: [{ role: 'admin' }, { name: { $regex: /^Ada/ } }],
 });
@@ -81,3 +82,5 @@ await users.filter({}).sort({ name: 'ascending' });
 await users.filter({}).sort({ name: 1 });
 // @ts-expect-error Skip requires a number.
 await users.filter({}).skip('1');
+// @ts-expect-error Limit requires a number.
+await users.filter({}).limit('2');

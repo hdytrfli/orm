@@ -42,6 +42,7 @@ export type ModelSort<Shape extends SchemaShape> = Partial<
 export class ModelQuery<Shape extends SchemaShape> implements PromiseLike<Infer<Schema<Shape>>[]> {
   private sortSpec: ModelSort<Shape> | undefined;
   private skipCount: number | undefined;
+  private limitCount: number | undefined;
 
   constructor(
     private readonly collection: Collection<StoredDocument<Shape>>,
@@ -63,6 +64,15 @@ export class ModelQuery<Shape extends SchemaShape> implements PromiseLike<Infer<
     return this;
   }
 
+  /** Limit the number of matching documents returned. */
+  limit(count: number): this {
+    if (!Number.isInteger(count) || count < 0) {
+      throw new RangeError('Query limit must be a non-negative integer');
+    }
+    this.limitCount = count;
+    return this;
+  }
+
   private execute(): Promise<Infer<Schema<Shape>>[]> {
     let cursor = this.collection.find(this.filterSpec as MongoFilter<StoredDocument<Shape>>);
     if (this.sortSpec) {
@@ -70,6 +80,9 @@ export class ModelQuery<Shape extends SchemaShape> implements PromiseLike<Infer<
     }
     if (this.skipCount !== undefined) {
       cursor = cursor.skip(this.skipCount);
+    }
+    if (this.limitCount !== undefined) {
+      cursor = cursor.limit(this.limitCount);
     }
     return cursor.toArray() as unknown as Promise<Infer<Schema<Shape>>[]>;
   }

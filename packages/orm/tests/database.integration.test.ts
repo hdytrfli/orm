@@ -53,6 +53,9 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     const skipped = await tickets.filter({ status: 'open' }).sort({ priority: 'desc' }).skip(1);
     expect(skipped.map((ticket) => ticket.priority)).toEqual([1]);
     expect(() => tickets.filter({}).skip(-1)).toThrow('non-negative integer');
+    const limited = await tickets.filter({ status: 'open' }).sort({ priority: 'desc' }).limit(1);
+    expect(limited.map((ticket) => ticket.priority)).toEqual([2]);
+    expect(() => tickets.filter({}).limit(-1)).toThrow('non-negative integer');
     expect((await tickets.find({ title: 'Design API' }))?._id).toEqual(first._id);
 
     const updated = await tickets.update({ _id: first._id }, { status: 'closed' });

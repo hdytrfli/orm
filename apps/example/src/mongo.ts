@@ -80,7 +80,9 @@ try {
       ],
     })
     .sort({ age: 'asc' })
-    .skip(1);
+    .skip(1)
+    .limit(3);
+
   console.log('filtered sorted with skip:', {
     count: filteredSorted.length,
     preview: filteredSorted.slice(0, 3),
@@ -127,7 +129,7 @@ try {
   });
 
   await users.delete({
-    //
+    // this will delete all users
   });
 } finally {
   await db.disconnect();
