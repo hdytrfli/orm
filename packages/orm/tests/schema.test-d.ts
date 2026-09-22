@@ -51,12 +51,12 @@ await users.filter({ role: { $in: ['admin', 'member'] } });
 await users.filter({}).sort({ name: 'asc', role: 'desc' });
 await users.filter({}).sort({ name: 'asc' }).skip(1);
 await users.filter({}).sort({ name: 'asc' }).skip(1).limit(2);
-const selectedUsers = await users.filter({}).select('name', 'role');
+const selectedUsers = await users.filter({}).select(['name', 'role']);
 selectedUsers[0].name;
 selectedUsers[0]._id;
 // @ts-expect-error Unselected fields are omitted from the result type.
 selectedUsers[0].age;
-const selectedUser = await users.find({}).select('name');
+const selectedUser = await users.find({}).select(['name']);
 selectedUser?.name;
 selectedUser?._id;
 // @ts-expect-error Unselected fields are omitted from the result type.

@@ -61,7 +61,7 @@ try {
     ),
   );
 
-  const found = await users.find({ _id: user._id }).select('name', 'group');
+  const found = await users.find({ _id: user._id }).select(['name', 'group']);
   console.log('found:', found);
 
   console.log(

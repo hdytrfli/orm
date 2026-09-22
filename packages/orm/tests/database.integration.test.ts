@@ -56,10 +56,10 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     const limited = await tickets.filter({ status: 'open' }).sort({ priority: 'desc' }).limit(1);
     expect(limited.map((ticket) => ticket.priority)).toEqual([2]);
     expect(() => tickets.filter({}).limit(-1)).toThrow('non-negative integer');
-    const selected = await tickets.filter({ status: 'open' }).select('title', 'priority');
+    const selected = await tickets.filter({ status: 'open' }).select(['title', 'priority']);
     expect(selected[0]).toMatchObject({ title: 'Design API', priority: 1 });
     expect(Object.keys(selected[0])).toEqual(expect.arrayContaining(['_id', 'title', 'priority']));
-    const selectedOne = await tickets.find({ title: 'Design API' }).select('title');
+    const selectedOne = await tickets.find({ title: 'Design API' }).select(['title']);
     expect(selectedOne).toMatchObject({ title: 'Design API' });
     expect(selectedOne).not.toHaveProperty('priority');
     expect((await tickets.find({ title: 'Design API' }))?._id).toEqual(first._id);
