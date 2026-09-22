@@ -10,6 +10,7 @@ const db = createDatabase({
 
 const groupSchema = orm.schema({
   name: orm.string(),
+  creator: orm.objectId().optional(),
 });
 
 const userSchema = orm.schema({
@@ -20,11 +21,15 @@ const userSchema = orm.schema({
   group: orm.objectId(),
 });
 
-const relatedUserSchema = userSchema.relations({
-  group: () => groupSchema,
+const relatedGroupSchema = groupSchema.relations({
+  creator: () => userSchema,
 });
 
-const groups = db.model('groups', groupSchema);
+const relatedUserSchema = userSchema.relations({
+  group: () => relatedGroupSchema,
+});
+
+const groups = db.model('groups', relatedGroupSchema);
 const users = db.model('users', relatedUserSchema);
 
 await db.connect();
@@ -56,6 +61,7 @@ try {
     password: 'alan-secret',
     group: group._id,
   });
+  await groups.update({ _id: group._id }, { creator: user._id });
 
   await Promise.all(
     Array.from({ length: 18 }, () =>
@@ -71,6 +77,16 @@ try {
 
   const found = await users.find({ _id: user._id }).select(['name', 'group']);
   console.log('found:', found);
+  console.log(
+    'populated:',
+    await users.find({ _id: user._id }).populate([
+      {
+        ref: 'group',
+        select: ['name', 'creator'],
+        populate: [{ ref: 'creator', select: ['name'] }],
+      },
+    ]),
+  );
   console.log('with hidden field:', await users.find({ _id: user._id }).show(['password']));
 
   console.log(

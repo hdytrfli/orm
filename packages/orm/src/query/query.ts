@@ -66,7 +66,7 @@ type SelectableKey<Shape extends SchemaShape> = Exclude<
   Extract<keyof ModelDocument<Shape>, string>,
   '_id' | HiddenDocumentKey<Shape>
 >;
-type VisibleDocument<Shape extends SchemaShape> = Omit<
+export type VisibleDocument<Shape extends SchemaShape> = Omit<
   ModelDocument<Shape>,
   Extract<HiddenKey<Shape>, keyof ModelDocument<Shape>>
 >;
@@ -91,15 +91,20 @@ export type PopulateSpec<Relations extends SchemaRelationMap> = {
   [Name in Extract<keyof Relations, string>]: {
     ref: Name;
     select?: readonly RelationSelect<Relations[Name]>[];
-    populate?: PopulateSpec<RelationMapOf<Relations[Name]>>;
+    populate?: PopulateSpecs<RelationMapOf<Relations[Name]>>;
   };
 }[Extract<keyof Relations, string>];
 export type PopulateSpecs<Relations extends SchemaRelationMap> = readonly PopulateSpec<Relations>[];
-type PopulatedResult<
+type RuntimePopulateSpec = {
+  ref: string;
+  select?: readonly string[];
+  populate?: readonly RuntimePopulateSpec[];
+};
+export type PopulatedResult<
   Result extends object,
   Relations extends SchemaRelationMap,
   Specs extends PopulateSpecs<Relations>,
-> = Result & {
+> = Omit<Result, Extract<Specs[number]['ref'], keyof Result>> & {
   [Spec in Specs[number] as Spec['ref']]: RelationDocument<Relations[Spec['ref']]> | null;
 };
 
@@ -136,12 +141,14 @@ export class ModelQuery<
   Shape extends SchemaShape,
   Result extends object = VisibleDocument<Shape>,
   CursorReady extends boolean = true,
+  Relations extends SchemaRelationMap = {},
 > implements PromiseLike<Result[]> {
   private sortSpec: ModelSort<Shape> | undefined;
   private skipCount: number | undefined;
   private limitCount: number | undefined;
   private selectedFields: readonly string[] | undefined;
   private shownFields: readonly string[] = [];
+  private populateSpecs: PopulateSpecs<Relations> = [];
   readonly cursor = ((after?: ObjectId) => this.createCursor(after)) as CursorMethod<
     Shape,
     Result,
@@ -153,6 +160,8 @@ export class ModelQuery<
     private readonly filterSpec: ModelFilter<Shape>,
     private readonly fields: readonly string[],
     private readonly hiddenFields: readonly string[],
+    private readonly db: Db,
+    private readonly relations: Relations,
   ) {}
 
   /** Sort results by one or more schema fields. */
@@ -182,20 +191,39 @@ export class ModelQuery<
   /** Return only selected fields, while retaining MongoDB's default `_id`. */
   select<Keys extends SelectableKey<Shape> = never>(
     fields: readonly Keys[] = [],
-  ): ModelQuery<Shape, SelectedDocument<Shape, Keys>, CursorReady> {
+  ): ModelQuery<Shape, SelectedDocument<Shape, Keys>, CursorReady, Relations> {
     this.selectedFields = fields;
-    return this as unknown as ModelQuery<Shape, SelectedDocument<Shape, Keys>, CursorReady>;
+    return this as unknown as ModelQuery<
+      Shape,
+      SelectedDocument<Shape, Keys>,
+      CursorReady,
+      Relations
+    >;
   }
 
   /** Include hidden fields in the query result. */
   show<Keys extends HiddenDocumentKey<Shape>>(
     fields: readonly Keys[],
-  ): ModelQuery<Shape, Result & Pick<ModelDocument<Shape>, Keys>, CursorReady> {
+  ): ModelQuery<Shape, Result & Pick<ModelDocument<Shape>, Keys>, CursorReady, Relations> {
     this.shownFields = fields;
     return this as unknown as ModelQuery<
       Shape,
       Result & Pick<ModelDocument<Shape>, Keys>,
-      CursorReady
+      CursorReady,
+      Relations
+    >;
+  }
+
+  /** Populate declared one-way relations, including nested relation arrays. */
+  populate<Specs extends PopulateSpecs<Relations>>(
+    specs: Specs,
+  ): ModelQuery<Shape, PopulatedResult<Result, Relations, Specs>, CursorReady, Relations> {
+    this.populateSpecs = specs;
+    return this as unknown as ModelQuery<
+      Shape,
+      PopulatedResult<Result, Relations, Specs>,
+      CursorReady,
+      Relations
     >;
   }
 
@@ -261,7 +289,49 @@ export class ModelQuery<
       const projection = Object.fromEntries([...fields].map((field) => [field, 1]));
       cursor = cursor.project(projection);
     }
-    return cursor.toArray() as unknown as Promise<Result[]>;
+    return cursor
+      .toArray()
+      .then((documents) =>
+        this.populateDocuments(documents as unknown as Result[], this.populateSpecs),
+      );
+  }
+
+  private async populateDocuments(
+    documents: Result[],
+    specs: readonly RuntimePopulateSpec[],
+  ): Promise<Result[]> {
+    for (const document of documents) {
+      for (const spec of specs) {
+        await this.populateDocument(document as Record<string, unknown>, spec, this.relations);
+      }
+    }
+    return documents;
+  }
+
+  private async populateDocument(
+    document: Record<string, unknown>,
+    spec: RuntimePopulateSpec,
+    relations: SchemaRelationMap,
+  ): Promise<void> {
+    const relation = relations[spec.ref];
+    const target = relation.resolve();
+    const value = document[relation.localField];
+    const projectionFields =
+      spec.select ?? target.fields.filter((field) => !target.hiddenFields.includes(field));
+    const related = value
+      ? await this.db
+          .collectionFor(target)
+          .findOne(
+            { [relation.foreignField]: value },
+            { projection: Object.fromEntries(projectionFields.map((field) => [field, 1])) },
+          )
+      : null;
+    if (related && spec.populate) {
+      for (const nested of spec.populate) {
+        await this.populateDocument(related, nested, target.relationMap);
+      }
+    }
+    document[spec.ref] = related;
   }
 
   then<TResult1 = Result[], TResult2 = never>(
@@ -276,31 +346,51 @@ export class ModelQuery<
 export class ModelFindQuery<
   Shape extends SchemaShape,
   Result extends object = VisibleDocument<Shape>,
+  Relations extends SchemaRelationMap = {},
 > implements PromiseLike<Result | null> {
   private selectedFields: readonly string[] | undefined;
   private shownFields: readonly string[] = [];
+  private populateSpecs: PopulateSpecs<Relations> = [];
 
   constructor(
     private readonly collection: Collection<StoredDocument<Shape>>,
     private readonly filterSpec: ModelFilter<Shape>,
     private readonly fields: readonly string[],
     private readonly hiddenFields: readonly string[],
+    private readonly db: Db,
+    private readonly relations: Relations,
   ) {}
 
   /** Return only selected fields, while retaining MongoDB's default `_id`. */
   select<Keys extends SelectableKey<Shape> = never>(
     fields: readonly Keys[] = [],
-  ): ModelFindQuery<Shape, SelectedDocument<Shape, Keys>> {
+  ): ModelFindQuery<Shape, SelectedDocument<Shape, Keys>, Relations> {
     this.selectedFields = fields;
-    return this as unknown as ModelFindQuery<Shape, SelectedDocument<Shape, Keys>>;
+    return this as unknown as ModelFindQuery<Shape, SelectedDocument<Shape, Keys>, Relations>;
   }
 
   /** Include hidden fields in the query result. */
   show<Keys extends HiddenDocumentKey<Shape>>(
     fields: readonly Keys[],
-  ): ModelFindQuery<Shape, Result & Pick<ModelDocument<Shape>, Keys>> {
+  ): ModelFindQuery<Shape, Result & Pick<ModelDocument<Shape>, Keys>, Relations> {
     this.shownFields = fields;
-    return this as unknown as ModelFindQuery<Shape, Result & Pick<ModelDocument<Shape>, Keys>>;
+    return this as unknown as ModelFindQuery<
+      Shape,
+      Result & Pick<ModelDocument<Shape>, Keys>,
+      Relations
+    >;
+  }
+
+  /** Populate declared one-way relations, including nested relation arrays. */
+  populate<Specs extends PopulateSpecs<Relations>>(
+    specs: Specs,
+  ): ModelFindQuery<Shape, PopulatedResult<Result, Relations, Specs>, Relations> {
+    this.populateSpecs = specs;
+    return this as unknown as ModelFindQuery<
+      Shape,
+      PopulatedResult<Result, Relations, Specs>,
+      Relations
+    >;
   }
 
   private execute(): Promise<Result | null> {
@@ -316,10 +406,42 @@ export class ModelFindQuery<
             ),
           }
         : undefined;
-    return this.collection.findOne(
-      this.filterSpec as MongoFilter<StoredDocument<Shape>>,
-      options,
-    ) as unknown as Promise<Result | null>;
+    return this.collection
+      .findOne(this.filterSpec as MongoFilter<StoredDocument<Shape>>, options)
+      .then(async (document) => {
+        if (!document) return null;
+        const result = document as unknown as Result;
+        for (const spec of this.populateSpecs) {
+          await this.populateDocument(result as Record<string, unknown>, spec, this.relations);
+        }
+        return result;
+      }) as unknown as Promise<Result | null>;
+  }
+
+  private async populateDocument(
+    document: Record<string, unknown>,
+    spec: RuntimePopulateSpec,
+    relations: SchemaRelationMap,
+  ): Promise<void> {
+    const relation = relations[spec.ref];
+    const target = relation.resolve();
+    const value = document[relation.localField];
+    const projectionFields =
+      spec.select ?? target.fields.filter((field) => !target.hiddenFields.includes(field));
+    const related = value
+      ? await this.db
+          .collectionFor(target)
+          .findOne(
+            { [relation.foreignField]: value },
+            { projection: Object.fromEntries(projectionFields.map((field) => [field, 1])) },
+          )
+      : null;
+    if (related && spec.populate) {
+      for (const nested of spec.populate) {
+        await this.populateDocument(related, nested, target.relationMap);
+      }
+    }
+    document[spec.ref] = related;
   }
 
   then<TResult1 = Result | null, TResult2 = never>(

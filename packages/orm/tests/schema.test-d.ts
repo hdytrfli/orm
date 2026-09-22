@@ -107,6 +107,11 @@ const relatedUserSchema = relationUserSchema.relations({
   groupId: () => relationGroupSchema,
 });
 void relatedUserSchema.relationMap.groupId;
+const relatedUsers = db.model('related-users', relatedUserSchema);
+const populatedUsers = await relatedUsers.filter().populate([{ ref: 'groupId', select: ['name'] }]);
+populatedUsers[0].groupId?.name;
+// @ts-expect-error Population replaces the local ObjectId with the populated document.
+const groupId: ObjectId = populatedUsers[0].groupId;
 
 await users.filter({
   $or: [{ role: 'admin' }, { name: { $regex: /^Ada/ } }],

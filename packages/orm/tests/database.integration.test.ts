@@ -16,43 +16,53 @@ const ticketSchema = orm.schema({
   owner: orm.objectId(),
   secret: orm.string().hidden(),
 });
+const ownerSchema = orm.schema({ name: orm.string() });
+const relatedTicketSchema = ticketSchema.relations({ owner: () => ownerSchema });
 
-const tickets = database.model('tickets', ticketSchema);
+const owners = database.model('owners', ownerSchema);
+const tickets = database.model('tickets', relatedTicketSchema);
 
 describe.skipIf(!runDatabaseTests)('database CRUD', () => {
   beforeAll(() => database.connect());
-  beforeEach(() => tickets.delete({}));
+  beforeEach(async () => {
+    await tickets.delete({});
+    await owners.delete({});
+  });
   afterAll(() => database.disconnect());
 
   it('creates, filters, finds, updates, and deletes typed documents', async () => {
-    const owner = new ObjectId();
-    const otherOwner = new ObjectId();
+    const owner = await owners.create({ name: 'Ada' });
+    const otherOwner = await owners.create({ name: 'Alan' });
     const first = await tickets.create({
       title: 'Design API',
       status: 'open',
       priority: 1,
-      owner,
+      owner: owner._id,
       secret: 'first-secret',
     });
     await tickets.create({
       title: 'Implement API',
       status: 'open',
       priority: 2,
-      owner,
+      owner: owner._id,
       secret: 'second-secret',
     });
     await tickets.create({
       title: 'Document API',
       status: 'closed',
       priority: 3,
-      owner: otherOwner,
+      owner: otherOwner._id,
       secret: 'third-secret',
     });
 
     expect(first._id).toBeInstanceOf(ObjectId);
     expect((await tickets.filter({}))[0]).not.toHaveProperty('secret');
     expect((await tickets.filter({}).show(['secret']))[0]).toHaveProperty('secret');
-    expect(await tickets.filter({ status: 'open', owner })).toHaveLength(2);
+    expect(await tickets.filter({ status: 'open', owner: owner._id })).toHaveLength(2);
+    const populated = await tickets
+      .filter({ status: 'open' })
+      .populate([{ ref: 'owner', select: ['name'] }]);
+    expect(populated[0].owner?.name).toBe('Ada');
     expect(await tickets.filter()).toEqual(await tickets.filter({}));
     expect(await tickets.filter({ status: 'open' }).count()).toBe(2);
     expect(await tickets.filter().count(true)).toBeGreaterThanOrEqual(3);
@@ -98,7 +108,7 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     const updated = await tickets.update({ _id: first._id }, { status: 'closed' });
     expect(updated).toMatchObject({ title: 'Design API', status: 'closed' });
 
-    const deleted = await tickets.delete({ owner: otherOwner });
+    const deleted = await tickets.delete({ owner: otherOwner._id });
     expect(deleted.deletedCount).toBe(1);
     expect(await tickets.filter({})).toHaveLength(2);
   });
