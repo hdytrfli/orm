@@ -1,6 +1,27 @@
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
+declare module 'zod' {
+  interface ZodType {
+    hidden(): this & { readonly __hidden: true };
+  }
+}
+
+if (!Object.prototype.hasOwnProperty.call(z.ZodType.prototype, 'hidden')) {
+  Object.defineProperty(z.ZodType.prototype, 'hidden', {
+    configurable: false,
+    enumerable: false,
+    value(this: z.ZodType) {
+      Object.defineProperty(this, '__hidden', {
+        configurable: false,
+        enumerable: false,
+        value: true,
+      });
+      return this;
+    },
+  });
+}
+
 /** A schema field that can be marked as hidden from default query results. */
 export type HiddenCapable<T extends z.ZodType> = Omit<T, 'optional' | 'nullable' | 'nullish'> &
   HiddenMethods<T>;
@@ -18,44 +39,46 @@ type HiddenMethods<T extends z.ZodType> = {
   nullish(): HiddenCapable<z.ZodOptional<z.ZodNullable<T>>>;
 };
 
-const withHidden = <T extends z.ZodType>(schema: T): HiddenCapable<T> => {
-  const optional = schema.optional.bind(schema);
-  const nullable = schema.nullable.bind(schema);
-  const nullish = schema.nullish.bind(schema);
-  const wrap = <Wrapped extends z.ZodType>(result: Wrapped): HiddenCapable<Wrapped> => {
-    const wrapped = withHidden(result);
-    if ('__hidden' in schema) wrapped.hidden();
-    return wrapped;
-  };
-  Object.defineProperty(schema, 'hidden', {
-    configurable: false,
-    enumerable: false,
-    value: () => {
-      Object.defineProperty(schema, '__hidden', {
-        configurable: false,
-        enumerable: false,
-        value: true,
-      });
-      return schema;
+export const withHidden = <T extends z.ZodType>(schema: T): HiddenCapable<T> => {
+  return new Proxy(schema, {
+    get(target, property, receiver) {
+      if (property === 'hidden') {
+        return () => {
+          Object.defineProperty(target, '__hidden', {
+            configurable: false,
+            enumerable: false,
+            value: true,
+          });
+          return receiver;
+        };
+      }
+      const value = Reflect.get(target, property, receiver);
+      if (typeof value !== 'function') return value;
+      return (...args: unknown[]) => {
+        const result = value.apply(target, args);
+        return result instanceof z.ZodType ? withHidden(result) : result;
+      };
+    },
+  }) as unknown as HiddenCapable<T>;
+};
+
+/** Wrap native Zod constructors so returned schemas support `.hidden()`. */
+export const withZodNamespace = <T extends object>(namespace: T): T =>
+  new Proxy(namespace, {
+    get(target, property, receiver) {
+      const value = Reflect.get(target, property, receiver);
+      if (
+        typeof value !== 'function' ||
+        String(property)[0] !== String(property)[0].toLowerCase()
+      ) {
+        return value;
+      }
+      return (...args: unknown[]) => {
+        const result = value.apply(target, args);
+        return result instanceof z.ZodType ? withHidden(result) : result;
+      };
     },
   });
-  Object.defineProperty(schema, 'optional', {
-    configurable: false,
-    enumerable: false,
-    value: () => wrap(optional()),
-  });
-  Object.defineProperty(schema, 'nullable', {
-    configurable: false,
-    enumerable: false,
-    value: () => wrap(nullable()),
-  });
-  Object.defineProperty(schema, 'nullish', {
-    configurable: false,
-    enumerable: false,
-    value: () => wrap(nullish()),
-  });
-  return schema as unknown as HiddenCapable<T>;
-};
 
 /** Create a string schema. */
 export const string = () => withHidden(z.string());

@@ -35,7 +35,8 @@ try {
     group: group._id,
     company: company._id,
     profile: {
-      website: 'ada.example',
+      email: 'ada@example.com',
+      website: 'https://ada.example',
       location: {
         city: 'London',
       },

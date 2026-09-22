@@ -9,7 +9,7 @@ export const userSchema = orm.schema({
   company: orm.objectId(),
   profile: orm
     .object({
-      email: orm.email(),
+      email: orm.email().nullish(),
       website: orm.url(),
       location: orm.object({
         city: orm.string(),
