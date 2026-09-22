@@ -1,0 +1,7 @@
+{
+  "extends": "./packages/orm/tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": []
+}

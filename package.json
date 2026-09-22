@@ -1,0 +1,33 @@
+{
+  "name": "mongorm",
+  "version": "0.1.0",
+  "description": "A TypeScript-first MongoDB ORM monorepo",
+  "keywords": [],
+  "license": "MIT",
+  "author": "",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm --filter @mongorm/orm run build",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "dev": "concurrently --kill-others --names example,docs \"pnpm dev:example\" \"pnpm dev:docs\"",
+    "dev:docs": "pnpm --filter @mongorm/docs run dev",
+    "dev:example": "pnpm --filter @mongorm/example run dev",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "lint": "oxlint packages apps",
+    "lint:fix": "oxlint --fix packages apps",
+    "test": "pnpm --filter @mongorm/orm run test && pnpm --filter @mongorm/example run test",
+    "typecheck": "pnpm --filter @mongorm/orm run typecheck && pnpm --filter @mongorm/orm run build && pnpm --filter @mongorm/example run typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "concurrently": "^10.0.5",
+    "lefthook": "^2.1.14",
+    "oxfmt": "^0.68.0",
+    "oxlint": "^1.83.0",
+    "tsdown": "^0.23.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
+  },
+  "packageManager": "pnpm@11.27.1"
+}

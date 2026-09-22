@@ -1,0 +1,11 @@
+{
+  "$schema": "https://oxc.rs/schema/oxlint.json",
+  "plugins": ["typescript", "import", "jsdoc", "node", "promise", "vitest"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "no-underscore-dangle": "off"
+  }
+}

@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+out/
+
+# Test and coverage output
+coverage/
+.nyc_output/
+
+# Tool and framework caches
+.cache/
+.turbo/
+.vite/
+**/.vitepress/cache/
+.vitepress/dist/
+.eslintcache
+*.tsbuildinfo
+
+# Runtime and temporary files
+temp/
+tmp/
+*.pid
+*.pid.lock
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor settings
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Operating system files
+.DS_Store
+Thumbs.db
