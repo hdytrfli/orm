@@ -7,8 +7,19 @@ import type { RefField, SchemaLike } from './schema/relations.js';
 import { objectId, withZodNamespace } from './schema/scalars.js';
 import { Schema } from './schema/schema.js';
 
+type ZodConstructorKey = {
+  [Key in keyof typeof z]: Key extends string
+    ? Key extends Lowercase<Key>
+      ? (typeof z)[Key] extends (...args: any[]) => any
+        ? Key
+        : never
+      : never
+    : never;
+}[keyof typeof z];
+type ZodConstructors = Pick<typeof z, ZodConstructorKey>;
+
 /** The public schema-construction API. */
-export type OrmApi = typeof z & {
+export type OrmApi = ZodConstructors & {
   /** Define a typed object schema. */
   schema<Shape extends SchemaShape>(shape: Shape): Schema<Shape>;
   /** Build a registry of named schemas and their relation graph. */
@@ -22,7 +33,13 @@ export type OrmApi = typeof z & {
 };
 
 /** The ORM schema API with the complete native Zod namespace. */
-export const orm: OrmApi = Object.assign({}, withZodNamespace(z), {
+const zodConstructors = Object.fromEntries(
+  Object.entries(z).filter(
+    ([name, value]) => name === name.toLowerCase() && typeof value === 'function',
+  ),
+) as ZodConstructors;
+
+export const orm: OrmApi = Object.assign({}, withZodNamespace(zodConstructors), {
   schema: <Shape extends SchemaShape>(shape: Shape) => new Schema(shape),
   defineSchemas: createSchemaRegistry,
   objectId,

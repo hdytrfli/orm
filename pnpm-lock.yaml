@@ -246,6 +246,9 @@ importers:
       '@mongorm/orm':
         specifier: workspace:*
         version: link:../../packages/orm
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
     devDependencies:
       tsx:
         specifier: ^4.20.6

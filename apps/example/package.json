@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "@faker-js/faker": "^10.6.0",
-    "@mongorm/orm": "workspace:*"
+    "@mongorm/orm": "workspace:*",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "tsx": "^4.20.6"
