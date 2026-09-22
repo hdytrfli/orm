@@ -8,7 +8,7 @@ import {
 } from 'mongodb';
 
 import type { Db } from './db.js';
-import { ModelQuery } from './query/query.js';
+import { ModelFindQuery, ModelQuery } from './query/query.js';
 import type { ModelFilter, StoredDocument } from './query/query.js';
 import type { Infer, InferShape, Schema, SchemaShape } from './schema/index.js';
 
@@ -43,11 +43,9 @@ export class Model<Shape extends SchemaShape> {
     return new ModelQuery(this.collection, filter);
   }
 
-  /** Return the first matching document, or `null` when none exists. */
-  async find(filter: ModelFilter<Shape> = {}): Promise<Infer<Schema<Shape>> | null> {
-    return (await this.collection.findOne(
-      filter as MongoFilter<StoredDocument<Shape>>,
-    )) as unknown as Infer<Schema<Shape>> | null;
+  /** Build a query for the first document matching a MongoDB filter. */
+  find(filter: ModelFilter<Shape> = {}): ModelFindQuery<Shape> {
+    return new ModelFindQuery(this.collection, filter);
   }
 
   /** Validate and apply a partial update to the first matching document. */

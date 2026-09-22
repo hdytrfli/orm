@@ -37,12 +37,22 @@ type SortDirection = 'asc' | 'desc';
 export type ModelSort<Shape extends SchemaShape> = Partial<
   Record<Extract<keyof Infer<Schema<Shape>>, string>, SortDirection>
 >;
+type ModelDocument<Shape extends SchemaShape> = Infer<Schema<Shape>>;
+type SelectableKey<Shape extends SchemaShape> = Extract<keyof ModelDocument<Shape>, string>;
+type SelectedDocument<Shape extends SchemaShape, Key extends SelectableKey<Shape>> = Pick<
+  ModelDocument<Shape>,
+  Key | '_id'
+>;
 
 /** A typed, awaitable MongoDB find query. */
-export class ModelQuery<Shape extends SchemaShape> implements PromiseLike<Infer<Schema<Shape>>[]> {
+export class ModelQuery<
+  Shape extends SchemaShape,
+  Result extends object = ModelDocument<Shape>,
+> implements PromiseLike<Result[]> {
   private sortSpec: ModelSort<Shape> | undefined;
   private skipCount: number | undefined;
   private limitCount: number | undefined;
+  private selectSpec: Record<string, 1> | undefined;
 
   constructor(
     private readonly collection: Collection<StoredDocument<Shape>>,
@@ -73,7 +83,15 @@ export class ModelQuery<Shape extends SchemaShape> implements PromiseLike<Infer<
     return this;
   }
 
-  private execute(): Promise<Infer<Schema<Shape>>[]> {
+  /** Return only selected fields, while retaining MongoDB's default `_id`. */
+  select<Keys extends SelectableKey<Shape>>(
+    ...fields: Keys[]
+  ): ModelQuery<Shape, SelectedDocument<Shape, Keys>> {
+    this.selectSpec = Object.fromEntries(fields.map((field) => [field, 1]));
+    return this as unknown as ModelQuery<Shape, SelectedDocument<Shape, Keys>>;
+  }
+
+  private execute(): Promise<Result[]> {
     let cursor = this.collection.find(this.filterSpec as MongoFilter<StoredDocument<Shape>>);
     if (this.sortSpec) {
       cursor = cursor.sort(this.sortSpec as Sort);
@@ -84,11 +102,48 @@ export class ModelQuery<Shape extends SchemaShape> implements PromiseLike<Infer<
     if (this.limitCount !== undefined) {
       cursor = cursor.limit(this.limitCount);
     }
-    return cursor.toArray() as unknown as Promise<Infer<Schema<Shape>>[]>;
+    if (this.selectSpec) {
+      cursor = cursor.project(this.selectSpec);
+    }
+    return cursor.toArray() as unknown as Promise<Result[]>;
   }
 
-  then<TResult1 = Infer<Schema<Shape>>[], TResult2 = never>(
-    onfulfilled?: ((value: Infer<Schema<Shape>>[]) => TResult1 | PromiseLike<TResult1>) | null,
+  then<TResult1 = Result[], TResult2 = never>(
+    onfulfilled?: ((value: Result[]) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+  ): PromiseLike<TResult1 | TResult2> {
+    return this.execute().then(onfulfilled, onrejected);
+  }
+}
+
+/** A typed, awaitable MongoDB single-document query. */
+export class ModelFindQuery<
+  Shape extends SchemaShape,
+  Result extends object = ModelDocument<Shape>,
+> implements PromiseLike<Result | null> {
+  private selectSpec: Record<string, 1> | undefined;
+
+  constructor(
+    private readonly collection: Collection<StoredDocument<Shape>>,
+    private readonly filterSpec: ModelFilter<Shape>,
+  ) {}
+
+  /** Return only selected fields, while retaining MongoDB's default `_id`. */
+  select<Keys extends SelectableKey<Shape>>(
+    ...fields: Keys[]
+  ): ModelFindQuery<Shape, SelectedDocument<Shape, Keys>> {
+    this.selectSpec = Object.fromEntries(fields.map((field) => [field, 1]));
+    return this as unknown as ModelFindQuery<Shape, SelectedDocument<Shape, Keys>>;
+  }
+
+  private execute(): Promise<Result | null> {
+    return this.collection.findOne(this.filterSpec as MongoFilter<StoredDocument<Shape>>, {
+      projection: this.selectSpec,
+    }) as unknown as Promise<Result | null>;
+  }
+
+  then<TResult1 = Result | null, TResult2 = never>(
+    onfulfilled?: ((value: Result | null) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): PromiseLike<TResult1 | TResult2> {
     return this.execute().then(onfulfilled, onrejected);
