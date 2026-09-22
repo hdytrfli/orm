@@ -1,5 +1,4 @@
-import { orm, type Infer } from '@mongorm/orm';
-import { ObjectId } from 'mongodb';
+import { ObjectId, orm, type Infer } from '@mongorm/orm';
 
 const groupSchema = orm.schema({
   name: orm.string(),

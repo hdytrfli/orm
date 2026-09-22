@@ -7,8 +7,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@mongorm/orm": "workspace:*",
-    "mongodb": "^7.6.0"
+    "@mongorm/orm": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.20.6"

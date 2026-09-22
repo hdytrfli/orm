@@ -243,9 +243,6 @@ importers:
       '@mongorm/orm':
         specifier: workspace:*
         version: link:../../packages/orm
-      mongodb:
-        specifier: ^7.6.0
-        version: 7.6.0
     devDependencies:
       tsx:
         specifier: ^4.20.6

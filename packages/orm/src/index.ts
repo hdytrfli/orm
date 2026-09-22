@@ -1,3 +1,4 @@
+export { ObjectId } from 'mongodb';
 export { orm } from './api.js';
 export { Schema } from './schema/schema.js';
 export type { Infer } from './schema/inference.js';
