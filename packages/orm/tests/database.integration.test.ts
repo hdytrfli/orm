@@ -48,6 +48,11 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     expect(first._id).toBeInstanceOf(ObjectId);
     expect(await tickets.filter({ status: 'open', owner })).toHaveLength(2);
     expect(await tickets.filter()).toEqual(await tickets.filter({}));
+    expect(await tickets.filter({ status: 'open' }).count()).toBe(2);
+    expect(await tickets.filter().count(true)).toBeGreaterThanOrEqual(3);
+    await expect(tickets.filter({ status: 'open' }).count(true)).rejects.toThrow(
+      'do not support filters',
+    );
     const sorted = await tickets.filter({ status: 'open' }).sort({ priority: 'desc' });
     expect(sorted.map((ticket) => ticket.priority)).toEqual([2, 1]);
     const skipped = await tickets.filter({ status: 'open' }).sort({ priority: 'desc' }).skip(1);

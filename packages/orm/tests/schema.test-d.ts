@@ -51,6 +51,8 @@ await users.filter({ role: { $in: ['admin', 'member'] } });
 await users.filter({}).sort({ name: 'asc', role: 'desc' });
 await users.filter({}).sort({ name: 'asc' }).skip(1);
 await users.filter({}).sort({ name: 'asc' }).skip(1).limit(2);
+await users.filter({ role: 'admin' }).count();
+await users.filter().count(true);
 const selectedUsers = await users.filter({}).select(['name', 'role']);
 selectedUsers[0].name;
 selectedUsers[0]._id;
@@ -94,3 +96,5 @@ await users.filter({}).sort({ name: 1 });
 await users.filter({}).skip('1');
 // @ts-expect-error Limit requires a number.
 await users.filter({}).limit('2');
+// @ts-expect-error Estimate must be a boolean.
+await users.filter({}).count('true');

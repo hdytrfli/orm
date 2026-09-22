@@ -79,6 +79,7 @@ try {
         { age: { $gte: 18 } },
       ],
     })
+    .select(['name', 'age'])
     .sort({ age: 'asc' })
     .skip(1)
     .limit(3);
@@ -90,25 +91,34 @@ try {
 
   console.log(
     'filtered with or:',
-    await users.filter({
-      $or: [
-        // one of the following conditions must be true
-        { role: 'admin' },
-        { age: { $gte: 18 } },
-      ],
-    }),
+    await users
+      .filter({
+        $or: [
+          // one of the following conditions must be true
+          { role: 'admin' },
+          { age: { $gte: 18 } },
+        ],
+      })
+      .limit(2),
   );
 
   console.log(
     'filtered with and:',
-    await users.filter({
-      $and: [
-        // both of the following conditions must be true
-        { role: 'member' },
-        { age: { $gte: 18 } },
-      ],
-    }),
+    await users
+      .filter({
+        $and: [
+          // both of the following conditions must be true
+          { role: 'member' },
+          { age: { $gte: 18 } },
+        ],
+      })
+      .limit(2),
   );
+
+  console.log('counts:', {
+    admins: await users.filter({ role: 'admin' }).count(),
+    estimatedTotal: await users.filter().count(true),
+  });
 
   console.log('updated:', await users.update({ _id: user._id }, { role: 'admin', age: 20 }));
   console.log('deleted:', await users.delete({ _id: { $in: [user._id, another._id] } }));

@@ -91,6 +91,17 @@ export class ModelQuery<
     return this as unknown as ModelQuery<Shape, SelectedDocument<Shape, Keys>>;
   }
 
+  /** Count matching documents, optionally using MongoDB's collection estimate. */
+  async count(estimate = false): Promise<number> {
+    if (estimate) {
+      if (Object.keys(this.filterSpec).length > 0) {
+        throw new Error('Estimated query counts do not support filters');
+      }
+      return this.collection.estimatedDocumentCount();
+    }
+    return this.collection.countDocuments(this.filterSpec as MongoFilter<StoredDocument<Shape>>);
+  }
+
   private execute(): Promise<Result[]> {
     let cursor = this.collection.find(this.filterSpec as MongoFilter<StoredDocument<Shape>>);
     if (this.sortSpec) {
