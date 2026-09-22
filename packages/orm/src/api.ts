@@ -1,6 +1,4 @@
 import type { SchemaShape } from './schema/contracts.js';
-import { createRegistry } from './schema/registry.js';
-import type { RegistrySchemaFactory, SchemaRegistry } from './schema/registry.js';
 import { createRef } from './schema/relations.js';
 import type { RefField, SchemaLike } from './schema/relations.js';
 import { boolean, date, enumeration, number, objectId, string } from './schema/scalars.js';
@@ -24,10 +22,6 @@ export interface OrmApi {
   enum: typeof enumeration;
   /** Create a string ID field linked to another schema. */
   ref<Target extends SchemaLike>(resolve: () => Target): RefField<Target>;
-  /** Create a circular-safe registry of named schemas. */
-  registry<const Definitions extends Record<string, RegistrySchemaFactory>>(
-    definitions: Definitions,
-  ): SchemaRegistry<Definitions>;
 }
 
 /** The ORM schema API. */
@@ -40,5 +34,4 @@ export const orm: OrmApi = {
   objectId,
   enum: enumeration,
   ref: createRef,
-  registry: createRegistry,
 };

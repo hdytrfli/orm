@@ -98,20 +98,16 @@ await accounts.filter().select(['_id']);
 // @ts-expect-error Only hidden fields can be shown.
 await accounts.filter().show(['name']);
 
-const schemas = orm.registry({
-  group: (ref) => ({
-    name: orm.string(),
-    creator: ref('user'),
-  }),
-  user: (ref) => ({
-    name: orm.string(),
-    group: ref('group').optional(),
-  }),
+const relationGroupSchema = orm.schema({ name: orm.string() });
+const relationUserSchema = orm.schema({
+  name: orm.string(),
+  groupId: orm.objectId().optional(),
 });
-const registeredGroup = schemas.get('group');
-const registeredUser = schemas.get('user');
-void registeredGroup;
-void registeredUser;
+const relatedUserSchema = relationUserSchema.relation('group', () => relationGroupSchema, {
+  localField: 'groupId',
+  foreignField: '_id',
+});
+void relatedUserSchema.relations.group;
 
 await users.filter({
   $or: [{ role: 'admin' }, { name: { $regex: /^Ada/ } }],

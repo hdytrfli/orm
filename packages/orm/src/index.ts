@@ -3,9 +3,14 @@ export { orm } from './api.js';
 export { Schema } from './schema/index.js';
 export type { Infer, InferShape } from './schema/index.js';
 export type { SchemaDefinition, SchemaShape } from './schema/index.js';
-export type { RefDefinition, RefField, RelationMap, SchemaLike } from './schema/index.js';
-export { SchemaRegistry } from './schema/registry.js';
-export type { RegistryRef, RegistrySchemaFactory } from './schema/registry.js';
+export type {
+  RefDefinition,
+  RefField,
+  RelationMap,
+  SchemaLike,
+  SchemaRelation,
+  SchemaRelationMap,
+} from './schema/index.js';
 export { createDatabase, Db } from './db.js';
 export {
   CursorQueryError,

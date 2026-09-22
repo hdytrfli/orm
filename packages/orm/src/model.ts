@@ -10,16 +10,16 @@ import {
 import type { Db } from './db.js';
 import { ModelFindQuery, ModelQuery } from './query/query.js';
 import type { ModelFilter, StoredDocument } from './query/query.js';
-import type { Infer, InferShape, Schema, SchemaShape } from './schema/index.js';
+import type { Infer, InferShape, Schema, SchemaRelationMap, SchemaShape } from './schema/index.js';
 
 type UpdateInput<Shape extends SchemaShape> = Partial<Omit<InferShape<Schema<Shape>>, '_id'>>;
 /** A MongoDB collection with CRUD operations derived from a schema. */
-export class Model<Shape extends SchemaShape> {
+export class Model<Shape extends SchemaShape, Relations extends SchemaRelationMap = {}> {
   /** Create a model bound to a database collection and schema. */
   constructor(
     private readonly db: Db,
     readonly name: string,
-    private readonly schema: Schema<Shape>,
+    private readonly schema: Schema<Shape, Relations>,
   ) {}
 
   private get collection(): Collection<StoredDocument<Shape>> {

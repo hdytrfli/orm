@@ -12,6 +12,20 @@ export interface RefDefinition<Target extends SchemaLike = SchemaLike> {
   resolve: () => Target;
 }
 
+/** Metadata for a one-way relation between two MongoDB schemas. */
+export interface SchemaRelation<
+  Target extends SchemaLike = SchemaLike,
+  LocalField extends string = string,
+  ForeignField extends string = string,
+> {
+  readonly resolve: () => Target;
+  readonly localField: LocalField;
+  readonly foreignField: ForeignField;
+}
+
+/** Relation metadata attached to a schema. */
+export type SchemaRelationMap = Record<string, SchemaRelation>;
+
 /** A string identifier field carrying a typed relation target. */
 export type RefField<Target extends SchemaLike = SchemaLike> = z.ZodType<ObjectId> & {
   readonly __ref?: RefDefinition<Target>;

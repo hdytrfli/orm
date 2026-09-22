@@ -30,21 +30,15 @@ describe('schema', () => {
     expect(() => user.parse({ group: 'group-1' })).toThrow();
   });
 
-  it('constructs circular schemas through a registry', () => {
-    const schemas = orm.registry({
-      group: (ref) => ({
-        name: orm.string(),
-        creator: ref('user'),
-      }),
-      user: (ref) => ({
-        name: orm.string(),
-        group: ref('group').optional(),
-      }),
+  it('declares one-way relations after schema construction', () => {
+    const group = orm.schema({ name: orm.string() });
+    const user = orm.schema({ name: orm.string(), groupId: orm.objectId().optional() });
+    const userWithRelations = user.relation('group', () => group, {
+      localField: 'groupId',
+      foreignField: '_id',
     });
 
-    const group = schemas.get('group');
-    const user = schemas.get('user');
-    expect(group.refs.creator.resolve()).toBe(user);
-    expect(user.refs.group.resolve()).toBe(group);
+    expect(userWithRelations.relations.group.resolve()).toBe(group);
+    expect(userWithRelations.relations.group.localField).toBe('groupId');
   });
 });

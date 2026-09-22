@@ -8,25 +8,25 @@ const db = createDatabase({
   database: 'mongorm_example',
 });
 
-const schemas = orm.registry({
-  group: (ref) => ({
-    name: orm.string(),
-    creator: ref('user').optional(),
-  }),
-  user: (ref) => ({
-    name: orm.string(),
-    age: orm.number(),
-    role: orm.enum(['admin', 'member']),
-    password: orm.string().hidden(),
-    group: ref('group'),
-  }),
+const groupSchema = orm.schema({
+  name: orm.string(),
 });
 
-const groupSchema = schemas.get('group');
-const userSchema = schemas.get('user');
+const userSchema = orm.schema({
+  name: orm.string(),
+  age: orm.number(),
+  role: orm.enum(['admin', 'member']),
+  password: orm.string().hidden(),
+  groupId: orm.objectId(),
+});
+
+const relatedUserSchema = userSchema.relation('group', () => groupSchema, {
+  localField: 'groupId',
+  foreignField: '_id',
+});
 
 const groups = db.model('groups', groupSchema);
-const users = db.model('users', userSchema);
+const users = db.model('users', relatedUserSchema);
 
 await db.connect();
 
@@ -41,7 +41,7 @@ try {
     age: 11,
     role: 'admin',
     password: 'ada-secret',
-    group: group._id,
+    groupId: group._id,
   };
 
   const validated = userSchema.parse(userData);
@@ -55,7 +55,7 @@ try {
     age: 36,
     role: 'member',
     password: 'alan-secret',
-    group: group._id,
+    groupId: group._id,
   });
 
   await Promise.all(
@@ -65,12 +65,12 @@ try {
         age: faker.number.int({ min: 18, max: 65 }),
         role: faker.helpers.arrayElement(['admin', 'member'] as const),
         password: faker.internet.password(),
-        group: group._id,
+        groupId: group._id,
       }),
     ),
   );
 
-  const found = await users.find({ _id: user._id }).select(['name', 'group']);
+  const found = await users.find({ _id: user._id }).select(['name', 'groupId']);
   console.log('found:', found);
   console.log('with hidden field:', await users.find({ _id: user._id }).show(['password']));
 
@@ -149,13 +149,13 @@ try {
   console.log('deleted:', await users.delete({ _id: { $in: [user._id, another._id] } }));
 
   if (found) {
-    const groupRef = userSchema.refs.group;
-    const relatedGroupModel = db.model('groups', groupRef.resolve());
+    const groupRelation = relatedUserSchema.relations.group;
+    const relatedGroupModel = db.model('groups', groupRelation.resolve());
 
-    console.log('ref path:', 'group');
-    console.log('ref value:', found.group);
+    console.log('relation path:', 'group');
+    console.log('relation value:', found.groupId);
 
-    const relatedGroup = await relatedGroupModel.find({ _id: found.group });
+    const relatedGroup = await relatedGroupModel.find({ _id: found.groupId });
     console.log('related group:', relatedGroup);
   }
 
