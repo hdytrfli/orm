@@ -49,6 +49,7 @@ await users.create({ name: 'Ada', role: 'member' });
 await users.filter({ role: 'member' });
 await users.filter({ role: { $in: ['admin', 'member'] } });
 await users.filter({}).sort({ name: 'asc', role: 'desc' });
+await users.filter({}).sort({ name: 'asc' }).skip(1);
 await users.filter({
   $or: [{ role: 'admin' }, { name: { $regex: /^Ada/ } }],
 });
@@ -78,3 +79,5 @@ await users.filter({}).sort({ unknown: 'asc' });
 await users.filter({}).sort({ name: 'ascending' });
 // @ts-expect-error Numeric MongoDB sort directions are intentionally not part of the API.
 await users.filter({}).sort({ name: 1 });
+// @ts-expect-error Skip requires a number.
+await users.filter({}).skip('1');

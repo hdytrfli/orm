@@ -64,9 +64,8 @@ try {
           { age: { $gte: 18 } },
         ],
       })
-      .sort({
-        age: 'asc',
-      }),
+      .sort({ age: 'asc' })
+      .skip(1),
   );
 
   console.log(

@@ -41,6 +41,7 @@ export type ModelSort<Shape extends SchemaShape> = Partial<
 /** A typed, awaitable MongoDB find query. */
 export class ModelQuery<Shape extends SchemaShape> implements PromiseLike<Infer<Schema<Shape>>[]> {
   private sortSpec: ModelSort<Shape> | undefined;
+  private skipCount: number | undefined;
 
   constructor(
     private readonly collection: Collection<StoredDocument<Shape>>,
@@ -53,10 +54,22 @@ export class ModelQuery<Shape extends SchemaShape> implements PromiseLike<Infer<
     return this;
   }
 
+  /** Skip a non-negative number of matching documents. */
+  skip(count: number): this {
+    if (!Number.isInteger(count) || count < 0) {
+      throw new RangeError('Query skip must be a non-negative integer');
+    }
+    this.skipCount = count;
+    return this;
+  }
+
   private execute(): Promise<Infer<Schema<Shape>>[]> {
     let cursor = this.collection.find(this.filterSpec as MongoFilter<StoredDocument<Shape>>);
     if (this.sortSpec) {
       cursor = cursor.sort(this.sortSpec as Sort);
+    }
+    if (this.skipCount !== undefined) {
+      cursor = cursor.skip(this.skipCount);
     }
     return cursor.toArray() as unknown as Promise<Infer<Schema<Shape>>[]>;
   }
