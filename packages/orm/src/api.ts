@@ -2,7 +2,17 @@ import type { SchemaShape } from './schema/contracts.js';
 import { createSchemaRegistry } from './schema/registry.js';
 import { createRef } from './schema/relations.js';
 import type { RefField, SchemaLike } from './schema/relations.js';
-import { boolean, date, enumeration, number, object, objectId, string } from './schema/scalars.js';
+import {
+  boolean,
+  date,
+  email,
+  enumeration,
+  number,
+  object,
+  objectId,
+  string,
+  url,
+} from './schema/scalars.js';
 import { Schema } from './schema/schema.js';
 
 /** The public schema-construction API. */
@@ -15,6 +25,10 @@ export interface OrmApi {
   ): ReturnType<typeof createSchemaRegistry<Registry>>;
   /** Create a string field. */
   string: typeof string;
+  /** Create an email schema. */
+  email: typeof email;
+  /** Create a URL schema. */
+  url: typeof url;
   /** Create a number field. */
   number: typeof number;
   /** Create a boolean field. */
@@ -36,6 +50,8 @@ export const orm: OrmApi = {
   schema: <Shape extends SchemaShape>(shape: Shape) => new Schema(shape),
   defineSchemas: createSchemaRegistry,
   string,
+  email,
+  url,
   number,
   boolean,
   date,

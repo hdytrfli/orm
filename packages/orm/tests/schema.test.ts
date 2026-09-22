@@ -27,6 +27,23 @@ describe('schema', () => {
     });
   });
 
+  it('preserves hidden metadata through common Zod wrappers', () => {
+    const account = orm.schema({
+      email: orm.string().email(),
+      token: orm.string().optional().hidden(),
+      backupToken: orm.string().nullable().hidden(),
+    });
+
+    expect(account.hiddenFields).toEqual(['token', 'backupToken']);
+    expect(
+      account.parse({ email: 'ada@example.test', token: undefined, backupToken: null }),
+    ).toEqual({
+      email: 'ada@example.test',
+      token: undefined,
+      backupToken: null,
+    });
+  });
+
   it('collects lazy relation metadata without evaluating it during construction', () => {
     const group = orm.schema({ name: orm.string() });
     const user = orm.schema({

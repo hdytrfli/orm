@@ -9,8 +9,11 @@ export const userSchema = orm.schema({
   company: orm.objectId(),
   profile: orm
     .object({
-      website: orm.string().optional(),
-      location: orm.object({ city: orm.string() }),
+      email: orm.email(),
+      website: orm.url(),
+      location: orm.object({
+        city: orm.string(),
+      }),
     })
     .optional(),
 });

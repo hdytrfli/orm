@@ -69,11 +69,9 @@ type NestedDocumentKeys<Value, Prefix extends string = ''> = Value extends objec
   : never;
 type NestedSelectableKey<Shape extends SchemaShape> = {
   [Key in Extract<keyof Shape, string>]: Key extends keyof ModelDocument<Shape>
-    ? Shape[Key] extends { readonly __hidden: true }
-      ? never
-      : NonNullable<ModelDocument<Shape>[Key]> extends object
-        ? `${Key}.${NestedDocumentKeys<NonNullable<ModelDocument<Shape>[Key]>>}`
-        : never
+    ? NonNullable<ModelDocument<Shape>[Key]> extends object
+      ? `${Key}.${NestedDocumentKeys<NonNullable<ModelDocument<Shape>[Key]>>}`
+      : never
     : never;
 }[Extract<keyof Shape, string>];
 type CursorMethod<

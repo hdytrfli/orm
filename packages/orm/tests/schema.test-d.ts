@@ -91,6 +91,13 @@ await profiles.find({}).select(['profile.website', 'profile.location.city']);
 // @ts-expect-error Nested select paths must refer to declared object fields.
 await profiles.find({}).select(['profile.location.country']);
 
+const zodFeatures = orm.schema({
+  email: orm.email(),
+  website: orm.url(),
+  secret: orm.string().optional().hidden(),
+});
+void zodFeatures;
+
 const accountSchema = orm.schema({
   name: orm.string(),
   password: orm.string().hidden(),

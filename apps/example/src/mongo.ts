@@ -36,7 +36,9 @@ try {
     company: company._id,
     profile: {
       website: 'ada.example',
-      location: { city: 'London' },
+      location: {
+        city: 'London',
+      },
     },
   };
 
