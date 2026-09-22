@@ -12,11 +12,12 @@ describe('schema', () => {
 
   it('collects lazy relation metadata without evaluating it during construction', () => {
     const group = orm.schema({ name: orm.string() });
-    const user = orm.schema({ group: orm.ref(() => group) });
+    const user = orm.schema({ group: orm.ref(() => group).optional() });
 
     expect(user.refs.group.resolve()).toBe(group);
     const groupId = new ObjectId();
     expect(user.parse({ group: groupId })).toEqual({ group: groupId });
+    expect(user.parse({})).toEqual({});
     expect(() => user.parse({ group: 'group-1' })).toThrow();
   });
 });

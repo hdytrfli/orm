@@ -8,7 +8,7 @@ const userSchema = orm.schema({
   name: orm.string(),
   age: orm.number(),
   role: orm.enum(['admin', 'member']),
-  group: orm.ref(() => groupSchema),
+  group: orm.ref(() => groupSchema).optional(),
 });
 
 type User = Infer<typeof userSchema>;
@@ -28,7 +28,7 @@ try {
     name: 'Not valid',
     age: 36,
     role: 'admin',
-    group: new ObjectId(),
+    group: 'not-an-object-id',
   });
 } catch (error) {
   console.log('validation error:', error instanceof Error ? error.message : error);
