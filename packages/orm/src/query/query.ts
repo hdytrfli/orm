@@ -76,13 +76,17 @@ type SelectedDocument<Shape extends SchemaShape, Key extends SelectableKey<Shape
 ]
   ? VisibleDocument<Shape>
   : Pick<ModelDocument<Shape>, Key | '_id'>;
-type RelationTarget<Relation> = Relation extends SchemaRelation<infer Target> ? Target : never;
+type RelationTarget<Relation> = Relation extends { resolve: () => infer Target } ? Target : never;
 type RelationDocument<Relation> =
   RelationTarget<Relation> extends Schema<infer TargetShape, any>
     ? Infer<Schema<TargetShape>>
     : never;
 type RelationMapOf<Relation> =
-  RelationTarget<Relation> extends Schema<any, infer TargetRelations> ? TargetRelations : {};
+  RelationTarget<Relation> extends { readonly relationMap: infer TargetRelations }
+    ? TargetRelations extends SchemaRelationMap
+      ? TargetRelations
+      : {}
+    : {};
 type ScopeName<Scopes> = Extract<keyof Scopes, string>;
 type PopulationMode = 'none' | 'populate' | 'scope';
 type RelationSelect<Relation> =

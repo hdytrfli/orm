@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { describe, expect, it } from 'vitest';
 
-import { orm } from '../src/index.js';
+import { createDatabase, orm } from '../src/index.js';
 
 describe('schema', () => {
   it('parses a schema definition', () => {
@@ -49,5 +49,17 @@ describe('schema', () => {
       .scopes({ detail: [{ ref: 'group', select: ['name'] }] });
 
     expect(user.scopeMap.detail).toEqual([{ ref: 'group', select: ['name'] }]);
+  });
+
+  it('registers plural schemas as database models', () => {
+    const users = orm.schema({ name: orm.string() });
+    const db = createDatabase({
+      uri: 'mongodb://127.0.0.1:27017',
+      database: 'mongorm_registry_test',
+      schema: { users },
+    });
+
+    expect(db.users.name).toBe('users');
+    expect(db.users).toBe(db.users);
   });
 });

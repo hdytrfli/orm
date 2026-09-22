@@ -3,14 +3,14 @@ import { createDatabase, orm } from '@mongorm/orm';
 
 faker.seed(20260922);
 
-const db = createDatabase({
-  uri: 'mongodb://root:example@127.0.0.1:27017',
-  database: 'mongorm_example',
-});
-
 const groupSchema = orm.schema({
   name: orm.string(),
   creator: orm.objectId().optional(),
+});
+
+const companySchema = orm.schema({
+  name: orm.string(),
+  description: orm.string().optional(),
 });
 
 const userSchema = orm.schema({
@@ -19,35 +19,55 @@ const userSchema = orm.schema({
   role: orm.enum(['admin', 'member']),
   password: orm.string().hidden(),
   group: orm.objectId(),
+  company: orm.objectId(),
 });
 
-const relatedGroupSchema = groupSchema.relations({
-  creator: () => userSchema,
-});
-
-const relatedUserSchema = userSchema
-  .relations({
-    group: () => relatedGroupSchema,
+const schema = orm
+  .schemas({
+    groups: groupSchema,
+    companies: companySchema,
+    users: userSchema,
   })
-  .scopes({
-    detail: [
-      {
-        ref: 'group',
-        select: ['name'],
-        populate: [{ ref: 'creator' }],
-      },
-    ],
+  .defineRelations({
+    groups: { creator: 'users' },
+    users: { group: 'groups', company: 'companies' },
+  })
+  .defineScopes({
+    users: {
+      detail: [
+        {
+          ref: 'group',
+          select: ['name'],
+          populate: [
+            {
+              ref: 'creator',
+            },
+          ],
+        },
+        { ref: 'company' },
+      ],
+    },
   });
 
-const groups = db.model('groups', relatedGroupSchema);
-const users = db.model('users', relatedUserSchema);
+const db = createDatabase({
+  uri: 'mongodb://root:example@127.0.0.1:27017',
+  database: 'mongorm_example',
+  schema,
+});
+
+const { companies, groups, users } = db;
 
 await db.connect();
 
 try {
   await users.delete({});
   await groups.delete({});
+  await companies.delete({});
 
+  const company = await companies.create({
+    name: 'Analytical Engines Ltd.',
+    description: 'Computing research and engineering',
+  });
   const group = await groups.create({ name: 'Language' });
 
   const userData = {
@@ -56,6 +76,7 @@ try {
     role: 'admin',
     password: 'ada-secret',
     group: group._id,
+    company: company._id,
   };
 
   const validated = userSchema.parse(userData);
@@ -70,6 +91,7 @@ try {
     role: 'member',
     password: 'alan-secret',
     group: group._id,
+    company: company._id,
   });
   await groups.update({ _id: group._id }, { creator: user._id });
 
@@ -81,6 +103,7 @@ try {
         role: faker.helpers.arrayElement(['admin', 'member'] as const),
         password: faker.internet.password(),
         group: group._id,
+        company: company._id,
       }),
     ),
   );
@@ -93,7 +116,11 @@ try {
       {
         ref: 'group',
         select: ['name'],
-        populate: [{ ref: 'creator' }],
+        populate: [
+          {
+            ref: 'creator',
+          },
+        ],
       },
     ]),
   );
@@ -175,7 +202,7 @@ try {
   console.log('deleted:', await users.delete({ _id: { $in: [user._id, another._id] } }));
 
   if (found) {
-    const groupRelation = relatedUserSchema.relationMap.group;
+    const groupRelation = schema.users.relationMap.group;
     const relatedGroupModel = db.model('groups', groupRelation.resolve());
 
     console.log('relation path:', 'group');

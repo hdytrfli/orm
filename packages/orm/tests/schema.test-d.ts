@@ -1,7 +1,7 @@
 import type { ObjectId } from 'mongodb';
 
 import type { Db, Infer, InferShape } from '../src/index.js';
-import { orm } from '../src/index.js';
+import { createDatabase, orm } from '../src/index.js';
 
 const userSchema = orm.schema({
   name: orm.string(),
@@ -114,6 +114,29 @@ const populatedUsers = await relatedUsers.filter().populate([{ ref: 'groupId', s
 populatedUsers[0].groupId?.name;
 // @ts-expect-error Population replaces the local ObjectId with the populated document.
 const groupId: ObjectId = populatedUsers[0].groupId;
+
+const schema = orm
+  .schemas({
+    users: relationUserSchema,
+    groups: relationGroupSchema,
+  })
+  .defineRelations({
+    users: { groupId: 'groups' },
+  })
+  .defineScopes({
+    users: {
+      detail: [{ ref: 'groupId', select: ['name'] }],
+    },
+  });
+const registeredDb = createDatabase({
+  uri: 'mongodb://127.0.0.1:27017',
+  database: 'mongorm_registry_test',
+  schema,
+});
+await registeredDb.users.find({});
+await registeredDb.groups.find({});
+// @ts-expect-error Only registered plural schema names are exposed as models.
+await registeredDb.user.find({});
 
 const scopedUserSchema = relationUserSchema
   .relations({ groupId: () => relationGroupSchema })

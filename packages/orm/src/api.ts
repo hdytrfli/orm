@@ -1,4 +1,5 @@
 import type { SchemaShape } from './schema/contracts.js';
+import { createSchemaRegistry } from './schema/registry.js';
 import { createRef } from './schema/relations.js';
 import type { RefField, SchemaLike } from './schema/relations.js';
 import { boolean, date, enumeration, number, objectId, string } from './schema/scalars.js';
@@ -8,6 +9,10 @@ import { Schema } from './schema/schema.js';
 export interface OrmApi {
   /** Define a typed object schema. */
   schema<Shape extends SchemaShape>(shape: Shape): Schema<Shape>;
+  /** Build a registry of named schemas and their relation graph. */
+  schemas<const Registry extends Record<string, SchemaLike>>(
+    registry: Registry,
+  ): ReturnType<typeof createSchemaRegistry<Registry>>;
   /** Create a string field. */
   string: typeof string;
   /** Create a number field. */
@@ -27,6 +32,7 @@ export interface OrmApi {
 /** The ORM schema API. */
 export const orm: OrmApi = {
   schema: <Shape extends SchemaShape>(shape: Shape) => new Schema(shape),
+  schemas: createSchemaRegistry,
   string,
   number,
   boolean,

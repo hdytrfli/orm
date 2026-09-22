@@ -12,6 +12,11 @@ export type {
   SchemaRelationMap,
 } from './schema/index.js';
 export { createDatabase, Db } from './db.js';
+export type {
+  RelationDefinitions,
+  SchemaRegistryBuilder,
+  ScopeDefinitionsBySchema,
+} from './schema/registry.js';
 export {
   CursorQueryError,
   DatabaseNotConnectedError,
@@ -21,4 +26,4 @@ export {
 } from './errors/errors.js';
 export { Model } from './model.js';
 export { ModelCursor, ModelFindQuery, ModelQuery } from './query/query.js';
-export type { DbOptions } from './db.js';
+export type { DatabaseModels, DbOptions, SchemaRegistry } from './db.js';
