@@ -1,53 +1,9 @@
 import { faker } from '@faker-js/faker';
-import { createDatabase, orm } from '@mongorm/orm';
+import { createDatabase } from '@mongorm/orm';
+
+import { schema, userSchema } from './schema/index.js';
 
 faker.seed(20260922);
-
-const groupSchema = orm.schema({
-  name: orm.string(),
-  creator: orm.objectId().optional(),
-});
-
-const companySchema = orm.schema({
-  name: orm.string(),
-  description: orm.string().optional(),
-});
-
-const userSchema = orm.schema({
-  name: orm.string(),
-  age: orm.number(),
-  role: orm.enum(['admin', 'member']),
-  password: orm.string().hidden(),
-  group: orm.objectId(),
-  company: orm.objectId(),
-});
-
-const schema = orm
-  .schemas({
-    groups: groupSchema,
-    companies: companySchema,
-    users: userSchema,
-  })
-  .defineRelations({
-    groups: { creator: 'users' },
-    users: { group: 'groups', company: 'companies' },
-  })
-  .defineScopes({
-    users: {
-      detail: [
-        {
-          ref: 'group',
-          select: ['name'],
-          populate: [
-            {
-              ref: 'creator',
-            },
-          ],
-        },
-        { ref: 'company' },
-      ],
-    },
-  });
 
 const db = createDatabase({
   uri: 'mongodb://root:example@127.0.0.1:27017',
