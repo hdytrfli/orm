@@ -121,6 +121,8 @@ try {
   );
 
   const first = users.filter().limit(3).cursor();
+  const array = await Array.fromAsync(first);
+  console.log('result array:', array);
 
   let count = 0;
   for await (const item of first) console.log({ count: ++count, item });

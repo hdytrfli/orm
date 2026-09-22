@@ -50,9 +50,11 @@ type HiddenDocumentKey<Shape extends SchemaShape> = Extract<
   keyof ModelDocument<Shape>
 > &
   string;
-type CursorUnavailable = {
-  readonly 'Cursor pagination requires removing sort() and skip() before cursor()': never;
-};
+type CursorMethod<
+  Shape extends SchemaShape,
+  Result extends object,
+  Ready extends boolean,
+> = Ready extends true ? (after?: ObjectId) => ModelCursor<Shape, Result> : undefined;
 type SelectableKey<Shape extends SchemaShape> = Exclude<
   Extract<keyof ModelDocument<Shape>, string>,
   '_id' | HiddenDocumentKey<Shape>
@@ -106,6 +108,11 @@ export class ModelQuery<
   private limitCount: number | undefined;
   private selectedFields: readonly string[] | undefined;
   private shownFields: readonly string[] = [];
+  readonly cursor = ((after?: ObjectId) => this.createCursor(after)) as CursorMethod<
+    Shape,
+    Result,
+    CursorReady
+  >;
 
   constructor(
     private readonly collection: Collection<StoredDocument<Shape>>,
@@ -170,11 +177,7 @@ export class ModelQuery<
   }
 
   /** Return one `_id`-ordered page and the cursor for the next page. */
-  cursor(
-    this: CursorReady extends true ? ModelQuery<Shape, Result, CursorReady> : CursorUnavailable,
-    after?: ObjectId,
-  ): ModelCursor<Shape, Result>;
-  cursor(after?: ObjectId): ModelCursor<Shape, Result> {
+  private createCursor(after?: ObjectId): ModelCursor<Shape, Result> {
     if (this.limitCount === undefined || this.limitCount === 0) {
       throw new CursorQueryError('Cursor queries require a positive limit');
     }
