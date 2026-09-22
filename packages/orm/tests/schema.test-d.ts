@@ -75,10 +75,14 @@ const visibleAccounts = await accounts.filter();
 visibleAccounts[0].name;
 // @ts-expect-error Hidden fields are omitted from default results.
 visibleAccounts[0].password;
-const allAccounts = await accounts.filter().select(['*']);
+const allAccounts = await accounts.filter().show(['password']);
 allAccounts[0].password;
-const explicitAccount = await accounts.find({}).select(['name', 'password']);
+const explicitAccount = await accounts.find({}).select(['name']).show(['password']);
 explicitAccount?.password;
+// @ts-expect-error _id is always included and is not a selectable field.
+await accounts.filter().select(['_id']);
+// @ts-expect-error Only hidden fields can be shown.
+await accounts.filter().show(['name']);
 await users.filter({
   $or: [{ role: 'admin' }, { name: { $regex: /^Ada/ } }],
 });

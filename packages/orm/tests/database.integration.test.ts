@@ -51,7 +51,7 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
 
     expect(first._id).toBeInstanceOf(ObjectId);
     expect((await tickets.filter({}))[0]).not.toHaveProperty('secret');
-    expect((await tickets.filter({}).select(['*', 'secret']))[0]).toHaveProperty('secret');
+    expect((await tickets.filter({}).show(['secret']))[0]).toHaveProperty('secret');
     expect(await tickets.filter({ status: 'open', owner })).toHaveLength(2);
     expect(await tickets.filter()).toEqual(await tickets.filter({}));
     expect(await tickets.filter({ status: 'open' }).count()).toBe(2);

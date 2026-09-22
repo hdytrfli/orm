@@ -67,7 +67,7 @@ try {
 
   const found = await users.find({ _id: user._id }).select(['name', 'group']);
   console.log('found:', found);
-  console.log('with hidden field:', await users.find({ _id: user._id }).select(['*', 'password']));
+  console.log('with hidden field:', await users.find({ _id: user._id }).show(['password']));
 
   console.log(
     'filtered simple:',
