@@ -28,7 +28,7 @@ try {
     name: 'Not valid',
     age: 36,
     role: 'admin',
-    group: 'not-an-object-id',
+    group: new ObjectId(),
   });
 } catch (error) {
   console.log('validation error:', error instanceof Error ? error.message : error);

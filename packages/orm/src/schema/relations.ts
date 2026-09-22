@@ -16,6 +16,8 @@ export interface RefDefinition<Target extends SchemaLike = SchemaLike> {
 export type RefField<Target extends SchemaLike = SchemaLike> = z.ZodType<ObjectId> & {
   readonly __ref?: RefDefinition<Target>;
   optional(): OptionalRefField<Target>;
+  nullable(): NullableRefField<Target>;
+  nullish(): NullishRefField<Target>;
 };
 
 /** An optional relation field that retains its target metadata. */
@@ -25,11 +27,27 @@ export type OptionalRefField<Target extends SchemaLike = SchemaLike> = z.ZodOpti
   readonly __ref?: RefDefinition<Target>;
 };
 
+/** A nullable relation field that retains its target metadata. */
+export type NullableRefField<Target extends SchemaLike = SchemaLike> = z.ZodNullable<
+  RefField<Target>
+> & {
+  readonly __ref?: RefDefinition<Target>;
+};
+
+/** An optional and nullable relation field that retains its target metadata. */
+export type NullishRefField<Target extends SchemaLike = SchemaLike> = z.ZodOptional<
+  NullableRefField<Target>
+> & {
+  readonly __ref?: RefDefinition<Target>;
+};
+
 type RelationDefinition<Field> = Field extends { readonly __ref?: infer Definition }
   ? NonNullable<Definition>
   : Field extends z.ZodOptional<infer Inner>
     ? RelationDefinition<Inner>
-    : never;
+    : Field extends z.ZodNullable<infer Inner>
+      ? RelationDefinition<Inner>
+      : never;
 
 /** The relation metadata inferred from a schema shape. */
 export type RelationMap<Shape extends SchemaShape> = {
@@ -42,6 +60,8 @@ export type RelationMap<Shape extends SchemaShape> = {
 export const createRef = <Target extends SchemaLike>(resolve: () => Target): RefField<Target> => {
   const field = z.instanceof(ObjectId) as RefField<Target>;
   const createOptional = field.optional.bind(field);
+  const createNullable = field.nullable.bind(field);
+  const createNullish = field.nullish.bind(field);
   Object.defineProperty(field, '__ref', {
     configurable: false,
     enumerable: false,
@@ -50,17 +70,31 @@ export const createRef = <Target extends SchemaLike>(resolve: () => Target): Ref
   Object.defineProperty(field, 'optional', {
     configurable: false,
     enumerable: false,
-    value: () => {
-      const optional = createOptional() as OptionalRefField<Target>;
-      Object.defineProperty(optional, '__ref', {
-        configurable: false,
-        enumerable: false,
-        value: { resolve },
-      });
-      return optional;
-    },
+    value: () => attachRef(createOptional(), resolve) as OptionalRefField<Target>,
+  });
+  Object.defineProperty(field, 'nullable', {
+    configurable: false,
+    enumerable: false,
+    value: () => attachRef(createNullable(), resolve),
+  });
+  Object.defineProperty(field, 'nullish', {
+    configurable: false,
+    enumerable: false,
+    value: () => attachRef(createNullish(), resolve),
   });
   return field;
+};
+
+const attachRef = <Field extends z.ZodType, Target extends SchemaLike>(
+  field: Field,
+  resolve: () => Target,
+): Field & { readonly __ref?: RefDefinition<Target> } => {
+  Object.defineProperty(field, '__ref', {
+    configurable: false,
+    enumerable: false,
+    value: { resolve },
+  });
+  return field as Field & { readonly __ref?: RefDefinition<Target> };
 };
 
 /** Collect relation metadata from a schema shape without evaluating targets. */

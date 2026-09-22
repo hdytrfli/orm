@@ -24,8 +24,16 @@ const parsedUser: User = userSchema.parse({ name: 'Ada', role: 'member' });
 void parsedUser;
 
 const groupSchema = orm.schema({ name: orm.string() });
-const memberSchema = orm.schema({ group: orm.ref(() => groupSchema).optional() });
+const memberSchema = orm.schema({
+  group: orm.ref(() => groupSchema).optional(),
+  nullableGroup: orm.ref(() => groupSchema).nullable(),
+  nullishGroup: orm.ref(() => groupSchema).nullish(),
+});
 const targetGroup: typeof groupSchema = memberSchema.refs.group.resolve();
 void targetGroup;
-const member: Infer<typeof memberSchema> = { group: null as unknown as ObjectId };
+const member: Infer<typeof memberSchema> = {
+  group: null as unknown as ObjectId,
+  nullableGroup: null,
+  nullishGroup: undefined,
+};
 void member;
