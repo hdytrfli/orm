@@ -97,8 +97,8 @@ export class ModelQuery<
   }
 
   /** Return only selected fields, while retaining MongoDB's default `_id`. */
-  select<Keys extends SelectableKey<Shape>>(
-    fields: readonly Keys[],
+  select<Keys extends SelectableKey<Shape> = never>(
+    fields: readonly Keys[] = [],
   ): ModelQuery<Shape, SelectedDocument<Shape, Keys>> {
     this.selectAll = fields.includes('*' as Keys);
     this.selectSpec = this.selectAll
@@ -171,8 +171,8 @@ export class ModelFindQuery<
   ) {}
 
   /** Return only selected fields, while retaining MongoDB's default `_id`. */
-  select<Keys extends SelectableKey<Shape>>(
-    fields: readonly Keys[],
+  select<Keys extends SelectableKey<Shape> = never>(
+    fields: readonly Keys[] = [],
   ): ModelFindQuery<Shape, SelectedDocument<Shape, Keys>> {
     this.selectAll = fields.includes('*' as Keys);
     this.selectSpec = this.selectAll

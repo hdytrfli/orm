@@ -63,6 +63,8 @@ selectedUser?.name;
 selectedUser?._id;
 // @ts-expect-error Unselected fields are omitted from the result type.
 selectedUser?.role;
+await users.filter({}).select();
+await users.find({}).select();
 
 const accountSchema = orm.schema({
   name: orm.string(),
