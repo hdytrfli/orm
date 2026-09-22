@@ -316,8 +316,16 @@ export class ModelQuery<
     const relation = relations[spec.ref];
     const target = relation.resolve();
     const value = document[relation.localField];
-    const projectionFields =
-      spec.select ?? target.fields.filter((field) => !target.hiddenFields.includes(field));
+    const targetRelations = target.relationMap as SchemaRelationMap;
+    const nestedRelationFields = (spec.populate ?? []).map(
+      (nested) => targetRelations[nested.ref].localField,
+    );
+    const projectionFields = [
+      ...new Set(
+        spec.select ?? target.fields.filter((field) => !target.hiddenFields.includes(field)),
+      ),
+      ...nestedRelationFields,
+    ];
     const related = value
       ? await this.db
           .collectionFor(target)
@@ -328,7 +336,7 @@ export class ModelQuery<
       : null;
     if (related && spec.populate) {
       for (const nested of spec.populate) {
-        await this.populateDocument(related, nested, target.relationMap);
+        await this.populateDocument(related, nested, targetRelations);
       }
     }
     document[spec.ref] = related;
@@ -426,8 +434,16 @@ export class ModelFindQuery<
     const relation = relations[spec.ref];
     const target = relation.resolve();
     const value = document[relation.localField];
-    const projectionFields =
-      spec.select ?? target.fields.filter((field) => !target.hiddenFields.includes(field));
+    const targetRelations = target.relationMap as SchemaRelationMap;
+    const nestedRelationFields = (spec.populate ?? []).map(
+      (nested) => targetRelations[nested.ref].localField,
+    );
+    const projectionFields = [
+      ...new Set(
+        spec.select ?? target.fields.filter((field) => !target.hiddenFields.includes(field)),
+      ),
+      ...nestedRelationFields,
+    ];
     const related = value
       ? await this.db
           .collectionFor(target)
@@ -438,7 +454,7 @@ export class ModelFindQuery<
       : null;
     if (related && spec.populate) {
       for (const nested of spec.populate) {
-        await this.populateDocument(related, nested, target.relationMap);
+        await this.populateDocument(related, nested, targetRelations);
       }
     }
     document[spec.ref] = related;
