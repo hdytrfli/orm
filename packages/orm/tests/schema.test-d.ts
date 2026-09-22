@@ -63,6 +63,10 @@ const nextPage = await users
 for await (const user of nextPage) user.name;
 // @ts-expect-error Cursor positions use ObjectId values.
 await users.filter().limit(2).cursor('after');
+// @ts-expect-error Cursor pagination cannot be combined with skip.
+users.filter().limit(2).skip(1).cursor();
+// @ts-expect-error Cursor pagination cannot use custom sorting yet.
+users.filter().limit(2).sort({ name: 'asc' }).cursor();
 const selectedUsers = await users.filter({}).select(['name', 'role']);
 selectedUsers[0].name;
 selectedUsers[0]._id;

@@ -81,9 +81,12 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     const limited = await tickets.filter({ status: 'open' }).sort({ priority: 'desc' }).limit(1);
     expect(limited.map((ticket) => ticket.priority)).toEqual([2]);
     expect(() => tickets.filter({}).limit(-1)).toThrow('non-negative integer');
-    expect(() => tickets.filter({}).limit(3).sort({ priority: 'desc' }).skip(5).cursor()).toThrow(
-      'Cursor queries do not support skip',
-    );
+    const invalidCursorQuery = tickets
+      .filter({})
+      .limit(3)
+      .sort({ priority: 'desc' })
+      .skip(5) as any;
+    expect(() => invalidCursorQuery.cursor()).toThrow('Cursor queries do not support skip');
     const selected = await tickets.filter({ status: 'open' }).select(['title', 'priority']);
     expect(selected[0]).toMatchObject({ title: 'Design API', priority: 1 });
     expect(Object.keys(selected[0])).toEqual(expect.arrayContaining(['_id', 'title', 'priority']));

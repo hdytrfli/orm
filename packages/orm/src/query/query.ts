@@ -95,6 +95,7 @@ export class ModelCursor<
 export class ModelQuery<
   Shape extends SchemaShape,
   Result extends object = VisibleDocument<Shape>,
+  CursorReady extends boolean = true,
 > implements PromiseLike<Result[]> {
   private sortSpec: ModelSort<Shape> | undefined;
   private skipCount: number | undefined;
@@ -110,18 +111,18 @@ export class ModelQuery<
   ) {}
 
   /** Sort results by one or more schema fields. */
-  sort(spec: ModelSort<Shape>): this {
+  sort(spec: ModelSort<Shape>): ModelQuery<Shape, Result, false> {
     this.sortSpec = spec;
-    return this;
+    return this as unknown as ModelQuery<Shape, Result, false>;
   }
 
   /** Skip a non-negative number of matching documents. */
-  skip(count: number): this {
+  skip(count: number): ModelQuery<Shape, Result, false> {
     if (!Number.isInteger(count) || count < 0) {
       throw new RangeError('Query skip must be a non-negative integer');
     }
     this.skipCount = count;
-    return this;
+    return this as unknown as ModelQuery<Shape, Result, false>;
   }
 
   /** Limit the number of matching documents returned. */
@@ -136,17 +137,21 @@ export class ModelQuery<
   /** Return only selected fields, while retaining MongoDB's default `_id`. */
   select<Keys extends SelectableKey<Shape> = never>(
     fields: readonly Keys[] = [],
-  ): ModelQuery<Shape, SelectedDocument<Shape, Keys>> {
+  ): ModelQuery<Shape, SelectedDocument<Shape, Keys>, CursorReady> {
     this.selectedFields = fields;
-    return this as unknown as ModelQuery<Shape, SelectedDocument<Shape, Keys>>;
+    return this as unknown as ModelQuery<Shape, SelectedDocument<Shape, Keys>, CursorReady>;
   }
 
   /** Include hidden fields in the query result. */
   show<Keys extends HiddenDocumentKey<Shape>>(
     fields: readonly Keys[],
-  ): ModelQuery<Shape, Result & Pick<ModelDocument<Shape>, Keys>> {
+  ): ModelQuery<Shape, Result & Pick<ModelDocument<Shape>, Keys>, CursorReady> {
     this.shownFields = fields;
-    return this as unknown as ModelQuery<Shape, Result & Pick<ModelDocument<Shape>, Keys>>;
+    return this as unknown as ModelQuery<
+      Shape,
+      Result & Pick<ModelDocument<Shape>, Keys>,
+      CursorReady
+    >;
   }
 
   /** Count matching documents, optionally using MongoDB's collection estimate. */
@@ -161,7 +166,10 @@ export class ModelQuery<
   }
 
   /** Return one `_id`-ordered page and the cursor for the next page. */
-  cursor(after?: ObjectId): ModelCursor<Shape, Result> {
+  cursor(
+    this: CursorReady extends true ? ModelQuery<Shape, Result, CursorReady> : never,
+    after?: ObjectId,
+  ): ModelCursor<Shape, Result> {
     if (this.limitCount === undefined || this.limitCount === 0) {
       throw new Error('Cursor queries require a positive limit');
     }
