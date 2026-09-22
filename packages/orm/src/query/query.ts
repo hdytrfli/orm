@@ -11,13 +11,14 @@ import {
 } from 'mongodb';
 
 import type { Db } from '../db.js';
-import { CursorQueryError, EstimatedCountError } from '../errors/errors.js';
+import { CursorQueryError, EstimatedCountError, InvalidQueryError } from '../errors/errors.js';
 import type {
   Infer,
   Schema,
   SchemaRelation,
   SchemaRelationMap,
   SchemaShape,
+  ScopeDefinitions,
 } from '../schema/index.js';
 
 export type StoredDocument<Shape extends SchemaShape> = Infer<Schema<Shape>> & Document;
@@ -82,6 +83,8 @@ type RelationDocument<Relation> =
     : never;
 type RelationMapOf<Relation> =
   RelationTarget<Relation> extends Schema<any, infer TargetRelations> ? TargetRelations : {};
+type ScopeName<Scopes> = Extract<keyof Scopes, string>;
+type PopulationMode = 'none' | 'populate' | 'scope';
 type RelationSelect<Relation> =
   RelationTarget<Relation> extends Schema<infer TargetShape, any>
     ? Exclude<Extract<keyof Infer<Schema<TargetShape>>, string>, '_id'>
@@ -142,6 +145,8 @@ export class ModelQuery<
   Result extends object = VisibleDocument<Shape>,
   CursorReady extends boolean = true,
   Relations extends SchemaRelationMap = {},
+  Scopes extends ScopeDefinitions = {},
+  Mode extends PopulationMode = 'none',
 > implements PromiseLike<Result[]> {
   private sortSpec: ModelSort<Shape> | undefined;
   private skipCount: number | undefined;
@@ -149,6 +154,7 @@ export class ModelQuery<
   private selectedFields: readonly string[] | undefined;
   private shownFields: readonly string[] = [];
   private populateSpecs: PopulateSpecs<Relations> = [];
+  private populationMode: PopulationMode = 'none';
   readonly cursor = ((after?: ObjectId) => this.createCursor(after)) as CursorMethod<
     Shape,
     Result,
@@ -162,21 +168,22 @@ export class ModelQuery<
     private readonly hiddenFields: readonly string[],
     private readonly db: Db,
     private readonly relations: Relations,
+    private readonly scopes: Scopes,
   ) {}
 
   /** Sort results by one or more schema fields. */
-  sort(spec: ModelSort<Shape>): ModelQuery<Shape, Result, false> {
+  sort(spec: ModelSort<Shape>): ModelQuery<Shape, Result, false, Relations, Scopes, Mode> {
     this.sortSpec = spec;
-    return this as unknown as ModelQuery<Shape, Result, false>;
+    return this as unknown as ModelQuery<Shape, Result, false, Relations, Scopes, Mode>;
   }
 
   /** Skip a non-negative number of matching documents. */
-  skip(count: number): ModelQuery<Shape, Result, false> {
+  skip(count: number): ModelQuery<Shape, Result, false, Relations, Scopes, Mode> {
     if (!Number.isInteger(count) || count < 0) {
       throw new RangeError('Query skip must be a non-negative integer');
     }
     this.skipCount = count;
-    return this as unknown as ModelQuery<Shape, Result, false>;
+    return this as unknown as ModelQuery<Shape, Result, false, Relations, Scopes, Mode>;
   }
 
   /** Limit the number of matching documents returned. */
@@ -191,39 +198,99 @@ export class ModelQuery<
   /** Return only selected fields, while retaining MongoDB's default `_id`. */
   select<Keys extends SelectableKey<Shape> = never>(
     fields: readonly Keys[] = [],
-  ): ModelQuery<Shape, SelectedDocument<Shape, Keys>, CursorReady, Relations> {
+  ): ModelQuery<Shape, SelectedDocument<Shape, Keys>, CursorReady, Relations, Scopes, Mode> {
     this.selectedFields = fields;
     return this as unknown as ModelQuery<
       Shape,
       SelectedDocument<Shape, Keys>,
       CursorReady,
-      Relations
+      Relations,
+      Scopes,
+      Mode
     >;
   }
 
   /** Include hidden fields in the query result. */
   show<Keys extends HiddenDocumentKey<Shape>>(
     fields: readonly Keys[],
-  ): ModelQuery<Shape, Result & Pick<ModelDocument<Shape>, Keys>, CursorReady, Relations> {
+  ): ModelQuery<
+    Shape,
+    Result & Pick<ModelDocument<Shape>, Keys>,
+    CursorReady,
+    Relations,
+    Scopes,
+    Mode
+  > {
     this.shownFields = fields;
     return this as unknown as ModelQuery<
       Shape,
       Result & Pick<ModelDocument<Shape>, Keys>,
       CursorReady,
-      Relations
+      Relations,
+      Scopes,
+      Mode
     >;
   }
 
   /** Populate declared one-way relations, including nested relation arrays. */
   populate<Specs extends PopulateSpecs<Relations>>(
+    this: Mode extends 'scope'
+      ? never
+      : ModelQuery<Shape, Result, CursorReady, Relations, Scopes, Mode>,
     specs: Specs,
-  ): ModelQuery<Shape, PopulatedResult<Result, Relations, Specs>, CursorReady, Relations> {
+  ): ModelQuery<
+    Shape,
+    PopulatedResult<Result, Relations, Specs>,
+    CursorReady,
+    Relations,
+    Scopes,
+    'populate'
+  > {
+    if (this.populationMode === 'scope') {
+      throw new InvalidQueryError(
+        'A query cannot combine a population scope with explicit population',
+      );
+    }
+    this.populationMode = 'populate';
     this.populateSpecs = specs;
     return this as unknown as ModelQuery<
       Shape,
       PopulatedResult<Result, Relations, Specs>,
       CursorReady,
-      Relations
+      Relations,
+      Scopes,
+      'populate'
+    >;
+  }
+
+  /** Apply a named population scope. */
+  with<Name extends ScopeName<Scopes>>(
+    this: Mode extends 'populate'
+      ? never
+      : ModelQuery<Shape, Result, CursorReady, Relations, Scopes, Mode>,
+    name: Name,
+  ): ModelQuery<
+    Shape,
+    PopulatedResult<Result, Relations, Scopes[Name] & PopulateSpecs<Relations>>,
+    CursorReady,
+    Relations,
+    Scopes,
+    'scope'
+  > {
+    if (this.populationMode === 'populate') {
+      throw new InvalidQueryError(
+        'A query cannot combine explicit population with a population scope',
+      );
+    }
+    this.populationMode = 'scope';
+    this.populateSpecs = this.scopes[name] as PopulateSpecs<Relations>;
+    return this as unknown as ModelQuery<
+      Shape,
+      PopulatedResult<Result, Relations, Scopes[Name] & PopulateSpecs<Relations>>,
+      CursorReady,
+      Relations,
+      Scopes,
+      'scope'
     >;
   }
 
@@ -355,10 +422,13 @@ export class ModelFindQuery<
   Shape extends SchemaShape,
   Result extends object = VisibleDocument<Shape>,
   Relations extends SchemaRelationMap = {},
+  Scopes extends ScopeDefinitions = {},
+  Mode extends PopulationMode = 'none',
 > implements PromiseLike<Result | null> {
   private selectedFields: readonly string[] | undefined;
   private shownFields: readonly string[] = [];
   private populateSpecs: PopulateSpecs<Relations> = [];
+  private populationMode: PopulationMode = 'none';
 
   constructor(
     private readonly collection: Collection<StoredDocument<Shape>>,
@@ -367,37 +437,88 @@ export class ModelFindQuery<
     private readonly hiddenFields: readonly string[],
     private readonly db: Db,
     private readonly relations: Relations,
+    private readonly scopes: Scopes,
   ) {}
 
   /** Return only selected fields, while retaining MongoDB's default `_id`. */
   select<Keys extends SelectableKey<Shape> = never>(
     fields: readonly Keys[] = [],
-  ): ModelFindQuery<Shape, SelectedDocument<Shape, Keys>, Relations> {
+  ): ModelFindQuery<Shape, SelectedDocument<Shape, Keys>, Relations, Scopes, Mode> {
     this.selectedFields = fields;
-    return this as unknown as ModelFindQuery<Shape, SelectedDocument<Shape, Keys>, Relations>;
+    return this as unknown as ModelFindQuery<
+      Shape,
+      SelectedDocument<Shape, Keys>,
+      Relations,
+      Scopes,
+      Mode
+    >;
   }
 
   /** Include hidden fields in the query result. */
   show<Keys extends HiddenDocumentKey<Shape>>(
     fields: readonly Keys[],
-  ): ModelFindQuery<Shape, Result & Pick<ModelDocument<Shape>, Keys>, Relations> {
+  ): ModelFindQuery<Shape, Result & Pick<ModelDocument<Shape>, Keys>, Relations, Scopes, Mode> {
     this.shownFields = fields;
     return this as unknown as ModelFindQuery<
       Shape,
       Result & Pick<ModelDocument<Shape>, Keys>,
-      Relations
+      Relations,
+      Scopes,
+      Mode
     >;
   }
 
   /** Populate declared one-way relations, including nested relation arrays. */
   populate<Specs extends PopulateSpecs<Relations>>(
+    this: Mode extends 'scope' ? never : ModelFindQuery<Shape, Result, Relations, Scopes, Mode>,
     specs: Specs,
-  ): ModelFindQuery<Shape, PopulatedResult<Result, Relations, Specs>, Relations> {
+  ): ModelFindQuery<
+    Shape,
+    PopulatedResult<Result, Relations, Specs>,
+    Relations,
+    Scopes,
+    'populate'
+  > {
+    if (this.populationMode === 'scope') {
+      throw new InvalidQueryError(
+        'A query cannot combine a population scope with explicit population',
+      );
+    }
+    this.populationMode = 'populate';
     this.populateSpecs = specs;
     return this as unknown as ModelFindQuery<
       Shape,
       PopulatedResult<Result, Relations, Specs>,
-      Relations
+      Relations,
+      Scopes,
+      'populate'
+    >;
+  }
+
+  /** Apply a named population scope. */
+  with<Name extends ScopeName<Scopes>>(
+    this: Mode extends 'populate' ? never : ModelFindQuery<Shape, Result, Relations, Scopes, Mode>,
+    name: Name,
+  ): ModelFindQuery<
+    Shape,
+    PopulatedResult<Result, Relations, Scopes[Name] & PopulateSpecs<Relations>>,
+    Relations,
+    Scopes,
+    'scope'
+  > {
+    if (this.populationMode === 'populate') {
+      throw new InvalidQueryError(
+        'A query cannot combine explicit population with a population scope',
+      );
+    }
+    this.populationMode = 'scope';
+    this.populateSpecs = this.scopes[name] as PopulateSpecs<Relations>;
+    return this as unknown as ModelFindQuery<
+      Shape,
+      PopulatedResult<Result, Relations, Scopes[Name] & PopulateSpecs<Relations>>,
+      Relations,
+      Scopes,
+      'scope'
     >;
   }
 

@@ -10,16 +10,27 @@ import {
 import type { Db } from './db.js';
 import { ModelFindQuery, ModelQuery } from './query/query.js';
 import type { ModelFilter, StoredDocument, VisibleDocument } from './query/query.js';
-import type { Infer, InferShape, Schema, SchemaRelationMap, SchemaShape } from './schema/index.js';
+import type {
+  Infer,
+  InferShape,
+  Schema,
+  SchemaRelationMap,
+  SchemaShape,
+  ScopeDefinitions,
+} from './schema/index.js';
 
 type UpdateInput<Shape extends SchemaShape> = Partial<Omit<InferShape<Schema<Shape>>, '_id'>>;
 /** A MongoDB collection with CRUD operations derived from a schema. */
-export class Model<Shape extends SchemaShape, Relations extends SchemaRelationMap = {}> {
+export class Model<
+  Shape extends SchemaShape,
+  Relations extends SchemaRelationMap = {},
+  Scopes extends ScopeDefinitions = {},
+> {
   /** Create a model bound to a database collection and schema. */
   constructor(
     private readonly db: Db,
     readonly name: string,
-    private readonly schema: Schema<Shape, Relations>,
+    private readonly schema: Schema<Shape, Relations, Scopes>,
   ) {}
 
   private get collection(): Collection<StoredDocument<Shape>> {
@@ -41,7 +52,7 @@ export class Model<Shape extends SchemaShape, Relations extends SchemaRelationMa
   /** Build a query for all documents matching a MongoDB filter. */
   filter(
     filter: ModelFilter<Shape> = {},
-  ): ModelQuery<Shape, VisibleDocument<Shape>, true, Relations> {
+  ): ModelQuery<Shape, VisibleDocument<Shape>, true, Relations, Scopes> {
     return new ModelQuery(
       this.collection,
       filter,
@@ -49,11 +60,14 @@ export class Model<Shape extends SchemaShape, Relations extends SchemaRelationMa
       this.schema.hiddenFields,
       this.db,
       this.schema.relationMap,
+      this.schema.scopeMap,
     );
   }
 
   /** Build a query for the first document matching a MongoDB filter. */
-  find(filter: ModelFilter<Shape> = {}): ModelFindQuery<Shape, VisibleDocument<Shape>, Relations> {
+  find(
+    filter: ModelFilter<Shape> = {},
+  ): ModelFindQuery<Shape, VisibleDocument<Shape>, Relations, Scopes> {
     return new ModelFindQuery(
       this.collection,
       filter,
@@ -61,6 +75,7 @@ export class Model<Shape extends SchemaShape, Relations extends SchemaRelationMa
       this.schema.hiddenFields,
       this.db,
       this.schema.relationMap,
+      this.schema.scopeMap,
     );
   }
 

@@ -25,9 +25,19 @@ const relatedGroupSchema = groupSchema.relations({
   creator: () => userSchema,
 });
 
-const relatedUserSchema = userSchema.relations({
-  group: () => relatedGroupSchema,
-});
+const relatedUserSchema = userSchema
+  .relations({
+    group: () => relatedGroupSchema,
+  })
+  .scopes({
+    detail: [
+      {
+        ref: 'group',
+        select: ['name'],
+        populate: [{ ref: 'creator' }],
+      },
+    ],
+  });
 
 const groups = db.model('groups', relatedGroupSchema);
 const users = db.model('users', relatedUserSchema);
@@ -77,16 +87,7 @@ try {
 
   const found = await users.find({ _id: user._id }).select(['name', 'group']);
   console.log('found:', found);
-  console.log(
-    'populated:',
-    await users.find({ _id: user._id }).populate([
-      {
-        ref: 'group',
-        select: ['name', 'creator'],
-        populate: [{ ref: 'creator', select: ['name'] }],
-      },
-    ]),
-  );
+  console.log('populated:', await users.find({ _id: user._id }).with('detail'));
   console.log('with hidden field:', await users.find({ _id: user._id }).show(['password']));
 
   console.log(

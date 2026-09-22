@@ -115,6 +115,25 @@ populatedUsers[0].groupId?.name;
 // @ts-expect-error Population replaces the local ObjectId with the populated document.
 const groupId: ObjectId = populatedUsers[0].groupId;
 
+const scopedUserSchema = relationUserSchema
+  .relations({ groupId: () => relationGroupSchema })
+  .scopes({ detail: [{ ref: 'groupId', select: ['name'] }] });
+const scopedUsers = db.model('scoped-users', scopedUserSchema);
+const detailedUsers = await scopedUsers.filter().with('detail');
+detailedUsers[0].groupId?.name;
+// @ts-expect-error Scope names are inferred from Schema.scopes().
+scopedUsers.filter().with('summary');
+// @ts-expect-error A query cannot combine a named scope with explicit population.
+scopedUsers
+  .filter()
+  .with('detail')
+  .populate([{ ref: 'groupId' }]);
+// @ts-expect-error A query cannot combine explicit population with a named scope.
+scopedUsers
+  .filter()
+  .populate([{ ref: 'groupId' }])
+  .with('detail');
+
 await users.filter({
   $or: [{ role: 'admin' }, { name: { $regex: /^Ada/ } }],
 });

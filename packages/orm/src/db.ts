@@ -8,7 +8,13 @@ import {
 
 import { DatabaseNotConnectedError } from './errors/errors.js';
 import { Model } from './model.js';
-import type { Schema, SchemaLike, SchemaShape, SchemaRelationMap } from './schema/index.js';
+import type {
+  Schema,
+  SchemaLike,
+  SchemaShape,
+  SchemaRelationMap,
+  ScopeDefinitions,
+} from './schema/index.js';
 
 /** Configuration for a MongoDB connection. */
 export interface DbOptions {
@@ -44,10 +50,11 @@ export class Db {
   }
 
   /** Create a model bound to a MongoDB collection and schema. */
-  model<Shape extends SchemaShape, Relations extends SchemaRelationMap>(
-    name: string,
-    schema: Schema<Shape, Relations>,
-  ): Model<Shape, Relations> {
+  model<
+    Shape extends SchemaShape,
+    Relations extends SchemaRelationMap,
+    Scopes extends ScopeDefinitions,
+  >(name: string, schema: Schema<Shape, Relations, Scopes>): Model<Shape, Relations, Scopes> {
     this.schemaCollections.set(schema, name);
     return new Model(this, name, schema);
   }

@@ -40,4 +40,14 @@ describe('schema', () => {
     expect(userWithRelations.relationMap.group.resolve()).toBe(group);
     expect(userWithRelations.relationMap.group.localField).toBe('group');
   });
+
+  it('declares named population scopes after relations', () => {
+    const group = orm.schema({ name: orm.string() });
+    const user = orm
+      .schema({ group: orm.objectId() })
+      .relations({ group: () => group })
+      .scopes({ detail: [{ ref: 'group', select: ['name'] }] });
+
+    expect(user.scopeMap.detail).toEqual([{ ref: 'group', select: ['name'] }]);
+  });
 });

@@ -1,6 +1,7 @@
 import type { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
+import type { PopulateSpecs } from '../query/query.js';
 import type { SchemaDefinition, SchemaShape } from './contracts.js';
 import type { Infer, InferShape } from './inference.js';
 import { collectRefs } from './relations.js';
@@ -21,8 +22,14 @@ type ObjectIdFieldKeys<Shape extends SchemaShape> = {
     : never;
 }[keyof InferShape<Schema<Shape>>];
 
+export type ScopeDefinitions = Record<string, readonly object[]>;
+
 /** A typed, runtime-validated schema definition. */
-export class Schema<Shape extends SchemaShape, Relations extends SchemaRelationMap = {}> {
+export class Schema<
+  Shape extends SchemaShape,
+  Relations extends SchemaRelationMap = {},
+  Scopes extends ScopeDefinitions = {},
+> {
   /** The underlying Zod object for advanced validation use cases. */
   readonly definition: SchemaDefinition<Shape>;
 
@@ -32,6 +39,9 @@ export class Schema<Shape extends SchemaShape, Relations extends SchemaRelationM
   /** One-way relation metadata declared for this schema. */
   readonly relationMap: Relations;
 
+  /** Named population scopes declared for this schema. */
+  scopeMap: Scopes;
+
   /** Field names excluded from default query results. */
   readonly hiddenFields: readonly (keyof Shape & string)[];
 
@@ -39,10 +49,11 @@ export class Schema<Shape extends SchemaShape, Relations extends SchemaRelationM
   readonly fields: readonly (keyof Shape & string)[];
 
   /** Construct a schema from a Zod object shape. */
-  constructor(shape: Shape, relations = {} as Relations) {
+  constructor(shape: Shape, relations = {} as Relations, scopeMap = {} as Scopes) {
     this.definition = z.object(shape);
     this.refs = collectRefs(shape);
     this.relationMap = relations;
+    this.scopeMap = scopeMap;
     this.fields = Object.keys(shape) as (keyof Shape & string)[];
     this.hiddenFields = this.fields.filter((field) => '__hidden' in shape[field]);
   }
@@ -65,7 +76,8 @@ export class Schema<Shape extends SchemaShape, Relations extends SchemaRelationM
           ? Foreign
           : '_id'
       >;
-    }
+    },
+    Scopes
   > {
     for (const [name, input] of Object.entries(definitions)) {
       const definition = (typeof input === 'function' ? { target: input } : input) as {
@@ -88,8 +100,17 @@ export class Schema<Shape extends SchemaShape, Relations extends SchemaRelationM
             ? Foreign
             : '_id'
         >;
-      }
+      },
+      Scopes
     >;
+  }
+
+  /** Declare named, reusable population scopes. */
+  scopes<const Definitions extends Record<string, PopulateSpecs<Relations>>>(
+    definitions: Definitions,
+  ): Schema<Shape, Relations, Definitions> {
+    this.scopeMap = definitions as unknown as Scopes;
+    return this as unknown as Schema<Shape, Relations, Definitions>;
   }
 
   /** Parse unknown input and return the inferred document type. */
