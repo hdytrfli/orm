@@ -58,15 +58,32 @@ type HiddenDocumentKey<Shape extends SchemaShape> = Extract<
   keyof ModelDocument<Shape>
 > &
   string;
+type NestedDocumentKeys<Value, Prefix extends string = ''> = Value extends object
+  ? Value extends ObjectId | Date
+    ? never
+    : {
+        [Key in Extract<keyof Value, string>]: NonNullable<Value[Key]> extends object
+          ? `${Prefix}${Key}.${NestedDocumentKeys<NonNullable<Value[Key]>>}`
+          : `${Prefix}${Key}`;
+      }[Extract<keyof Value, string>]
+  : never;
+type NestedSelectableKey<Shape extends SchemaShape> = {
+  [Key in Extract<keyof Shape, string>]: Key extends keyof ModelDocument<Shape>
+    ? Shape[Key] extends { readonly __hidden: true }
+      ? never
+      : NonNullable<ModelDocument<Shape>[Key]> extends object
+        ? `${Key}.${NestedDocumentKeys<NonNullable<ModelDocument<Shape>[Key]>>}`
+        : never
+    : never;
+}[Extract<keyof Shape, string>];
 type CursorMethod<
   Shape extends SchemaShape,
   Result extends object,
   Ready extends boolean,
 > = Ready extends true ? (after?: ObjectId) => ModelCursor<Shape, Result> : undefined;
-type SelectableKey<Shape extends SchemaShape> = Exclude<
-  Extract<keyof ModelDocument<Shape>, string>,
-  '_id' | HiddenDocumentKey<Shape>
->;
+type SelectableKey<Shape extends SchemaShape> =
+  | Exclude<Extract<keyof ModelDocument<Shape>, string>, '_id' | HiddenDocumentKey<Shape>>
+  | NestedSelectableKey<Shape>;
 export type VisibleDocument<Shape extends SchemaShape> = Omit<
   ModelDocument<Shape>,
   Extract<HiddenKey<Shape>, keyof ModelDocument<Shape>>
@@ -75,7 +92,7 @@ type SelectedDocument<Shape extends SchemaShape, Key extends SelectableKey<Shape
   never,
 ]
   ? VisibleDocument<Shape>
-  : Pick<ModelDocument<Shape>, Key | '_id'>;
+  : Pick<ModelDocument<Shape>, Extract<Key, keyof ModelDocument<Shape>> | '_id'>;
 type RelationTarget<Relation> = Relation extends { resolve: () => infer Target } ? Target : never;
 type RelationDocument<Relation> =
   RelationTarget<Relation> extends Schema<infer TargetShape, any>
@@ -91,7 +108,7 @@ type ScopeName<Scopes> = Extract<keyof Scopes, string>;
 type PopulationMode = 'none' | 'populate' | 'scope';
 type RelationSelect<Relation> =
   RelationTarget<Relation> extends Schema<infer TargetShape, any>
-    ? Exclude<Extract<keyof Infer<Schema<TargetShape>>, string>, '_id'>
+    ? Exclude<SelectableKey<TargetShape>, '_id'>
     : never;
 
 export type PopulateSpec<Relations extends SchemaRelationMap> = {

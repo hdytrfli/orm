@@ -43,6 +43,10 @@ export const date = () => withHidden(z.date());
 /** Create a MongoDB ObjectId schema. */
 export const objectId = () => withHidden(z.instanceof(ObjectId));
 
+/** Create a nested object schema. */
+export const object = <const Shape extends z.ZodRawShape>(shape: Shape) =>
+  withHidden(z.object(shape));
+
 /** Create a string enum schema while preserving literal members. */
 export const enumeration = <const Values extends readonly [string, ...string[]]>(values: Values) =>
   withHidden(z.enum(values));

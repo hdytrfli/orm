@@ -7,4 +7,10 @@ export const userSchema = orm.schema({
   password: orm.string().hidden(),
   group: orm.objectId(),
   company: orm.objectId(),
+  profile: orm
+    .object({
+      website: orm.string().optional(),
+      location: orm.object({ city: orm.string() }),
+    })
+    .optional(),
 });

@@ -10,9 +10,9 @@ export { userSchema } from './user.js';
 
 export const schema = orm
   .defineSchemas({
+    users: userSchema,
     groups: groupSchema,
     companies: companySchema,
-    users: userSchema,
   })
   .defineRelations({
     groups: { creator: 'users' },

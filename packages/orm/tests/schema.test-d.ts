@@ -80,6 +80,17 @@ selectedUser?.role;
 await users.filter({}).select();
 await users.find({}).select();
 
+const profileSchema = orm.schema({
+  profile: orm.object({
+    website: orm.string(),
+    location: orm.object({ city: orm.string() }),
+  }),
+});
+const profiles = db.model('profiles', profileSchema);
+await profiles.find({}).select(['profile.website', 'profile.location.city']);
+// @ts-expect-error Nested select paths must refer to declared object fields.
+await profiles.find({}).select(['profile.location.country']);
+
 const accountSchema = orm.schema({
   name: orm.string(),
   password: orm.string().hidden(),

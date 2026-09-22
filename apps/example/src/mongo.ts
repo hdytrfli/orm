@@ -34,6 +34,10 @@ try {
     password: 'ada-secret',
     group: group._id,
     company: company._id,
+    profile: {
+      website: 'ada.example',
+      location: { city: 'London' },
+    },
   };
 
   const validated = userSchema.parse(userData);
@@ -50,6 +54,7 @@ try {
     group: group._id,
     company: company._id,
   });
+
   await db.groups.update({ _id: group._id }, { creator: user._id });
 
   await Promise.all(
@@ -65,7 +70,9 @@ try {
     ),
   );
 
-  const found = await db.users.find({ _id: user._id }).select(['name', 'group']);
+  const found = await db.users
+    .find({ _id: user._id })
+    .select(['name', 'group', 'profile.location.city']);
 
   console.log('found:', found);
   console.log(
@@ -153,7 +160,7 @@ try {
   console.log('cursor pages:', { next: second.next });
 
   console.log('updated:', await db.users.update({ _id: user._id }, { role: 'admin', age: 20 }));
-  // console.log('deleted:', await db.users.delete({ _id: { $in: [user._id, another._id] } }));
+  console.log('deleted:', await db.users.delete({ _id: { $in: [user._id, another._id] } }));
 
   if (found) {
     const groupRelation = schema.users.relationMap.group;

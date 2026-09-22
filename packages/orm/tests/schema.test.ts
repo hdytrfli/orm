@@ -12,6 +12,21 @@ describe('schema', () => {
     expect(() => user.parsePartial({ age: 'thirty-seven' })).toThrow();
   });
 
+  it('parses nested object fields', () => {
+    const profile = orm.schema({
+      details: orm.object({
+        website: orm.string().optional(),
+        location: orm.object({ city: orm.string() }),
+      }),
+    });
+
+    expect(
+      profile.parse({ details: { website: 'example.test', location: { city: 'London' } } }),
+    ).toEqual({
+      details: { website: 'example.test', location: { city: 'London' } },
+    });
+  });
+
   it('collects lazy relation metadata without evaluating it during construction', () => {
     const group = orm.schema({ name: orm.string() });
     const user = orm.schema({
