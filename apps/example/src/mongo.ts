@@ -136,12 +136,13 @@ try {
       .limit(2),
   );
 
-  const first = db.users.filter().limit(3).cursor();
-  const array = await Array.fromAsync(first);
-  console.log('result array:', array);
+  const test = await db.users.filter().sort({ _id: 'asc' }).limit(6);
+  console.log('test:', test);
 
   let count = 0;
-  for (const item of array) console.log({ count: ++count, item });
+
+  const first = db.users.filter().limit(3).cursor();
+  for await (const item of first) console.log({ count: ++count, item });
 
   const second = db.users
     .filter()
@@ -149,9 +150,7 @@ try {
     .cursor(first.next ?? undefined);
 
   for await (const item of second) console.log({ count: ++count, item });
-  console.log('cursor pages:', {
-    next: second.next,
-  });
+  console.log('cursor pages:', { next: second.next });
 
   console.log('updated:', await db.users.update({ _id: user._id }, { role: 'admin', age: 20 }));
   // console.log('deleted:', await db.users.delete({ _id: { $in: [user._id, another._id] } }));
