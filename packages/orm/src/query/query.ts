@@ -63,7 +63,7 @@ type NestedDocumentKeys<Value, Prefix extends string = ''> = Value extends objec
     ? never
     : {
         [Key in Extract<keyof Value, string>]: NonNullable<Value[Key]> extends object
-          ? `${Prefix}${Key}.${NestedDocumentKeys<NonNullable<Value[Key]>>}`
+          ? `${Prefix}${Key}` | `${Prefix}${Key}.${NestedDocumentKeys<NonNullable<Value[Key]>>}`
           : `${Prefix}${Key}`;
       }[Extract<keyof Value, string>]
   : never;
@@ -82,6 +82,19 @@ type CursorMethod<
 type SelectableKey<Shape extends SchemaShape> =
   | Exclude<Extract<keyof ModelDocument<Shape>, string>, '_id' | HiddenDocumentKey<Shape>>
   | NestedSelectableKey<Shape>;
+type PathSelection<Value, Path extends string> = Path extends `${infer Head}.${infer Tail}`
+  ? Head extends keyof Value
+    ? { [Key in Head]: PathSelection<NonNullable<Value[Key]>, Tail> }
+    : never
+  : Path extends keyof Value
+    ? Pick<Value, Path>
+    : never;
+type UnionToIntersection<Value> = (Value extends unknown ? (input: Value) => void : never) extends (
+  input: infer Intersection,
+) => void
+  ? Intersection
+  : never;
+type Simplify<Value> = { [Key in keyof Value]: Value[Key] };
 export type VisibleDocument<Shape extends SchemaShape> = Omit<
   ModelDocument<Shape>,
   Extract<HiddenKey<Shape>, keyof ModelDocument<Shape>>
@@ -90,7 +103,10 @@ type SelectedDocument<Shape extends SchemaShape, Key extends SelectableKey<Shape
   never,
 ]
   ? VisibleDocument<Shape>
-  : Pick<ModelDocument<Shape>, Extract<Key, keyof ModelDocument<Shape>> | '_id'>;
+  : Simplify<
+      Pick<ModelDocument<Shape>, '_id'> &
+        UnionToIntersection<PathSelection<ModelDocument<Shape>, Extract<Key, string>>>
+    >;
 type RelationTarget<Relation> = Relation extends { resolve: () => infer Target } ? Target : never;
 type RelationDocument<Relation> =
   RelationTarget<Relation> extends Schema<infer TargetShape, any>

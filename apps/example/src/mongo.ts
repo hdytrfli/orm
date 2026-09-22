@@ -39,6 +39,7 @@ try {
       website: 'https://ada.example',
       location: {
         city: 'London',
+        country: 'United Kingdom',
       },
     },
   };
@@ -56,26 +57,48 @@ try {
     password: 'alan-secret',
     group: group._id,
     company: company._id,
+    profile: {
+      email: 'alan@example.com',
+      website: 'https://alan.example',
+      location: {
+        city: 'London',
+        country: 'United Kingdom',
+      },
+    },
   });
 
   await db.groups.update({ _id: group._id }, { creator: user._id });
 
   await Promise.all(
-    Array.from({ length: 18 }, () =>
-      db.users.create({
+    Array.from({ length: 18 }, () => {
+      return db.users.create({
         name: faker.person.fullName(),
         age: faker.number.int({ min: 18, max: 65 }),
-        role: faker.helpers.arrayElement(['admin', 'member'] as const),
+        role: faker.helpers.arrayElement(['admin', 'member']),
         password: faker.internet.password(),
         group: group._id,
         company: company._id,
-      }),
-    ),
+        profile: {
+          email: faker.internet.email(),
+          website: faker.internet.url(),
+          location: {
+            city: faker.location.city(),
+            country: faker.location.country(),
+          },
+        },
+      });
+    }),
   );
 
-  const found = await db.users
-    .find({ _id: user._id })
-    .select(['name', 'group', 'profile.location.city']);
+  const found = await db.users.find({ _id: user._id }).select([
+    // select these fields
+    'name',
+    'group',
+    'profile.location.city',
+  ]);
+
+  if (!found) throw new Error('User not found');
+  console.log(found.profile.location.city);
 
   console.log('found:', found);
   console.log(
