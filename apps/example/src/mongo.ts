@@ -1,4 +1,7 @@
+import { faker } from '@faker-js/faker';
 import { createDatabase, orm } from '@mongorm/orm';
+
+faker.seed(20260922);
 
 const db = createDatabase({
   uri: 'mongodb://root:example@127.0.0.1:27017',
@@ -22,6 +25,9 @@ const users = db.model('users', userSchema);
 await db.connect();
 
 try {
+  await users.delete({});
+  await groups.delete({});
+
   const group = await groups.create({ name: 'Language' });
 
   const userData = {
@@ -44,6 +50,17 @@ try {
     group: group._id,
   });
 
+  await Promise.all(
+    Array.from({ length: 18 }, () =>
+      users.create({
+        name: faker.person.fullName(),
+        age: faker.number.int({ min: 18, max: 65 }),
+        role: faker.helpers.arrayElement(['admin', 'member'] as const),
+        group: group._id,
+      }),
+    ),
+  );
+
   const found = await users.find({ _id: user._id });
   console.log('found:', found);
 
@@ -54,19 +71,20 @@ try {
     }),
   );
 
-  console.log(
-    'filtered sorted:',
-    await users
-      .filter({
-        $or: [
-          // one of the following conditions must be true
-          { role: 'admin' },
-          { age: { $gte: 18 } },
-        ],
-      })
-      .sort({ age: 'asc' })
-      .skip(1),
-  );
+  const filteredSorted = await users
+    .filter({
+      $or: [
+        // one of the following conditions must be true
+        { role: 'admin' },
+        { age: { $gte: 18 } },
+      ],
+    })
+    .sort({ age: 'asc' })
+    .skip(1);
+  console.log('filtered sorted with skip:', {
+    count: filteredSorted.length,
+    preview: filteredSorted.slice(0, 3),
+  });
 
   console.log(
     'filtered with or:',
@@ -106,6 +124,10 @@ try {
 
   await groups.delete({
     _id: group._id,
+  });
+
+  await users.delete({
+    //
   });
 } finally {
   await db.disconnect();
