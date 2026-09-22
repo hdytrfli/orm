@@ -8,17 +8,22 @@ const db = createDatabase({
   database: 'mongorm_example',
 });
 
-const groupSchema = orm.schema({
-  name: orm.string(),
+const schemas = orm.registry({
+  group: (ref) => ({
+    name: orm.string(),
+    creator: ref('user').optional(),
+  }),
+  user: (ref) => ({
+    name: orm.string(),
+    age: orm.number(),
+    role: orm.enum(['admin', 'member']),
+    password: orm.string().hidden(),
+    group: ref('group'),
+  }),
 });
 
-const userSchema = orm.schema({
-  name: orm.string(),
-  age: orm.number(),
-  role: orm.enum(['admin', 'member']),
-  password: orm.string().hidden(),
-  group: orm.ref(() => groupSchema),
-});
+const groupSchema = schemas.get('group');
+const userSchema = schemas.get('user');
 
 const groups = db.model('groups', groupSchema);
 const users = db.model('users', userSchema);
