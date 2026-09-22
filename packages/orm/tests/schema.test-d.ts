@@ -1,6 +1,6 @@
 import type { ObjectId } from 'mongodb';
 
-import type { Infer } from '../src/index.js';
+import type { Infer, InferShape } from '../src/index.js';
 import { orm } from '../src/index.js';
 
 const userSchema = orm.schema({
@@ -9,7 +9,8 @@ const userSchema = orm.schema({
 });
 
 type User = Infer<typeof userSchema>;
-const user: User = { name: 'Ada', role: 'admin' };
+declare const userId: ObjectId;
+const user: User = { _id: userId, name: 'Ada', role: 'admin' };
 void user;
 
 // @ts-expect-error The enum remains a literal union.
@@ -20,7 +21,10 @@ void invalidRole;
 const invalidUser: User = { name: 'Ada', role: 'member', active: true };
 void invalidUser;
 
-const parsedUser: User = userSchema.parse({ name: 'Ada', role: 'member' });
+const parsedUser: InferShape<typeof userSchema> = userSchema.parse({
+  name: 'Ada',
+  role: 'member',
+});
 void parsedUser;
 
 const groupSchema = orm.schema({ name: orm.string() });
@@ -32,6 +36,7 @@ const memberSchema = orm.schema({
 const targetGroup: typeof groupSchema = memberSchema.refs.group.resolve();
 void targetGroup;
 const member: Infer<typeof memberSchema> = {
+  _id: userId,
   group: null as unknown as ObjectId,
   nullableGroup: null,
   nullishGroup: undefined,

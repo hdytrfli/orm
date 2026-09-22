@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import type { SchemaDefinition, SchemaShape } from './contracts.js';
-import type { Infer } from './inference.js';
+import type { InferShape } from './inference.js';
 import { collectRefs } from './relations.js';
 import type { RelationMap } from './relations.js';
 
@@ -20,8 +20,8 @@ export class Schema<Shape extends SchemaShape> {
   }
 
   /** Parse unknown input and return the inferred document type. */
-  parse(input: unknown): Infer<this> {
-    return this.definition.parse(input) as Infer<this>;
+  parse(input: unknown): InferShape<this> {
+    return this.definition.parse(input) as InferShape<this>;
   }
 
   /** Parse unknown input without throwing on validation failure. */

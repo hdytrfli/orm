@@ -14,6 +14,7 @@ const userSchema = orm.schema({
 type User = Infer<typeof userSchema>;
 
 const user: User = {
+  _id: new ObjectId(),
   name: 'Ada Lovelace',
   age: 36,
   role: 'admin',
@@ -28,7 +29,7 @@ try {
     name: 'Not valid',
     age: 36,
     role: 'admin',
-    group: new ObjectId(),
+    group: 'not-an-object-id',
   });
 } catch (error) {
   console.log('validation error:', error instanceof Error ? error.message : error);
