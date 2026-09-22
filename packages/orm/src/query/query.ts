@@ -10,6 +10,7 @@ import {
   type WithId,
 } from 'mongodb';
 
+import { CursorQueryError, EstimatedCountError } from '../errors/errors.js';
 import type { Infer, Schema, SchemaShape } from '../schema/index.js';
 
 export type StoredDocument<Shape extends SchemaShape> = Infer<Schema<Shape>> & Document;
@@ -49,6 +50,9 @@ type HiddenDocumentKey<Shape extends SchemaShape> = Extract<
   keyof ModelDocument<Shape>
 > &
   string;
+type CursorUnavailable = {
+  readonly 'Cursor pagination requires removing sort() and skip() before cursor()': never;
+};
 type SelectableKey<Shape extends SchemaShape> = Exclude<
   Extract<keyof ModelDocument<Shape>, string>,
   '_id' | HiddenDocumentKey<Shape>
@@ -158,7 +162,7 @@ export class ModelQuery<
   async count(estimate = false): Promise<number> {
     if (estimate) {
       if (Object.keys(this.filterSpec).length > 0) {
-        throw new Error('Estimated query counts do not support filters');
+        throw new EstimatedCountError();
       }
       return this.collection.estimatedDocumentCount();
     }
@@ -167,19 +171,20 @@ export class ModelQuery<
 
   /** Return one `_id`-ordered page and the cursor for the next page. */
   cursor(
-    this: CursorReady extends true ? ModelQuery<Shape, Result, CursorReady> : never,
+    this: CursorReady extends true ? ModelQuery<Shape, Result, CursorReady> : CursorUnavailable,
     after?: ObjectId,
-  ): ModelCursor<Shape, Result> {
+  ): ModelCursor<Shape, Result>;
+  cursor(after?: ObjectId): ModelCursor<Shape, Result> {
     if (this.limitCount === undefined || this.limitCount === 0) {
-      throw new Error('Cursor queries require a positive limit');
+      throw new CursorQueryError('Cursor queries require a positive limit');
     }
     if (this.skipCount !== undefined) {
-      throw new Error('Cursor queries do not support skip');
+      throw new CursorQueryError('Cursor queries do not support skip');
     }
     if (this.sortSpec) {
       const keys = Object.keys(this.sortSpec);
       if (keys.length !== 1 || this.sortSpec._id !== 'asc') {
-        throw new Error('Cursor queries require the default _id ascending sort');
+        throw new CursorQueryError('Cursor queries require the default _id ascending sort');
       }
     }
 

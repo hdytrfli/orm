@@ -1,5 +1,6 @@
 import { MongoClient, type MongoClientOptions, type Db as MongoDatabase } from 'mongodb';
 
+import { DatabaseNotConnectedError } from './errors/errors.js';
 import { Model } from './model.js';
 import type { Schema, SchemaShape } from './schema/index.js';
 
@@ -42,7 +43,7 @@ export class Db {
 
   /** Return the selected database, failing if `connect()` was not called. */
   get native(): MongoDatabase {
-    if (!this.database) throw new Error('Database is not connected');
+    if (!this.database) throw new DatabaseNotConnectedError();
     return this.database;
   }
 }
