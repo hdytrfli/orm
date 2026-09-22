@@ -36,7 +36,7 @@ type ModelFilter<Shape extends SchemaShape> = ModelFilterForDocument<
   StoredDocument<Shape>,
   Infer<Schema<Shape>>
 >;
-type SortDirection = 1 | -1 | 'asc' | 'desc';
+type SortDirection = 'asc' | 'desc';
 type ModelSort<Shape extends SchemaShape> = Partial<
   Record<Extract<keyof Infer<Schema<Shape>>, string>, SortDirection>
 >;

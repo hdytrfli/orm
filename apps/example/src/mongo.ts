@@ -56,7 +56,17 @@ try {
 
   console.log(
     'filtered sorted:',
-    await users.filter({ $or: [{ role: 'admin' }, { age: { $gte: 18 } }] }).sort({ age: 'desc' }),
+    await users
+      .filter({
+        $or: [
+          // one of the following conditions must be true
+          { role: 'admin' },
+          { age: { $gte: 18 } },
+        ],
+      })
+      .sort({
+        age: 'asc',
+      }),
   );
 
   console.log(
