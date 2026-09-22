@@ -107,6 +107,8 @@ const relatedUserSchema = relationUserSchema.relations({
   groupId: () => relationGroupSchema,
 });
 void relatedUserSchema.relationMap.groupId;
+// @ts-expect-error Relations require an ObjectId field on the local schema.
+groupSchema.relations({ name: () => relationUserSchema });
 const relatedUsers = db.model('related-users', relatedUserSchema);
 const populatedUsers = await relatedUsers.filter().populate([{ ref: 'groupId', select: ['name'] }]);
 populatedUsers[0].groupId?.name;

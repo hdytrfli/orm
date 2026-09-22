@@ -1,3 +1,4 @@
+import type { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
 import type { SchemaDefinition, SchemaShape } from './contracts.js';
@@ -11,6 +12,14 @@ import type {
   SchemaRelationMap,
   SchemaLike,
 } from './relations.js';
+
+type ObjectIdFieldKeys<Shape extends SchemaShape> = {
+  [Key in keyof InferShape<Schema<Shape>>]-?: NonNullable<
+    InferShape<Schema<Shape>>[Key]
+  > extends ObjectId
+    ? Key
+    : never;
+}[keyof InferShape<Schema<Shape>>];
 
 /** A typed, runtime-validated schema definition. */
 export class Schema<Shape extends SchemaShape, Relations extends SchemaRelationMap = {}> {
@@ -41,10 +50,11 @@ export class Schema<Shape extends SchemaShape, Relations extends SchemaRelationM
   /** Add one or more one-way relations without requiring circular schema declarations. */
   relations<
     const Definitions extends Partial<
-      Record<Extract<keyof InferShape<this>, string>, RelationInput>
+      Record<Extract<ObjectIdFieldKeys<Shape>, string>, RelationInput>
     >,
   >(
-    definitions: Definitions,
+    definitions: Definitions &
+      Record<Exclude<keyof Definitions, Extract<ObjectIdFieldKeys<Shape>, string>>, never>,
   ): Schema<
     Shape,
     Relations & {
