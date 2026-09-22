@@ -5,6 +5,7 @@ import {
   type Document,
   type Filter as MongoFilter,
   type OptionalUnlessRequiredId,
+  type StrictFilter,
   type UpdateFilter,
 } from 'mongodb';
 
@@ -13,7 +14,9 @@ import type { Infer, InferShape, Schema, SchemaShape } from './schema/index.js';
 
 type StoredDocument<Shape extends SchemaShape> = Infer<Schema<Shape>> & Document;
 type UpdateInput<Shape extends SchemaShape> = Partial<Omit<InferShape<Schema<Shape>>, '_id'>>;
-type ModelFilter<Shape extends SchemaShape> = Partial<Infer<Schema<Shape>>>;
+type ModelFilter<Shape extends SchemaShape> = Partial<
+  Pick<StrictFilter<Infer<Schema<Shape>>>, Extract<keyof Infer<Schema<Shape>>, string>>
+>;
 
 /** A MongoDB collection with CRUD operations derived from a schema. */
 export class Model<Shape extends SchemaShape> {

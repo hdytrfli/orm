@@ -47,10 +47,13 @@ declare const db: Db;
 const users = db.model('users', userSchema);
 await users.create({ name: 'Ada', role: 'member' });
 await users.filter({ role: 'member' });
+await users.filter({ role: { $in: ['admin', 'member'] } });
 await users.find({ name: 'Ada' });
 await users.update({ role: 'member' }, { name: 'Ada Lovelace' });
 await users.delete({ role: 'member' });
 // @ts-expect-error Filters are narrowed to the schema's fields.
 await users.find({ unknown: true });
+// @ts-expect-error Operator values remain narrowed to the field's literal union.
+await users.find({ role: { $in: ['owner'] } });
 // @ts-expect-error Updates cannot add unknown fields.
 await users.update({}, { unknown: true });

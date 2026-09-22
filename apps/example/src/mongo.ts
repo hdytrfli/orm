@@ -11,6 +11,7 @@ const groupSchema = orm.schema({
 
 const userSchema = orm.schema({
   name: orm.string(),
+  age: orm.number(),
   role: orm.enum(['admin', 'member']),
   group: orm.ref(() => groupSchema),
 });
@@ -22,26 +23,41 @@ await db.connect();
 
 try {
   const group = await groups.create({ name: 'Language' });
-  const created = await users.create({
+
+  const userData = {
     name: 'Ada Lovelace',
+    age: 11,
     role: 'admin',
     group: group._id,
-  });
+  };
 
+  const validated = userSchema.parse(userData);
+  console.log('validated:', validated);
+
+  const created = await users.create(validated);
   console.log('created:', created);
+
   const found = await users.find({ _id: created._id });
   console.log('found:', found);
-  console.log('filtered:', await users.filter({ role: 'admin' }));
-  console.log('updated:', await users.update({ _id: created._id }, { role: 'member' }));
+
+  console.log('filtered:', await users.filter({ role: { $in: ['admin'] } }));
+  console.log('updated:', await users.update({ _id: created._id }, { role: 'admin', age: 20 }));
   console.log('deleted:', await users.delete({ _id: created._id }));
+
   if (found) {
     const groupRef = userSchema.refs.group;
     const relatedGroupModel = db.model('groups', groupRef.resolve());
+
     console.log('ref path:', 'group');
     console.log('ref value:', found.group);
-    console.log('related group:', await relatedGroupModel.find({ _id: found.group }));
+
+    const relatedGroup = await relatedGroupModel.find({ _id: found.group });
+    console.log('related group:', relatedGroup);
   }
-  await groups.delete({ _id: group._id });
+
+  await groups.delete({
+    _id: group._id,
+  });
 } finally {
   await db.disconnect();
 }
