@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "db": "tsx src/mongo.ts",
     "dev": "tsx src/index.ts",
     "typecheck": "tsc --noEmit"
   },

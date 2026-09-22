@@ -15,10 +15,10 @@ type User = Infer<typeof userSchema>;
 
 const user: User = {
   _id: new ObjectId(),
-  name: 'Ada Lovelace',
+  group: new ObjectId(),
   age: 36,
   role: 'admin',
-  group: new ObjectId(),
+  name: 'Ada Lovelace',
 };
 
 console.log('parsed user:', userSchema.parse(user));

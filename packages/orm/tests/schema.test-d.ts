@@ -1,6 +1,6 @@
 import type { ObjectId } from 'mongodb';
 
-import type { Infer, InferShape } from '../src/index.js';
+import type { Db, Infer, InferShape } from '../src/index.js';
 import { orm } from '../src/index.js';
 
 const userSchema = orm.schema({
@@ -42,3 +42,15 @@ const member: Infer<typeof memberSchema> = {
   nullishGroup: undefined,
 };
 void member;
+
+declare const db: Db;
+const users = db.model('users', userSchema);
+await users.create({ name: 'Ada', role: 'member' });
+await users.filter({ role: 'member' });
+await users.find({ name: 'Ada' });
+await users.update({ role: 'member' }, { name: 'Ada Lovelace' });
+await users.delete({ role: 'member' });
+// @ts-expect-error Filters are narrowed to the schema's fields.
+await users.find({ unknown: true });
+// @ts-expect-error Updates cannot add unknown fields.
+await users.update({}, { unknown: true });
