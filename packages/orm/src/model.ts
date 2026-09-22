@@ -59,9 +59,10 @@ export class Model<Shape extends SchemaShape> {
     filter: ModelFilter<Shape>,
     patch: UpdateInput<Shape>,
   ): Promise<Infer<Schema<Shape>> | null> {
+    const parsedPatch = this.schema.parsePartial(patch);
     return (await this.collection.findOneAndUpdate(
       filter as MongoFilter<StoredDocument<Shape>>,
-      { $set: patch } as UpdateFilter<StoredDocument<Shape>>,
+      { $set: parsedPatch } as UpdateFilter<StoredDocument<Shape>>,
       { returnDocument: 'after' },
     )) as unknown as Infer<Schema<Shape>> | null;
   }

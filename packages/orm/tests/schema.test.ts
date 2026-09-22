@@ -8,6 +8,8 @@ describe('schema', () => {
     const user = orm.schema({ name: orm.string(), age: orm.number() });
 
     expect(user.parse({ name: 'Ada', age: 36 })).toEqual({ name: 'Ada', age: 36 });
+    expect(user.parsePartial({ age: 37 })).toEqual({ age: 37 });
+    expect(() => user.parsePartial({ age: 'thirty-seven' })).toThrow();
   });
 
   it('collects lazy relation metadata without evaluating it during construction', () => {

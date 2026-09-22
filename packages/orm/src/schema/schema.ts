@@ -24,6 +24,11 @@ export class Schema<Shape extends SchemaShape> {
     return this.definition.parse(input) as InferShape<this>;
   }
 
+  /** Parse a partial document for update operations. */
+  parsePartial(input: unknown): Partial<InferShape<this>> {
+    return this.definition.partial().parse(input) as Partial<InferShape<this>>;
+  }
+
   /** Parse unknown input without throwing on validation failure. */
   safeParse(input: unknown): ReturnType<typeof this.definition.safeParse> {
     return this.definition.safeParse(input);
