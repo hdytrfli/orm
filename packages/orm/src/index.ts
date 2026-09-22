@@ -1,2 +1,4 @@
-export { orm, Schema } from './schema.js';
-export type { Infer, SchemaShape } from './schema.js';
+export { orm } from './api.js';
+export { Schema } from './schema/schema.js';
+export type { Infer } from './schema/inference.js';
+export type { SchemaDefinition, SchemaShape } from './schema/contracts.js';
