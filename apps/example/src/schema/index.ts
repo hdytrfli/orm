@@ -9,7 +9,7 @@ export { groupSchema } from './group.js';
 export { userSchema } from './user.js';
 
 export const schema = orm
-  .schemas({
+  .defineSchemas({
     groups: groupSchema,
     companies: companySchema,
     users: userSchema,

@@ -10,7 +10,7 @@ export interface OrmApi {
   /** Define a typed object schema. */
   schema<Shape extends SchemaShape>(shape: Shape): Schema<Shape>;
   /** Build a registry of named schemas and their relation graph. */
-  schemas<const Registry extends Record<string, SchemaLike>>(
+  defineSchemas<const Registry extends Record<string, SchemaLike>>(
     registry: Registry,
   ): ReturnType<typeof createSchemaRegistry<Registry>>;
   /** Create a string field. */
@@ -32,7 +32,7 @@ export interface OrmApi {
 /** The ORM schema API. */
 export const orm: OrmApi = {
   schema: <Shape extends SchemaShape>(shape: Shape) => new Schema(shape),
-  schemas: createSchemaRegistry,
+  defineSchemas: createSchemaRegistry,
   string,
   number,
   boolean,

@@ -116,7 +116,7 @@ populatedUsers[0].groupId?.name;
 const groupId: ObjectId = populatedUsers[0].groupId;
 
 const schema = orm
-  .schemas({
+  .defineSchemas({
     users: relationUserSchema,
     groups: relationGroupSchema,
   })
