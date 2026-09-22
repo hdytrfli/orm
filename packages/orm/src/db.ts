@@ -8,7 +8,7 @@ export interface DbOptions {
   /** MongoDB connection string. */
   uri: string;
   /** Logical database name. */
-  dbName: string;
+  database: string;
   /** Optional native MongoDB client options. */
   clientOptions?: MongoClientOptions;
 }
@@ -26,7 +26,7 @@ export class Db {
   /** Connect to MongoDB and select the configured database. */
   async connect(): Promise<void> {
     await this.client.connect();
-    this.database = this.client.db(this.options.dbName);
+    this.database = this.client.db(this.options.database);
   }
 
   /** Close the MongoDB client and release its resources. */
@@ -48,4 +48,4 @@ export class Db {
 }
 
 /** Create a disconnected MongoDB database handle. */
-export const createDb = (options: DbOptions): Db => new Db(options);
+export const createDatabase = (options: DbOptions): Db => new Db(options);
