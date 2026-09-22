@@ -59,18 +59,20 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     await expect(tickets.filter({ status: 'open' }).count(true)).rejects.toThrow(
       'do not support filters',
     );
-    const firstPage = await tickets.filter({}).limit(2).cursor();
-    expect(firstPage.result).toHaveLength(2);
+    const firstPage = tickets.filter({}).limit(2).cursor();
+    const firstResults = [];
+    for await (const ticket of firstPage) firstResults.push(ticket);
+    expect(firstResults).toHaveLength(2);
     expect(firstPage.next).toBeInstanceOf(ObjectId);
     const secondPage = await tickets
       .filter({})
       .limit(2)
       .cursor(firstPage.next ?? undefined);
-    expect(secondPage.result).toHaveLength(1);
+    const secondResults = [];
+    for await (const ticket of secondPage) secondResults.push(ticket);
+    expect(secondResults).toHaveLength(1);
     expect(secondPage.next).toBeNull();
-    expect(
-      new Set([...firstPage.result, ...secondPage.result].map((ticket) => ticket._id)).size,
-    ).toBe(3);
+    expect(new Set([...firstResults, ...secondResults].map((ticket) => ticket._id)).size).toBe(3);
     const sorted = await tickets.filter({ status: 'open' }).sort({ priority: 'desc' });
     expect(sorted.map((ticket) => ticket.priority)).toEqual([2, 1]);
     const skipped = await tickets.filter({ status: 'open' }).sort({ priority: 'desc' }).skip(1);

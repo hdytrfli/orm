@@ -53,14 +53,14 @@ await users.filter({}).sort({ name: 'asc' }).skip(1);
 await users.filter({}).sort({ name: 'asc' }).skip(1).limit(2);
 await users.filter({ role: 'admin' }).count();
 await users.filter().count(true);
-const firstPage = await users.filter().limit(2).cursor();
-firstPage.result[0].name;
+const firstPage = users.filter().limit(2).cursor();
+for await (const user of firstPage) user.name;
 firstPage.next;
 const nextPage = await users
   .filter()
   .limit(2)
   .cursor(firstPage.next ?? undefined);
-nextPage.result;
+for await (const user of nextPage) user.name;
 // @ts-expect-error Cursor positions use ObjectId values.
 await users.filter().limit(2).cursor('after');
 const selectedUsers = await users.filter({}).select(['name', 'role']);

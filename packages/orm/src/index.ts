@@ -6,6 +6,5 @@ export type { SchemaDefinition, SchemaShape } from './schema/index.js';
 export type { RefDefinition, RefField, RelationMap, SchemaLike } from './schema/index.js';
 export { createDatabase, Db } from './db.js';
 export { Model } from './model.js';
-export { ModelFindQuery, ModelQuery } from './query/query.js';
-export type { CursorPage } from './query/query.js';
+export { ModelCursor, ModelFindQuery, ModelQuery } from './query/query.js';
 export type { DbOptions } from './db.js';

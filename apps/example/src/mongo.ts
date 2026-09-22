@@ -120,15 +120,22 @@ try {
       .limit(2),
   );
 
-  const firstPage = await users.filter().limit(3).cursor();
-  const secondPage = await users
+  const first = users.filter().limit(3).cursor();
+
+  let count = 0;
+  for await (const item of first) console.log({ count: ++count, item });
+
+  const second = users
     .filter()
     .limit(3)
-    .cursor(firstPage.next ?? undefined);
+    .cursor(first.next ?? undefined);
+
+  // const secondResults = [];
+  count = 0;
+  for await (const item of second) console.log({ count: ++count, item });
+
   console.log('cursor pages:', {
-    first: firstPage.result.map(({ _id, name }) => ({ _id, name })),
-    second: secondPage.result.map(({ _id, name }) => ({ _id, name })),
-    next: secondPage.next,
+    next: second.next,
   });
 
   console.log('updated:', await users.update({ _id: user._id }, { role: 'admin', age: 20 }));
