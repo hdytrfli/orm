@@ -120,6 +120,17 @@ try {
       .limit(2),
   );
 
+  const firstPage = await users.filter().limit(3).cursor();
+  const secondPage = await users
+    .filter()
+    .limit(3)
+    .cursor(firstPage.next ?? undefined);
+  console.log('cursor pages:', {
+    first: firstPage.result.map(({ _id, name }) => ({ _id, name })),
+    second: secondPage.result.map(({ _id, name }) => ({ _id, name })),
+    next: secondPage.next,
+  });
+
   console.log('updated:', await users.update({ _id: user._id }, { role: 'admin', age: 20 }));
   console.log('deleted:', await users.delete({ _id: { $in: [user._id, another._id] } }));
 

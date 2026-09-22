@@ -7,4 +7,5 @@ export type { RefDefinition, RefField, RelationMap, SchemaLike } from './schema/
 export { createDatabase, Db } from './db.js';
 export { Model } from './model.js';
 export { ModelFindQuery, ModelQuery } from './query/query.js';
+export type { CursorPage } from './query/query.js';
 export type { DbOptions } from './db.js';

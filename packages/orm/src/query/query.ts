@@ -1,4 +1,5 @@
 import {
+  ObjectId,
   type Collection,
   type Condition,
   type Document,
@@ -59,6 +60,11 @@ type SelectedDocument<Shape extends SchemaShape, Key extends SelectableKey<Shape
 ]
   ? VisibleDocument<Shape>
   : Pick<ModelDocument<Shape>, Key | '_id'>;
+
+export interface CursorPage<Result> {
+  result: Result[];
+  next: ObjectId | null;
+}
 
 /** A typed, awaitable MongoDB find query. */
 export class ModelQuery<
@@ -127,6 +133,41 @@ export class ModelQuery<
       return this.collection.estimatedDocumentCount();
     }
     return this.collection.countDocuments(this.filterSpec as MongoFilter<StoredDocument<Shape>>);
+  }
+
+  /** Return one `_id`-ordered page and the cursor for the next page. */
+  async cursor(after?: ObjectId): Promise<CursorPage<Result>> {
+    if (this.limitCount === undefined || this.limitCount === 0) {
+      throw new Error('Cursor queries require a positive limit');
+    }
+    if (this.skipCount !== undefined) {
+      throw new Error('Cursor queries do not support skip');
+    }
+    if (this.sortSpec) {
+      const keys = Object.keys(this.sortSpec);
+      if (keys.length !== 1 || this.sortSpec._id !== 'asc') {
+        throw new Error('Cursor queries require the default _id ascending sort');
+      }
+    }
+
+    const filter = after ? { $and: [this.filterSpec, { _id: { $gt: after } }] } : this.filterSpec;
+    let cursor = this.collection
+      .find(filter as MongoFilter<StoredDocument<Shape>>)
+      .sort({ _id: 1 })
+      .limit(this.limitCount + 1);
+    if (this.selectedFields || this.hiddenFields.length > 0) {
+      const fields = new Set(
+        this.selectedFields ?? this.fields.filter((field) => !this.hiddenFields.includes(field)),
+      );
+      this.shownFields.forEach((field) => fields.add(field));
+      cursor = cursor.project(Object.fromEntries([...fields].map((field) => [field, 1])));
+    }
+
+    const documents = (await cursor.toArray()) as unknown as Result[];
+    const hasNext = documents.length > this.limitCount;
+    const result = hasNext ? documents.slice(0, this.limitCount) : documents;
+    const last = result.at(-1) as (Result & { _id: ObjectId }) | undefined;
+    return { result, next: hasNext && last ? last._id : null };
   }
 
   private execute(): Promise<Result[]> {
