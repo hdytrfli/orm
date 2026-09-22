@@ -11,20 +11,21 @@ const db = createDatabase({
   schema,
 });
 
-const { companies, groups, users } = db;
-
 await db.connect();
 
 try {
-  await users.delete({});
-  await groups.delete({});
-  await companies.delete({});
+  await db.users.delete({});
+  await db.groups.delete({});
+  await db.companies.delete({});
 
-  const company = await companies.create({
+  const company = await db.companies.create({
     name: 'Analytical Engines Ltd.',
     description: 'Computing research and engineering',
   });
-  const group = await groups.create({ name: 'Language' });
+
+  const group = await db.groups.create({
+    name: 'Language',
+  });
 
   const userData = {
     name: 'Ada Lovelace',
@@ -38,10 +39,10 @@ try {
   const validated = userSchema.parse(userData);
   console.log('validated:', validated);
 
-  const user = await users.create(validated);
+  const user = await db.users.create(validated);
   console.log('created:', user);
 
-  const another = await users.create({
+  const another = await db.users.create({
     name: 'Alan Turing',
     age: 36,
     role: 'member',
@@ -49,11 +50,11 @@ try {
     group: group._id,
     company: company._id,
   });
-  await groups.update({ _id: group._id }, { creator: user._id });
+  await db.groups.update({ _id: group._id }, { creator: user._id });
 
   await Promise.all(
     Array.from({ length: 18 }, () =>
-      users.create({
+      db.users.create({
         name: faker.person.fullName(),
         age: faker.number.int({ min: 18, max: 65 }),
         role: faker.helpers.arrayElement(['admin', 'member'] as const),
@@ -64,11 +65,12 @@ try {
     ),
   );
 
-  const found = await users.find({ _id: user._id }).select(['name', 'group']);
+  const found = await db.users.find({ _id: user._id }).select(['name', 'group']);
+
   console.log('found:', found);
   console.log(
     'populated:',
-    await users.find({ _id: user._id }).populate([
+    await db.users.find({ _id: user._id }).populate([
       {
         ref: 'group',
         select: ['name'],
@@ -80,17 +82,17 @@ try {
       },
     ]),
   );
-  console.log('with detail:', await users.find({ _id: user._id }).with('detail'));
-  console.log('with hidden field:', await users.find({ _id: user._id }).show(['password']));
+  console.log('with detail:', await db.users.find({ _id: user._id }).with('detail'));
+  console.log('with hidden field:', await db.users.find({ _id: user._id }).show(['password']));
 
   console.log(
     'filtered simple:',
-    await users.filter({
+    await db.users.filter({
       role: 'admin',
     }),
   );
 
-  const filteredSorted = await users
+  const filteredSorted = await db.users
     .filter({
       $or: [
         // one of the following conditions must be true
@@ -110,7 +112,7 @@ try {
 
   console.log(
     'filtered with or:',
-    await users
+    await db.users
       .filter({
         $or: [
           // one of the following conditions must be true
@@ -123,7 +125,7 @@ try {
 
   console.log(
     'filtered with and:',
-    await users
+    await db.users
       .filter({
         $and: [
           // both of the following conditions must be true
@@ -134,28 +136,25 @@ try {
       .limit(2),
   );
 
-  const first = users.filter().limit(3).cursor();
+  const first = db.users.filter().limit(3).cursor();
   const array = await Array.fromAsync(first);
   console.log('result array:', array);
 
   let count = 0;
-  for await (const item of first) console.log({ count: ++count, item });
+  for (const item of array) console.log({ count: ++count, item });
 
-  const second = users
+  const second = db.users
     .filter()
     .limit(3)
     .cursor(first.next ?? undefined);
 
-  // const secondResults = [];
-  count = 0;
   for await (const item of second) console.log({ count: ++count, item });
-
   console.log('cursor pages:', {
     next: second.next,
   });
 
-  console.log('updated:', await users.update({ _id: user._id }, { role: 'admin', age: 20 }));
-  console.log('deleted:', await users.delete({ _id: { $in: [user._id, another._id] } }));
+  console.log('updated:', await db.users.update({ _id: user._id }, { role: 'admin', age: 20 }));
+  // console.log('deleted:', await db.users.delete({ _id: { $in: [user._id, another._id] } }));
 
   if (found) {
     const groupRelation = schema.users.relationMap.group;
@@ -168,13 +167,17 @@ try {
     console.log('related group:', relatedGroup);
   }
 
-  await groups.delete({
-    _id: group._id,
+  await db.companies.delete({
+    // this will delete all companies
   });
 
-  await users.delete({
-    // this will delete all users
+  await db.groups.delete({
+    // this will delete all groups
   });
+
+  // await db.users.delete({
+  //   // this will delete all users
+  // });
 } finally {
   await db.disconnect();
 }
