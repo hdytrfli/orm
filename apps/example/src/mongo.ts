@@ -87,7 +87,17 @@ try {
 
   const found = await users.find({ _id: user._id }).select(['name', 'group']);
   console.log('found:', found);
-  console.log('populated:', await users.find({ _id: user._id }).with('detail'));
+  console.log(
+    'populated:',
+    await users.find({ _id: user._id }).populate([
+      {
+        ref: 'group',
+        select: ['name'],
+        populate: [{ ref: 'creator' }],
+      },
+    ]),
+  );
+  console.log('with detail:', await users.find({ _id: user._id }).with('detail'));
   console.log('with hidden field:', await users.find({ _id: user._id }).show(['password']));
 
   console.log(
