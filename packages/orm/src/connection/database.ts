@@ -2,6 +2,7 @@ import {
   MongoClient,
   type Collection,
   type Document,
+  type IndexDescription,
   type MongoClientOptions,
   type Db as MongoDatabase,
 } from 'mongodb';
@@ -105,6 +106,23 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
     const name = this.schemaCollections.get(schema);
     if (!name) throw new Error('Schema is not registered with this database');
     return this.native.collection<Document>(name);
+  }
+
+  /** Explicitly create all indexes declared by registered schemas. */
+  async syncIndexes(): Promise<Record<string, string[]>> {
+    const synchronized: Record<string, string[]> = {};
+    for (const [schema, name] of this.schemaCollections) {
+      const definitions = schema.indexDefinitions ?? [];
+      synchronized[name] = definitions.length
+        ? await this.collectionFor(schema).createIndexes(
+            definitions.map(({ fields, options }) => ({
+              ...options,
+              key: fields,
+            })) as IndexDescription[],
+          )
+        : [];
+    }
+    return synchronized;
   }
 
   /** Return the selected database, failing if `connect()` was not called. */

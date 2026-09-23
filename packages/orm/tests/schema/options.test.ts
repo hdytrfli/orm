@@ -32,4 +32,18 @@ describe('schema options', () => {
 
     expect(parsed.status).toBe('pending');
   });
+
+  it('stores typed MongoDB index definitions for explicit synchronization', () => {
+    const account = orm
+      .schema({ email: orm.string(), tenantId: orm.string() })
+      .indexes([
+        { fields: { tenantId: 1, email: 1 } },
+        { fields: { email: 1 }, options: { unique: true, name: 'account_email_unique' } },
+      ]);
+
+    expect(account.indexDefinitions).toEqual([
+      { fields: { tenantId: 1, email: 1 } },
+      { fields: { email: 1 }, options: { unique: true, name: 'account_email_unique' } },
+    ]);
+  });
 });

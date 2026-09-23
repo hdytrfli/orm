@@ -37,6 +37,24 @@ Parses a complete input, generates `_id`, inserts one document, and returns the 
 
 Validates and inserts multiple documents with one MongoDB `insertMany` operation. Each document receives the same generated fields as `create()`, and the created documents are returned in input order.
 
+## `Schema.indexes(definitions)` and `Db.syncIndexes()`
+
+Declare typed MongoDB indexes on a schema, then explicitly create them after connecting:
+
+```ts
+const userSchema = orm
+  .schema({ email: orm.string(), tenantId: orm.string() })
+  .indexes([
+    { fields: { tenantId: 1, email: 1 } },
+    { fields: { email: 1 }, options: { unique: true } },
+  ]);
+
+await db.connect();
+await db.syncIndexes();
+```
+
+Index creation is explicit and is not triggered by model access.
+
 ## `Model.find(filter?)`
 
 Builds a list query resolving to an array. The filter defaults to `{}`. Chain `.first()` at the end when one document is needed.

@@ -1,4 +1,4 @@
-import type { ObjectId } from 'mongodb';
+import type { IndexDescription, IndexDirection, ObjectId } from 'mongodb';
 import { z } from 'zod';
 
 import type { PopulateSpecs } from '../query/query.js';
@@ -19,6 +19,15 @@ export interface SchemaOptions {
   readonly timestamps?: boolean;
   readonly softdelete?: boolean;
 }
+
+export type SchemaIndexFields<Shape extends SchemaShape> = Partial<
+  Record<Extract<keyof Shape, string>, IndexDirection>
+>;
+
+export type SchemaIndex<Shape extends SchemaShape> = {
+  readonly fields: SchemaIndexFields<Shape>;
+  readonly options?: Omit<IndexDescription, 'key'>;
+};
 
 type TimestampShape = {
   createdAt: z.ZodDefault<z.ZodDate>;
@@ -82,6 +91,9 @@ export class Schema<
   /** Persistence behavior enabled for this schema. */
   readonly optionsConfig: Options;
 
+  /** MongoDB indexes declared for this schema. */
+  indexDefinitions: readonly SchemaIndex<Shape>[];
+
   /** Preserve schema options through registry type transformations. */
   declare readonly __options: Options;
 
@@ -91,6 +103,7 @@ export class Schema<
     relations = {} as Relations,
     scopeMap = {} as Scopes,
     optionsConfig = {} as Options,
+    indexDefinitions = [] as readonly SchemaIndex<Shape>[],
   ) {
     this.definition = z.object(shape);
     this.refs = collectRefs(shape);
@@ -99,6 +112,7 @@ export class Schema<
     this.fields = Object.keys(shape) as (keyof Shape & string)[];
     this.hiddenFields = this.fields.filter((field) => '__hidden' in shape[field]);
     this.optionsConfig = optionsConfig;
+    this.indexDefinitions = indexDefinitions;
   }
 
   /** Enable managed timestamps and/or soft deletion for this schema. */
@@ -132,8 +146,15 @@ export class Schema<
       this.relationMap,
       this.scopeMap,
       options,
+      this.indexDefinitions,
     );
-    return next as Schema<Shape & ManagedShape<Enabled>, Relations, Scopes, Enabled>;
+    return next as unknown as Schema<Shape & ManagedShape<Enabled>, Relations, Scopes, Enabled>;
+  }
+
+  /** Declare MongoDB indexes for explicit synchronization with the database. */
+  indexes<const Definitions extends readonly SchemaIndex<Shape>[]>(definitions: Definitions): this {
+    this.indexDefinitions = definitions;
+    return this;
   }
 
   /** Add one or more one-way relations without requiring circular schema declarations. */

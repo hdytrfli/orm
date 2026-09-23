@@ -4,7 +4,12 @@ export type { OrmApi } from './api.js';
 export { Schema } from './schema/index.js';
 export type { Infer, InferInput, InferShape } from './schema/index.js';
 export type { SchemaDefinition, SchemaShape } from './schema/index.js';
-export type { ManagedField, SchemaOptions } from './schema/index.js';
+export type {
+  ManagedField,
+  SchemaIndex,
+  SchemaIndexFields,
+  SchemaOptions,
+} from './schema/index.js';
 export { hasSoftDelete } from './schema/index.js';
 export type { SoftDeleteEnabled } from './schema/index.js';
 export type {
