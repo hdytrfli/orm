@@ -2,7 +2,6 @@ packages:
   - apps/*
   - packages/*
 
-onlyBuiltDependencies:
-  - lefthook
 allowBuilds:
-  lefthook: set this to true or false
+  esbuild: true
+  lefthook: true

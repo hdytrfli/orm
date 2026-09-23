@@ -11,7 +11,7 @@
   "scripts": {
     "build": "tsdown",
     "test": "vitest run --config vitest.config.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "pnpm build && tsc --noEmit"
   },
   "dependencies": {
     "mongodb": "^7.6.0",

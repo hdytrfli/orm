@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="./.github/assets/backdrop.svg" alt="Mongorm" width="100%" />
+  <img src="./.github/assets/backdrop.svg" alt="Mongorm" width="100%" style="border-radius: 10px;" />
 </p>
-
-<h1 align="center">Mongorm</h1>
 
 <p align="center">
   TypeScript-first MongoDB ORM with a small, strongly typed API.
@@ -12,50 +10,145 @@
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
   <img src="https://img.shields.io/badge/Zod-3E67B1?style=for-the-badge&logo=zod&logoColor=white" alt="Zod" />
-  <img src="https://img.shields.io/badge/pnpm-F69220?style=for-the-badge&logo=pnpm&logoColor=white" alt="pnpm" />
   <img src="https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white" alt="Vitest" />
-  <img src="https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white" alt="GitHub Actions" />
 </p>
 
-Built on the official MongoDB driver, Zod, and pnpm.
+Mongorm is a TypeScript-first MongoDB ORM for applications that want strong types and validation without hiding MongoDB behind a large abstraction.
 
-## Development
+It was created to make the common parts of MongoDB application development consistent: define data once, validate it at the boundary, query it with inferred types, and still keep access to MongoDB when the application needs it.
 
-```bash
-pnpm install
-pnpm check
-pnpm dev
-```
+## Features
 
-The runnable example is in `apps/example`. Set `MONGODB_URI` and `MONGODB_DATABASE` in its environment before running the database script.
+### Typed Schemas
 
-## Indexes
-
-Declare indexes on a schema and synchronize them explicitly after connecting:
+Define the shape of your data once. Mongorm infers the input and output types from the schema and validates writes with Zod-backed fields.
 
 ```ts
-const userSchema = orm
-  .schema({ email: orm.string(), company: orm.objectId() })
-  .indexes([{ fields: { company: 1, email: 1 }, options: { unique: true } }]);
+const ROLES = ['admin', 'member'];
 
-await db.connect();
-await db.sync();
+const userSchema = orm.schema({
+  name: orm.string(),
+  email: orm.string().email(),
+  role: orm.enum(ROLES),
+});
 ```
 
-Index creation is never automatic.
+### Create, Read, Update, and Delete and Queries
 
-## Versioning
+Create records and build readable queries without losing MongoDB filter semantics.
 
-Package versions are kept together. Bump them with one of:
+```ts
+const user = await db.users.create({
+  name: 'Ada Lovelace',
+  email: 'ada@example.com',
+  role: 'admin',
+});
+
+const users = await db.users
+  .select(['name', 'email'])
+  .find({ role: 'admin' })
+  .sort({ name: 'asc' })
+  .limit(20);
+```
+
+Use `.first()` when a query should return one record or `null`:
+
+```ts
+const user = await db.users.find({ email: 'ada@example.com' }).first();
+```
+
+### Relations and Population
+
+Connect related records and load them only when needed.
+
+```ts
+const user = await db.users
+  .find({ email: 'ada@example.com' })
+  .populate([
+    {
+      ref: 'company',
+      select: ['name'. 'address'],
+    },
+  ])
+  .first();
+```
+
+### Bulk Operations
+
+Use the same model for individual writes and larger batches.
+
+```ts
+await db.users.bulk.create([
+  { name: 'Grace Hopper', email: 'grace@example.com', role: 'admin' },
+  { name: 'Alan Turing', email: 'alan@example.com', role: 'member' },
+]);
+```
+
+### Built-In Application Features
+
+- Optional timestamps and soft deletes.
+- Hidden fields for sensitive values.
+- Reusable scopes for common read views.
+- Explicit schema indexes with MongoDB options.
+- Cursors, pagination, projections, sorting, and population.
+- Access to the native collection for advanced MongoDB operations.
+
+## Getting Started
 
 ```bash
-pnpm version:bump patch
-pnpm version:bump minor
-pnpm version:bump major
-pnpm version:bump 1.0.0
+pnpm add @mongorm/orm
 ```
 
-`bumpp` updates both workspace versions, creates the commit and tag, and leaves pushing to you. Push the commit and tag, then create a GitHub release with the matching tag, for example `v1.0.0`. The release workflow publishes `@mongorm/orm` to npm.
+```ts
+import { createDatabase, orm } from '@mongorm/orm';
+
+const ROLES = ['admin', 'member'];
+const userSchema = orm
+  .schema({
+    email: orm.email(),
+    role: orm.enum(ROLES),
+    password: orm.string().hidden(),
+  })
+  .options({
+    timestamps: true,
+  });
+
+const schema = orm.defineSchemas({
+  users: userSchema,
+});
+
+const db = createDatabase({
+  uri: process.env.MONGODB_URI,
+  database: 'app',
+  schema,
+});
+
+await db.connect();
+await db.users.bulk.create([
+  { email: 'grace@example.com', role: 'member', password: 'password' },
+  { email: 'alan@example.com', role: 'admin', password: 'password' },
+]);
+
+const user = await db.users
+  .find({ email: 'alan@example.com', role: 'admin' })
+  .show(['password'])
+  .first();
+
+if (!user) throw new Error('User not found');
+console.log(user);
+
+// result
+// {
+//   _id: new ObjectId('6ab3be00d3f28ee68bc8aa13'),
+//   role: 'admin',
+//   email: 'alan@example.com',
+//   password: 'password',
+//   createdAt: 2026-09-23T11:54:40.662Z,
+//   updatedAt: 2026-09-23T11:54:40.662Z
+// }
+```
+
+Mongorm keeps the MongoDB driver close at hand, so it simplifies everyday work without limiting access to MongoDB's full feature set.
 
 ## License
 
