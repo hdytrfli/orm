@@ -168,6 +168,8 @@ try {
       })
       .limit(2),
   );
+  console.log('exact count:', await db.users.filter({ role: 'admin' }).count());
+  console.log('estimated count:', await db.users.filter().count(true));
 
   const test = await db.users.filter().sort({ _id: 'asc' }).limit(6);
   console.log('test:', test);
