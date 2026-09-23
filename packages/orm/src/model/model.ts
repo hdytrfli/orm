@@ -21,6 +21,7 @@ import type {
   SchemaShape,
   ScopeDefinitions,
 } from '../schema/index.js';
+import { applySoftDeleteFilter } from './soft-delete.js';
 
 type CreateInput<Shape extends SchemaShape, Options extends SchemaOptions> = Omit<
   InferInput<Schema<Shape, {}, {}, Options>>,
@@ -91,7 +92,7 @@ export class Model<
 
   private activeFilter(filter: ModelFilter<Shape>): ModelFilter<Shape> {
     return hasSoftDelete(this.schema.optionsConfig)
-      ? ({ $and: [{ deletedAt: null }, filter] } as ModelFilter<Shape>)
+      ? applySoftDeleteFilter(filter, 'active')
       : filter;
   }
 
@@ -204,7 +205,7 @@ export class Model<
     const patch: Record<string, unknown> = { deletedAt: null };
     if (this.schema.optionsConfig.timestamps) patch.updatedAt = new Date();
     return (await this.collection.findOneAndUpdate(
-      { $and: [{ deletedAt: { $ne: null } }, filter] } as MongoFilter<StoredDocument<Shape>>,
+      applySoftDeleteFilter(filter, 'deleted') as MongoFilter<StoredDocument<Shape>>,
       { $set: patch } as UpdateFilter<StoredDocument<Shape>>,
       { returnDocument: 'after' },
     )) as unknown as Infer<Schema<Shape, Relations, Scopes, Options>> | null;
@@ -218,7 +219,7 @@ export class Model<
     const patch: Record<string, unknown> = { deletedAt: new Date() };
     if (this.schema.optionsConfig.timestamps) patch.updatedAt = new Date();
     const result = await this.collection.updateMany(
-      { $and: [{ deletedAt: null }, filter] } as MongoFilter<StoredDocument<Shape>>,
+      applySoftDeleteFilter(filter, 'active') as MongoFilter<StoredDocument<Shape>>,
       { $set: patch } as UpdateFilter<StoredDocument<Shape>>,
     );
     return {

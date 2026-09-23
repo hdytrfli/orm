@@ -1,6 +1,7 @@
 import type { Collection, Filter, ObjectId } from 'mongodb';
 
 import type { Db } from '../connection/database.js';
+import { applySoftDeleteFilter, type SoftDeleteMode } from '../model/soft-delete.js';
 import type { SchemaRelationMap, SchemaShape } from '../schema/index.js';
 import type { ModelFilter, StoredDocument } from './types.js';
 
@@ -10,7 +11,7 @@ export type RuntimePopulateSpec = {
   populate?: readonly RuntimePopulateSpec[];
 };
 
-export type DeletedMode = 'active' | 'all' | 'deleted';
+export type DeletedMode = SoftDeleteMode;
 
 export const normalizeProjectionFields = (fields: readonly string[]): string[] => {
   const unique = new Set(fields);
@@ -59,10 +60,7 @@ export class SoftDeleteState<Shape extends SchemaShape> {
   }
 
   effectiveFilter(filter: ModelFilter<Shape>): ModelFilter<Shape> {
-    if (!this.isFiltered()) return filter;
-    const deletionFilter =
-      this.mode === 'deleted' ? { deletedAt: { $ne: null } } : { deletedAt: null };
-    return { $and: [deletionFilter, filter] } as ModelFilter<Shape>;
+    return applySoftDeleteFilter(filter, this.mode);
   }
 }
 
