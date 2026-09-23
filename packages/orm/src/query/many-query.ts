@@ -49,8 +49,7 @@ export class ModelQuery<
   Mode extends PopulationMode = 'none',
   SoftDelete extends boolean = false,
 > implements PromiseLike<Result[]> {
-  declare readonly all: SoftDelete extends true ? () => this : never;
-  declare readonly deleted: SoftDelete extends true ? () => this : never;
+  declare readonly deleted: SoftDelete extends true ? (mode: 'only' | 'include') => this : never;
   private sortSpec: ModelSort<Shape> | undefined;
   private skipCount: number | undefined;
   private limitCount: number | undefined;
@@ -80,21 +79,18 @@ export class ModelQuery<
     this.population = new PopulationExecutor(db, relations);
     if (softdeleteEnabled) {
       Object.defineProperties(this, {
-        all: { configurable: false, enumerable: false, value: () => this.includeDeleted() },
-        deleted: { configurable: false, enumerable: false, value: () => this.filterDeleted() },
+        deleted: {
+          configurable: false,
+          enumerable: false,
+          value: (mode: 'only' | 'include') => this.deletedMode(mode),
+        },
       });
     }
   }
 
   /** Include both active and soft-deleted documents in this query. */
-  private includeDeleted(): this {
-    this.softDelete.includeDeleted();
-    return this;
-  }
-
-  /** Restrict this query to soft-deleted documents. */
-  private filterDeleted(): this {
-    this.softDelete.deleted();
+  private deletedMode(mode: 'only' | 'include'): this {
+    this.softDelete.deleted(mode);
     return this;
   }
 
@@ -294,6 +290,23 @@ export class ModelQuery<
   }
 
   private execute(): Promise<Result[]> {
+    return this.createQueryCursor()
+      .toArray()
+      .then((documents) =>
+        this.population.apply(documents as unknown as Result[], this.populateSpecs),
+      );
+  }
+
+  async first(): Promise<Result | null> {
+    const documents = await this.createQueryCursor().limit(1).toArray();
+    const populated = await this.population.apply(
+      documents as unknown as Result[],
+      this.populateSpecs,
+    );
+    return populated[0] ?? null;
+  }
+
+  private createQueryCursor() {
     let cursor = this.collection.find(this.effectiveFilter() as MongoFilter<StoredDocument<Shape>>);
     if (this.sortSpec) {
       cursor = cursor.sort(this.sortSpec as Sort);
@@ -313,11 +326,7 @@ export class ModelQuery<
     if (projection) {
       cursor = cursor.project(projection);
     }
-    return cursor
-      .toArray()
-      .then((documents) =>
-        this.population.apply(documents as unknown as Result[], this.populateSpecs),
-      );
+    return cursor;
   }
 
   then<TResult1 = Result[], TResult2 = never>(

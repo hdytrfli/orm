@@ -29,7 +29,7 @@ const user = orm
 
 `timestamps: true` adds `createdAt` and `updatedAt` dates. Mongorm sets both on creation and refreshes `updatedAt` on updates and soft deletion. `softdelete: true` adds nullable `deletedAt`, hides deleted documents from normal queries, and makes `delete()` mark documents as deleted instead of removing them.
 
-Managed fields are optional in create and update input, but always present in the persisted document type. Mongorm supplies missing values and refreshes lifecycle values when appropriate. Use `all()` to include deleted documents, `deleted()` to inspect the deleted set, `restore()` to recover a document, and `purge()` for permanent removal.
+Managed fields are optional in create and update input, but always present in the persisted document type. Mongorm supplies missing values and refreshes lifecycle values when appropriate. Use `deleted('include')` to include deleted documents, `deleted('only')` to inspect the deleted set, `restore()` to recover a document, and `purge()` for permanent removal.
 
 ## Parsing and Inference
 

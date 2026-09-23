@@ -6,13 +6,20 @@ import { schema, userSchema } from '@/schemas';
 import { log } from '@/utils/logger';
 
 faker.seed(env.FAKER_SEED);
-
 await db.connect();
 
 try {
-  await db.users.delete({});
-  await db.groups.delete({});
-  await db.companies.delete({});
+  await db.users.delete({
+    //
+  });
+
+  await db.groups.delete({
+    //
+  });
+
+  await db.companies.delete({
+    //
+  });
 
   const company = await db.companies.create({
     name: 'Analytical Engines Ltd.',
@@ -86,34 +93,39 @@ try {
 
   const found = await db.users
     .find({ _id: user._id })
-    .select(['name', 'group', 'profile.location.city']);
+    .select(['name', 'group', 'profile.location.city'])
+    .first();
 
   if (!found) throw new Error('User not found');
-
-  log.debug({ context: 'city', value: found.profile.location.city });
   log.debug({ context: 'found', value: found });
+  log.debug({ context: 'city', value: found.profile.location.city });
+
   log.debug({
     context: 'populated',
     value: await db.users
       .find({ _id: user._id })
       .populate([{ ref: 'group', populate: [{ ref: 'creator' }] }])
-      .all(),
+      .deleted('include')
+      .first(),
   });
 
   log.debug({
     context: 'with detail',
-    value: await db.users.find({ _id: user._id }).with('detail'),
+    value: await db.users.find({ _id: user._id }).with('detail').first(),
   });
 
   log.debug({
     context: 'with hidden field',
-    value: await db.users.find({ _id: user._id }).show(['password']),
+    value: await db.users.find({ _id: user._id }).show(['password']).first(),
   });
 
-  log.debug({ context: 'filtered simple', value: await db.users.filter({ role: 'admin' }) });
+  log.debug({
+    context: 'filtered simple',
+    value: await db.users.find({ role: 'admin' }),
+  });
 
   const filteredSorted = await db.users
-    .filter({ $or: [{ role: 'admin' }, { age: { $gte: 18 } }] })
+    .find({ $or: [{ role: 'admin' }, { age: { $gte: 18 } }] })
     .select(['name', 'age', 'deletedAt'])
     .sort({ age: 'asc' })
     .skip(1)
@@ -126,34 +138,42 @@ try {
 
   log.debug({
     context: 'filtered with or',
-    value: await db.users.filter({ $or: [{ role: 'admin' }, { age: { $gte: 18 } }] }).limit(2),
+    value: await db.users.find({ $or: [{ role: 'admin' }, { age: { $gte: 18 } }] }).limit(2),
   });
 
   log.debug({
     context: 'filtered with and',
-    value: await db.users.filter({ $and: [{ role: 'member' }, { age: { $gte: 18 } }] }).limit(2),
+    value: await db.users.find({ $and: [{ role: 'member' }, { age: { $gte: 18 } }] }).limit(2),
   });
 
-  log.debug({ context: 'exact count', value: await db.users.filter({ role: 'admin' }).count() });
+  log.debug({ context: 'exact count', value: await db.users.find({ role: 'admin' }).count() });
 
   log.debug({
     context: 'estimated count',
-    value: await db.users.filter().all().count(true),
+    value: await db.users.find().deleted('include').count(true),
   });
 
-  const test = await db.users.filter().sort({ _id: 'asc' }).limit(6);
+  const test = await db.users.find().sort({ _id: 'asc' }).limit(6);
   log.debug({ context: 'test', value: test });
 
   let count = 0;
 
-  const first = db.users.filter().limit(3).cursor();
-  for await (const item of first)
-    log.debug({ context: 'cursor item', value: { count: ++count, item } });
+  const first = db.users.find().limit(3).cursor();
+  for await (const item of first) {
+    log.debug({
+      context: 'cursor item',
+      value: { count: ++count, item },
+    });
+  }
 
   const next = first.next ?? undefined;
-  const second = db.users.filter().limit(3).cursor(next);
-  for await (const item of second)
-    log.debug({ context: 'cursor item', value: { count: ++count, item } });
+  const second = db.users.find().limit(3).cursor(next);
+  for await (const item of second) {
+    log.debug({
+      context: 'cursor item',
+      value: { count: ++count, item },
+    });
+  }
 
   log.debug({ context: 'cursor pages', value: { next: second.next } });
   log.debug({
@@ -173,7 +193,7 @@ try {
     log.debug({ context: 'relation path', value: 'group' });
     log.debug({ context: 'relation value', value: found.group });
 
-    const relatedGroup = await relatedGroupModel.find({ _id: found.group });
+    const relatedGroup = await relatedGroupModel.find({ _id: found.group }).first();
     log.debug({ context: 'related group', value: relatedGroup });
   }
 } finally {

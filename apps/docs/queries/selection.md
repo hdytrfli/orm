@@ -7,13 +7,13 @@ order: 2
 Without `.select()`, a query returns all visible schema fields plus `_id`. Hidden fields are excluded by default.
 
 ```ts
-const users = await db.user.filter({ active: true });
+const users = await db.user.find({ active: true });
 ```
 
 ## Select Top-Level Fields
 
 ```ts
-const users = await db.user.filter({ active: true }).select(['name', 'email']);
+const users = await db.user.find({ active: true }).select(['name', 'email']);
 ```
 
 `_id` remains in the result. The TypeScript result contains only `_id`, `name`, and `email` from this selection.
@@ -39,7 +39,7 @@ The field must be declared hidden in the schema and listed explicitly. Use `.sho
 Relation selection belongs inside the population specification:
 
 ```ts
-const posts = await db.post.filter({}).populate([
+const posts = await db.post.find({}).populate([
   {
     ref: 'author',
     select: ['name', 'avatarUrl'],

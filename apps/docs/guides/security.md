@@ -21,7 +21,7 @@ Use `.show()` only inside a narrowly scoped credential or security service.
 ## Select Public Fields
 
 ```ts
-const publicUsers = await db.user.filter({ active: true }).select(['name', 'avatarUrl']);
+const publicUsers = await db.user.find({ active: true }).select(['name', 'avatarUrl']);
 ```
 
 Explicit selection protects endpoints from exposing fields added later to a schema.
@@ -35,7 +35,7 @@ Population can expose more data than the base model. Give every populated relati
 Mongorm knows field types and relation structure; it does not know the current user's permissions. Add tenant or ownership predicates in the service layer:
 
 ```ts
-await db.post.filter({ tenantId, authorId: currentUserId });
+await db.post.find({ tenantId, authorId: currentUserId });
 ```
 
 ## Do Not Log Sensitive Documents

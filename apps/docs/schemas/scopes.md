@@ -21,7 +21,7 @@ const schemas = orm
 Apply a scope with `.with()`:
 
 ```ts
-const posts = await db.post.filter({ published: true }).with('list');
+const posts = await db.post.find({ published: true }).with('list');
 ```
 
 ## Scopes Are Typed
@@ -33,13 +33,13 @@ Only scopes defined for the current model can be passed to `.with()`. The popula
 Use explicit population for one-off queries:
 
 ```ts
-await db.post.filter({}).populate([{ ref: 'author', select: ['name'] }]);
+await db.post.find({}).populate([{ ref: 'author', select: ['name'] }]);
 ```
 
 Use a scope when a shape is reused by many endpoints:
 
 ```ts
-await db.post.filter({}).with('list');
+await db.post.find({}).with('list');
 ```
 
 Do not combine `.populate()` and `.with()` in the same query. Choose one population mode so the result contract remains unambiguous.

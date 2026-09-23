@@ -9,7 +9,7 @@ order: 3
 Sort keys are schema-derived and directions are `'asc'` or `'desc'`:
 
 ```ts
-const posts = await db.post.filter({ published: true }).sort({ publishedAt: 'desc' });
+const posts = await db.post.find({ published: true }).sort({ publishedAt: 'desc' });
 ```
 
 Use a stable sort for user-facing pagination. Cursor pagination uses `_id` ascending internally.
@@ -18,7 +18,7 @@ Use a stable sort for user-facing pagination. Cursor pagination uses `_id` ascen
 
 ```ts
 const page = await db.post
-  .filter({ published: true })
+  .find({ published: true })
   .sort({ publishedAt: 'desc' })
   .skip(40)
   .limit(20);
@@ -31,7 +31,7 @@ const page = await db.post
 Cursor pagination requires a positive limit and uses the default `_id` ascending order:
 
 ```ts
-const query = db.post.filter({ published: true }).limit(25);
+const query = db.post.find({ published: true }).limit(25);
 const cursor = query.cursor();
 const documents = [];
 
@@ -46,7 +46,7 @@ Request the next page by passing the returned ObjectId:
 
 ```ts
 const nextPage = db.post
-  .filter({ published: true })
+  .find({ published: true })
   .limit(25)
   .cursor(cursor.next ?? undefined);
 ```

@@ -86,7 +86,7 @@ const post = await db.post.create({
 
 ```ts
 const result = await db.post
-  .filter({ published: true })
+  .find({ published: true })
   .with('detail')
   .select(['title', 'author.name']);
 ```

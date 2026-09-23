@@ -2,6 +2,7 @@ import type { ModelFilter } from '../query/types.js';
 import type { SchemaShape } from '../schema/contracts.js';
 
 export type SoftDeleteMode = 'active' | 'deleted' | 'all';
+export type DeletedQueryMode = 'only' | 'include';
 
 export const applySoftDeleteFilter = <Shape extends SchemaShape>(
   filter: ModelFilter<Shape>,

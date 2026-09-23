@@ -37,13 +37,9 @@ Parses a complete input, generates `_id`, inserts one document, and returns the 
 
 Validates and inserts multiple documents with one MongoDB `insertMany` operation. Each document receives the same generated fields as `create()`, and the created documents are returned in input order.
 
-## `Model.filter(filter?)`
-
-Builds a list query resolving to an array. The filter defaults to `{}`.
-
 ## `Model.find(filter?)`
 
-Builds a single-document query resolving to a document or `null`.
+Builds a list query resolving to an array. The filter defaults to `{}`. Chain `.first()` at the end when one document is needed.
 
 ## `Model.update(filter, patch)`
 

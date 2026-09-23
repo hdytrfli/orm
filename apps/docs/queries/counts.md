@@ -7,7 +7,7 @@ order: 6
 Call `.count()` on a list query to count documents matching its filter.
 
 ```ts
-const activeCount = await db.user.filter({ active: true }).count();
+const activeCount = await db.user.find({ active: true }).count();
 ```
 
 The default is an exact `countDocuments()` operation and respects the query filter.
@@ -15,7 +15,7 @@ The default is an exact `countDocuments()` operation and respects the query filt
 ## Estimated Count
 
 ```ts
-const approximateTotal = await db.user.filter().count(true);
+const approximateTotal = await db.user.find().count(true);
 ```
 
 Passing `true` uses MongoDB's estimated collection count. It is fast and useful for approximate dashboard totals, but it cannot be combined with a filter. Mongorm rejects a filtered estimated count instead of silently returning a misleading number.

@@ -1,7 +1,11 @@
 import type { Collection, Filter, ObjectId } from 'mongodb';
 
 import type { Db } from '../connection/database.js';
-import { applySoftDeleteFilter, type SoftDeleteMode } from '../model/soft-delete.js';
+import {
+  applySoftDeleteFilter,
+  type DeletedQueryMode,
+  type SoftDeleteMode,
+} from '../model/soft-delete.js';
 import type { SchemaRelationMap, SchemaShape } from '../schema/index.js';
 import type { ModelFilter, StoredDocument } from './types.js';
 
@@ -51,8 +55,8 @@ export class SoftDeleteState<Shape extends SchemaShape> {
     this.mode = 'all';
   }
 
-  deleted(): void {
-    this.mode = 'deleted';
+  deleted(mode: DeletedQueryMode): void {
+    this.mode = mode === 'include' ? 'all' : 'deleted';
   }
 
   isFiltered(): boolean {

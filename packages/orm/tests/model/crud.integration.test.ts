@@ -57,38 +57,38 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     });
 
     expect(first._id).toBeInstanceOf(ObjectId);
-    expect((await tickets.filter({}))[0]).not.toHaveProperty('secret');
-    expect((await tickets.filter({}).show(['secret']))[0]).toHaveProperty('secret');
-    const defaultSelection = await tickets.filter({}).select();
+    expect((await tickets.find({}))[0]).not.toHaveProperty('secret');
+    expect((await tickets.find({}).show(['secret']))[0]).toHaveProperty('secret');
+    const defaultSelection = await tickets.find({}).select();
     expect(defaultSelection[0]).not.toHaveProperty('secret');
-    expect(await tickets.filter({ status: 'open', owner: owner._id })).toHaveLength(2);
-    expect(await tickets.find({ title: 'Missing ticket' })).toBeNull();
+    expect(await tickets.find({ status: 'open', owner: owner._id })).toHaveLength(2);
+    expect(await tickets.find({ title: 'Missing ticket' }).first()).toBeNull();
     const populated = await tickets
-      .filter({ status: 'open' })
+      .find({ status: 'open' })
       .populate([{ ref: 'owner', select: ['name'] }]);
     expect(populated[0].owner?.name).toBe('Ada');
     expect(populated[0].owner).toHaveProperty('_id');
     const populatedCursor = tickets
-      .filter({ status: 'open' })
+      .find({ status: 'open' })
       .populate([{ ref: 'owner', select: ['name'] }])
       .limit(1)
       .cursor();
     const cursorDocuments = [];
     for await (const ticket of populatedCursor) cursorDocuments.push(ticket);
     expect(cursorDocuments[0].owner?.name).toBe('Ada');
-    expect(await tickets.filter()).toEqual(await tickets.filter({}));
-    expect(await tickets.filter({ status: 'open' }).count()).toBe(2);
-    expect(await tickets.filter().count(true)).toBeGreaterThanOrEqual(3);
-    await expect(tickets.filter({ status: 'open' }).count(true)).rejects.toThrow(
+    expect(await tickets.find()).toEqual(await tickets.find({}));
+    expect(await tickets.find({ status: 'open' }).count()).toBe(2);
+    expect(await tickets.find().count(true)).toBeGreaterThanOrEqual(3);
+    await expect(tickets.find({ status: 'open' }).count(true)).rejects.toThrow(
       'do not support filters',
     );
-    const firstPage = tickets.filter({}).limit(2).cursor();
+    const firstPage = tickets.find({}).limit(2).cursor();
     const firstResults = [];
     for await (const ticket of firstPage) firstResults.push(ticket);
     expect(firstResults).toHaveLength(2);
     expect(firstPage.next).toBeInstanceOf(ObjectId);
     const secondPage = await tickets
-      .filter({})
+      .find({})
       .limit(2)
       .cursor(firstPage.next ?? undefined);
     const secondResults = [];
@@ -96,44 +96,40 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     expect(secondResults).toHaveLength(1);
     expect(secondPage.next).toBeNull();
     expect(new Set([...firstResults, ...secondResults].map((ticket) => ticket._id)).size).toBe(3);
-    const projectedPage = tickets.filter({}).select(['title']).limit(2).cursor();
+    const projectedPage = tickets.find({}).select(['title']).limit(2).cursor();
     for await (const ticket of projectedPage) {
       expect(ticket).toHaveProperty('title');
       expect(ticket).not.toHaveProperty('secret');
       expect(ticket).not.toHaveProperty('priority');
     }
-    const sorted = await tickets.filter({ status: 'open' }).sort({ priority: 'desc' });
+    const sorted = await tickets.find({ status: 'open' }).sort({ priority: 'desc' });
     expect(sorted.map((ticket) => ticket.priority)).toEqual([2, 1]);
-    const skipped = await tickets.filter({ status: 'open' }).sort({ priority: 'desc' }).skip(1);
+    const skipped = await tickets.find({ status: 'open' }).sort({ priority: 'desc' }).skip(1);
     expect(skipped.map((ticket) => ticket.priority)).toEqual([1]);
-    expect(() => tickets.filter({}).skip(-1)).toThrow('non-negative integer');
-    const limited = await tickets.filter({ status: 'open' }).sort({ priority: 'desc' }).limit(1);
+    expect(() => tickets.find({}).skip(-1)).toThrow('non-negative integer');
+    const limited = await tickets.find({ status: 'open' }).sort({ priority: 'desc' }).limit(1);
     expect(limited.map((ticket) => ticket.priority)).toEqual([2]);
-    expect(() => tickets.filter({}).limit(-1)).toThrow('non-negative integer');
-    const invalidCursorQuery = tickets
-      .filter({})
-      .limit(3)
-      .sort({ priority: 'desc' })
-      .skip(5) as any;
+    expect(() => tickets.find({}).limit(-1)).toThrow('non-negative integer');
+    const invalidCursorQuery = tickets.find({}).limit(3).sort({ priority: 'desc' }).skip(5) as any;
     expect(() => invalidCursorQuery.cursor()).toThrow('Cursor queries do not support skip');
-    expect(() => tickets.filter({}).cursor()).toThrow('Cursor queries require a positive limit');
-    expect(() => (tickets.filter({}).limit(3).sort({ priority: 'desc' }).cursor as any)()).toThrow(
+    expect(() => tickets.find({}).cursor()).toThrow('Cursor queries require a positive limit');
+    expect(() => (tickets.find({}).limit(3).sort({ priority: 'desc' }).cursor as any)()).toThrow(
       'default _id ascending sort',
     );
-    const selected = await tickets.filter({ status: 'open' }).select(['title', 'priority']);
+    const selected = await tickets.find({ status: 'open' }).select(['title', 'priority']);
     expect(selected[0]).toMatchObject({ title: 'Design API', priority: 1 });
     expect(Object.keys(selected[0])).toEqual(expect.arrayContaining(['_id', 'title', 'priority']));
-    const selectedOne = await tickets.find({ title: 'Design API' }).select(['title']);
+    const selectedOne = await tickets.find({ title: 'Design API' }).select(['title']).first();
     expect(selectedOne).toMatchObject({ title: 'Design API' });
     expect(selectedOne).not.toHaveProperty('priority');
-    expect((await tickets.find({ title: 'Design API' }))?._id).toEqual(first._id);
+    expect((await tickets.find({ title: 'Design API' }).first())?._id).toEqual(first._id);
 
     const updated = await tickets.update({ _id: first._id }, { status: 'closed' });
     expect(updated).toMatchObject({ title: 'Design API', status: 'closed' });
 
     const deleted = await tickets.delete({ owner: otherOwner._id });
     expect(deleted.deletedCount).toBe(1);
-    expect(await tickets.filter({})).toHaveLength(2);
+    expect(await tickets.find({})).toHaveLength(2);
   });
 
   it('bulk creates validated documents with generated ids', async () => {
@@ -158,7 +154,7 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     expect(created).toHaveLength(2);
     expect(created[0]._id).toBeInstanceOf(ObjectId);
     expect(created[0]._id).not.toEqual(created[1]._id);
-    expect(await tickets.filter({})).toHaveLength(2);
-    expect((await tickets.filter({}).show(['secret']))[1].secret).toBe('second-secret');
+    expect(await tickets.find({})).toHaveLength(2);
+    expect((await tickets.find({}).show(['secret']))[1].secret).toBe('second-secret');
   });
 });

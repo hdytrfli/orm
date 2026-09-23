@@ -1,4 +1,3 @@
-export { ModelFindQuery } from './find-query.js';
 export { ModelQuery } from './many-query.js';
 export { ModelCursor } from './cursor.js';
 export type {

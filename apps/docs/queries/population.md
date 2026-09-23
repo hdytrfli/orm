@@ -20,7 +20,7 @@ The populated relation is either the related document or `null` when the local k
 ## Nested Population
 
 ```ts
-const posts = await db.post.filter({}).populate([
+const posts = await db.post.find({}).populate([
   {
     ref: 'author',
     select: ['name', 'teamId'],

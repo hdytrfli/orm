@@ -29,7 +29,7 @@ export {
   OrmError,
 } from './validation/errors.js';
 export { Model } from './model/model.js';
-export { ModelCursor, ModelFindQuery, ModelQuery } from './query/query.js';
+export { ModelCursor, ModelQuery } from './query/query.js';
 export type {
   HiddenDocumentKey,
   ModelFilter,

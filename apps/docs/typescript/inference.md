@@ -21,7 +21,7 @@ Mongorm also exports `InferInput<T>`. It represents the input before Zod default
 ## Let the Model Infer Results
 
 ```ts
-const users = await db.user.filter({ age: { $gte: 18 } });
+const users = await db.user.find({ age: { $gte: 18 } });
 
 for (const user of users) {
   user.name;

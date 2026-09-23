@@ -4,28 +4,28 @@ order: 3
 
 # Query API
 
-The list and single-document builders share selection and population methods. List queries additionally support sorting, offset pagination, cursor pagination, limits, and counts.
+`find()` builds a list query. It supports selection, population, sorting, pagination, limits, counts, and terminal `.first()` for a single document.
 
 ## List Query Methods
 
-| Method            | Result            | Notes                                                      |
-| ----------------- | ----------------- | ---------------------------------------------------------- |
-| `sort(spec)`      | list query        | Directions are `asc` or `desc`.                            |
-| `skip(count)`     | list query        | Non-negative integer; incompatible with cursor pagination. |
-| `limit(count)`    | list query        | Non-negative integer.                                      |
-| `select(fields)`  | narrowed query    | Retains `_id`; accepts nested paths.                       |
-| `show(fields)`    | expanded query    | Explicitly includes hidden fields.                         |
-| `populate(specs)` | populated query   | Loads declared relations.                                  |
-| `with(name)`      | scoped query      | Applies a named population scope.                          |
-| `all()`           | query             | Includes active and soft-deleted documents.                |
-| `deleted()`       | query             | Restricts results to soft-deleted documents.               |
-| `count()`         | promise of number | Exact filtered count.                                      |
-| `count(true)`     | promise of number | Estimated unfiltered count.                                |
-| `cursor(after?)`  | async cursor      | Requires positive limit and default `_id` sort.            |
+| Method               | Result            | Notes                                                      |
+| -------------------- | ----------------- | ---------------------------------------------------------- |
+| `sort(spec)`         | list query        | Directions are `asc` or `desc`.                            |
+| `skip(count)`        | list query        | Non-negative integer; incompatible with cursor pagination. |
+| `limit(count)`       | list query        | Non-negative integer.                                      |
+| `select(fields)`     | narrowed query    | Retains `_id`; accepts nested paths.                       |
+| `show(fields)`       | expanded query    | Explicitly includes hidden fields.                         |
+| `populate(specs)`    | populated query   | Loads declared relations.                                  |
+| `with(name)`         | scoped query      | Applies a named population scope.                          |
+| `deleted('only')`    | query             | Restricts results to soft-deleted documents.               |
+| `deleted('include')` | query             | Includes active and soft-deleted documents.                |
+| `count()`            | promise of number | Exact filtered count.                                      |
+| `count(true)`        | promise of number | Estimated unfiltered count.                                |
+| `cursor(after?)`     | async cursor      | Requires positive limit and default `_id` sort.            |
 
-## Single Query Methods
+## `first()`
 
-`find()` supports `select()`, `show()`, `populate()`, and `with()`. It resolves to `Result | null`.
+`first()` is terminal and resolves to `Result | null`. It cannot be followed by list methods such as `sort()`, `skip()`, `limit()`, or `cursor()`.
 
 ## `select(fields)`
 

@@ -16,7 +16,7 @@ For public API contracts, prefer a query that already selects the intended field
 
 ```ts
 async function listUsers() {
-  return db.user.filter({ active: true }).select(['name', 'email']).limit(50);
+  return db.user.find({ active: true }).select(['name', 'email']).limit(50);
 }
 
 type UserListItem = Awaited<ReturnType<typeof listUsers>>[number];

@@ -17,7 +17,7 @@ const user = orm.schema({
 ## Default Behavior
 
 ```ts
-const users = await db.user.filter({ email: 'ada@example.com' });
+const users = await db.user.find({ email: 'ada@example.com' });
 ```
 
 The result includes visible fields and `_id`, but not `passwordHash` or `recoveryToken`. Hidden fields are not merely omitted from TypeScript; the generated projection also keeps them out of the MongoDB response.

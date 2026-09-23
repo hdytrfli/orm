@@ -16,7 +16,7 @@ Mongorm uses TypeScript to make schema and query behavior visible at compile tim
 ## The Core Principle
 
 ```ts
-const users = await db.user.filter({ role: 'admin' }).select(['email', 'name']);
+const users = await db.user.find({ role: 'admin' }).select(['email', 'name']);
 
 users[0].email; // string
 users[0].name; // string

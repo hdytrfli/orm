@@ -58,39 +58,47 @@ void defaultedDocument;
 const missingDefault: Infer<typeof defaultedSchema> = { _id: userId };
 void missingDefault;
 
-await users.filter({ role: 'member' });
-await users.filter({ role: { $in: ['admin', 'member'] } });
-await users.filter({}).sort({ name: 'asc', role: 'desc' });
-await users.filter({}).sort({ name: 'asc' }).skip(1);
-await users.filter({}).sort({ name: 'asc' }).skip(1).limit(2);
-await users.filter({ role: 'admin' }).count();
-await users.filter().count(true);
-const firstPage = users.filter().limit(2).cursor();
+await users.find({ role: 'member' });
+await users.find({ role: { $in: ['admin', 'member'] } });
+await users.find({}).sort({ name: 'asc', role: 'desc' });
+await users.find({}).sort({ name: 'asc' }).skip(1);
+await users.find({}).sort({ name: 'asc' }).skip(1).limit(2);
+await users.find({ role: 'admin' }).count();
+await users.find().count(true);
+const firstPage = users.find().limit(2).cursor();
 for await (const firstUser of firstPage) firstUser.name;
 firstPage.next;
 const nextPage = await users
-  .filter()
+  .find()
   .limit(2)
   .cursor(firstPage.next ?? undefined);
 for await (const nextUser of nextPage) nextUser.name;
 // @ts-expect-error Cursor positions use ObjectId values.
-await users.filter().limit(2).cursor('after');
+await users.find().limit(2).cursor('after');
 // @ts-expect-error Cursor pagination cannot be combined with skip.
-users.filter().limit(2).skip(1).cursor();
+users.find().limit(2).skip(1).cursor();
 // @ts-expect-error Cursor pagination cannot use custom sorting yet.
-users.filter().limit(2).sort({ name: 'asc' }).cursor();
-const selectedUsers = await users.filter({}).select(['name', 'role']);
+users.find().limit(2).sort({ name: 'asc' }).cursor();
+const selectedUsers = await users.find({}).select(['name', 'role']);
 selectedUsers[0].name;
 selectedUsers[0]._id;
 // @ts-expect-error Unselected fields are omitted from the result type.
 selectedUsers[0].age;
-const selectedUser = await users.find({}).select(['name']);
+const selectedUser = await users.find({}).select(['name']).first();
 selectedUser?.name;
 selectedUser?._id;
 // @ts-expect-error Unselected fields are omitted from the result type.
 selectedUser?.role;
-await users.filter({}).select();
 await users.find({}).select();
+await users.find({}).select().first();
+const firstUser = await users.find({}).first();
+firstUser?.name;
+// @ts-expect-error A first query resolves to a document and cannot chain list methods.
+users.find({}).first().limit(1);
+// @ts-expect-error Deleted query modes are only available for soft-delete schemas.
+users.find().deleted('only');
+// @ts-expect-error Permanent deletion is only available for soft-delete schemas.
+users.purge({});
 
 const profileSchema = orm.schema({
   profile: orm.object({
@@ -115,18 +123,18 @@ const accountSchema = orm.schema({
   password: orm.string().hidden(),
 });
 const accounts = db.model('accounts', accountSchema);
-const visibleAccounts = await accounts.filter();
+const visibleAccounts = await accounts.find();
 visibleAccounts[0].name;
 // @ts-expect-error Hidden fields are omitted from default results.
 visibleAccounts[0].password;
-const allAccounts = await accounts.filter().show(['password']);
+const allAccounts = await accounts.find().show(['password']);
 allAccounts[0].password;
-const explicitAccount = await accounts.find({}).select(['name']).show(['password']);
+const explicitAccount = await accounts.find({}).select(['name']).show(['password']).first();
 explicitAccount?.password;
 // @ts-expect-error _id is always included and is not a selectable field.
-await accounts.filter().select(['_id']);
+await accounts.find().select(['_id']);
 // @ts-expect-error Only hidden fields can be shown.
-await accounts.filter().show(['name']);
+await accounts.find().show(['name']);
 
 const relationGroupSchema = orm.schema({ name: orm.string() });
 const relationUserSchema = orm.schema({
@@ -140,7 +148,7 @@ void relatedUserSchema.relationMap.groupId;
 // @ts-expect-error Relations require an ObjectId field on the local schema.
 groupSchema.relations({ name: () => relationUserSchema });
 const relatedUsers = db.model('related-users', relatedUserSchema);
-const populatedUsers = await relatedUsers.filter().populate([{ ref: 'groupId', select: ['name'] }]);
+const populatedUsers = await relatedUsers.find().populate([{ ref: 'groupId', select: ['name'] }]);
 populatedUsers[0].groupId?.name;
 // @ts-expect-error Population replaces the local ObjectId with the populated document.
 const groupId: ObjectId = populatedUsers[0].groupId;
@@ -172,25 +180,25 @@ const scopedUserSchema = relationUserSchema
   .relations({ groupId: () => relationGroupSchema })
   .scopes({ detail: [{ ref: 'groupId', select: ['name'] }] });
 const scopedUsers = db.model('scoped-users', scopedUserSchema);
-const detailedUsers = await scopedUsers.filter().with('detail');
+const detailedUsers = await scopedUsers.find().with('detail');
 detailedUsers[0].groupId?.name;
 // @ts-expect-error Scope names are inferred from Schema.scopes().
-scopedUsers.filter().with('summary');
+scopedUsers.find().with('summary');
 // @ts-expect-error A query cannot combine a named scope with explicit population.
 scopedUsers
-  .filter()
+  .find()
   .with('detail')
   .populate([{ ref: 'groupId' }]);
 // @ts-expect-error A query cannot combine explicit population with a named scope.
 scopedUsers
-  .filter()
+  .find()
   .populate([{ ref: 'groupId' }])
   .with('detail');
 
-await users.filter({
+await users.find({
   $or: [{ role: 'admin' }, { name: { $regex: /^Ada/ } }],
 });
-await users.filter({
+await users.find({
   $and: [{ role: { $ne: 'member' } }, { name: { $exists: true } }],
 });
 await users.find({ name: 'Ada' });
@@ -205,20 +213,20 @@ await users.update({}, { unknown: true });
 
 const metricSchema = orm.schema({ age: orm.number() });
 const metrics = db.model('metrics', metricSchema);
-await metrics.filter({ age: { $gte: 18 } });
+await metrics.find({ age: { $gte: 18 } });
 // @ts-expect-error Number operators reject string values.
-await metrics.filter({ age: { $gte: 'adult' } });
+await metrics.find({ age: { $gte: 'adult' } });
 // @ts-expect-error Logical filters still validate each branch.
-await users.filter({ $or: [{ role: 'owner' }] });
+await users.find({ $or: [{ role: 'owner' }] });
 // @ts-expect-error Sort fields are narrowed to schema fields.
-await users.filter({}).sort({ unknown: 'asc' });
+await users.find({}).sort({ unknown: 'asc' });
 // @ts-expect-error Sort directions are restricted to asc/desc.
-await users.filter({}).sort({ name: 'ascending' });
+await users.find({}).sort({ name: 'ascending' });
 // @ts-expect-error Numeric MongoDB sort directions are intentionally not part of the API.
-await users.filter({}).sort({ name: 1 });
+await users.find({}).sort({ name: 1 });
 // @ts-expect-error Skip requires a number.
-await users.filter({}).skip('1');
+await users.find({}).skip('1');
 // @ts-expect-error Limit requires a number.
-await users.filter({}).limit('2');
+await users.find({}).limit('2');
 // @ts-expect-error Estimate must be a boolean.
-await users.filter({}).count('true');
+await users.find({}).count('true');

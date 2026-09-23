@@ -46,13 +46,13 @@ const schemas = orm.defineSchemas({ user, post }).defineRelations({ post: { auth
 This query does not load the author:
 
 ```ts
-const posts = await db.post.filter({});
+const posts = await db.post.find({});
 ```
 
 This query does:
 
 ```ts
-const posts = await db.post.filter({}).populate([{ ref: 'author', select: ['name'] }]);
+const posts = await db.post.find({}).populate([{ ref: 'author', select: ['name'] }]);
 ```
 
 Keeping population explicit makes query cost and response shape visible at the call site.

@@ -8,7 +8,7 @@ import {
 } from 'mongodb';
 
 import type { Db } from '../connection/database.js';
-import { ModelFindQuery, ModelQuery } from '../query/query.js';
+import { ModelQuery } from '../query/query.js';
 import type { ModelFilter, StoredDocument, VisibleDocument } from '../query/query.js';
 import { hasSoftDelete } from '../schema/index.js';
 import type {
@@ -133,7 +133,7 @@ export class Model<
   }
 
   /** Build a query for all documents matching a MongoDB filter. */
-  filter(
+  find(
     filter: ModelFilter<Shape> = {},
   ): ModelQuery<
     Shape,
@@ -145,29 +145,6 @@ export class Model<
     SoftDeleteEnabled<Options>
   > {
     return new ModelQuery(
-      this.collection,
-      filter,
-      this.schema.fields,
-      this.schema.hiddenFields,
-      this.db,
-      this.schema.relationMap,
-      this.schema.scopeMap,
-      hasSoftDelete(this.schema.optionsConfig),
-    );
-  }
-
-  /** Build a query for the first document matching a MongoDB filter. */
-  find(
-    filter: ModelFilter<Shape> = {},
-  ): ModelFindQuery<
-    Shape,
-    VisibleDocument<Shape>,
-    Relations,
-    Scopes,
-    'none',
-    SoftDeleteEnabled<Options>
-  > {
-    return new ModelFindQuery(
       this.collection,
       filter,
       this.schema.fields,

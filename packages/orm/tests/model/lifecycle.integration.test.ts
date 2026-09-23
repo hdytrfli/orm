@@ -25,17 +25,17 @@ describe.skipIf(!runDatabaseTests)('model lifecycle', () => {
     expect(first.createdAt).toBeInstanceOf(Date);
     expect(first.updatedAt).toBeInstanceOf(Date);
     expect(first.deletedAt).toBeNull();
-    expect(await lifecycle.filter({})).toHaveLength(2);
+    expect(await lifecycle.find({})).toHaveLength(2);
 
     const deleted = await lifecycle.delete({ _id: first._id });
     expect(deleted.deletedCount).toBe(1);
-    expect(await lifecycle.filter({})).toHaveLength(1);
-    expect(await lifecycle.filter({}).all()).toHaveLength(2);
-    expect((await lifecycle.filter({}).deleted())[0]._id).toEqual(first._id);
+    expect(await lifecycle.find({})).toHaveLength(1);
+    expect(await lifecycle.find({}).deleted('include')).toHaveLength(2);
+    expect((await lifecycle.find({}).deleted('only'))[0]._id).toEqual(first._id);
 
     const restored = await lifecycle.restore({ _id: first._id });
     expect(restored?.deletedAt).toBeNull();
-    expect(await lifecycle.filter({})).toHaveLength(2);
+    expect(await lifecycle.find({})).toHaveLength(2);
 
     const updated = await lifecycle.update({ _id: second._id }, { name: 'Alan Turing' });
     expect(updated?.name).toBe('Alan Turing');

@@ -21,7 +21,7 @@ Reuse the same `db` object for every request. Models and schemas are safe to sha
 
 ```ts
 app.get('/users', async (_request, response) => {
-  const users = await db.user.filter({ active: true });
+  const users = await db.user.find({ active: true });
   response.json(users);
 });
 ```

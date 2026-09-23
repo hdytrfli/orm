@@ -19,7 +19,7 @@ Mongorm queries are lazy, typed builders. A query is assembled synchronously and
 
 ```ts
 const page = await db.post
-  .filter({ status: 'published', authorId: authorId })
+  .find({ status: 'published', authorId: authorId })
   .sort({ publishedAt: 'desc' })
   .select(['title', 'slug', 'publishedAt'])
   .limit(20);

@@ -50,7 +50,7 @@ Services should express business operations rather than repeat connection setup:
 
 ```ts
 export function listPublishedPosts() {
-  return db.post.filter({ published: true }).sort({ publishedAt: 'desc' }).limit(20);
+  return db.post.find({ published: true }).sort({ publishedAt: 'desc' }).limit(20);
 }
 ```
 

@@ -38,7 +38,7 @@ describe('query runtime policies', () => {
       $and: [{ deletedAt: null }, filter],
     });
 
-    state.deleted();
+    state.deleted('only');
     expect(state.effectiveFilter(filter)).toEqual({
       $and: [{ deletedAt: { $ne: null } }, filter],
     });
