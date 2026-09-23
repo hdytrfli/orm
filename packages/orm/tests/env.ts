@@ -6,9 +6,9 @@ dotenv.config({
 });
 
 const schema = z.object({
-  MONGODB_URI: z.string().min(1).optional(),
-  MONGODB_DATABASE: z.string().min(1).default('mongorm_crud_test'),
+  MONGODB_URI: z.string().min(1),
+  MONGODB_DATABASE: z.string().min(1),
 });
 
-/** Optional MongoDB integration-test configuration. */
+/** Required MongoDB integration-test configuration. */
 export const env = schema.parse(process.env);
