@@ -18,6 +18,10 @@
     "type": "git",
     "url": "https://github.com/hdytrfli/orm"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "type": "module",
   "exports": {
     ".": {
@@ -29,7 +33,6 @@
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
-  "files": ["dist", "README.md"],
   "scripts": {
     "build": "tsdown",
     "test": "vitest run --config vitest.config.ts",
