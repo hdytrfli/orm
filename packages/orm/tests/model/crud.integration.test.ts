@@ -1,12 +1,13 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { ObjectId, createDatabase, orm } from '../../src/index.js';
+import { env } from '../env.js';
 
-const runDatabaseTests = Boolean(process.env.MONGODB_URI);
+const runDatabaseTests = Boolean(env.MONGODB_URI);
 
 const database = createDatabase({
-  uri: process.env.MONGODB_URI ?? 'mongodb://127.0.0.1:27017',
-  database: process.env.MONGODB_DATABASE ?? 'mongorm_crud_test',
+  uri: env.MONGODB_URI ?? 'mongodb://127.0.0.1:27017',
+  database: env.MONGODB_DATABASE,
 });
 
 const ticketSchema = orm.schema({

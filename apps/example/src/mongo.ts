@@ -1,13 +1,14 @@
 import { faker } from '@faker-js/faker';
 import { createDatabase } from '@mongorm/orm';
 
+import { env } from './env.js';
 import { schema, userSchema } from './schema/index.js';
 
-faker.seed(20260922);
+faker.seed(env.FAKER_SEED);
 
 const db = createDatabase({
-  uri: 'mongodb://root:example@127.0.0.1:27017',
-  database: 'mongorm_example',
+  uri: env.MONGODB_URI,
+  database: env.MONGODB_DATABASE,
   schema,
 });
 
