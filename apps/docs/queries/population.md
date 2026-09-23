@@ -1,6 +1,7 @@
 ---
 order: 4
 ---
+
 # Population
 
 Population loads a declared relation after the base document is read. It is explicit and typed rather than automatically applied to every query.

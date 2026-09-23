@@ -1,6 +1,7 @@
 ---
 order: 1
 ---
+
 # Application Architecture
 
 Use Mongorm as the persistence layer inside a service boundary. Route handlers should not need to know how MongoDB clients are initialized or how relation graphs are wired.

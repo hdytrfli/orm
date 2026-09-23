@@ -1,6 +1,7 @@
 ---
 order: 2
 ---
+
 # Field Types and Composition
 
 `orm` exposes the native lowercase Zod constructors available in the installed Zod version. This keeps the learning curve small: Zod documentation remains useful, and Mongorm adds only its database-specific helpers.
@@ -21,10 +22,7 @@ const schema = orm.schema({
 
 ```ts
 const state = orm.enum(['draft', 'published', 'archived']);
-const visibility = orm.union([
-  orm.literal('public'),
-  orm.literal('private'),
-]);
+const visibility = orm.union([orm.literal('public'), orm.literal('private')]);
 ```
 
 Use an enum for a closed set of named values. Use a union when variants have different shapes.

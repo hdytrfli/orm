@@ -1,6 +1,7 @@
 ---
 order: 5
 ---
+
 # Population Scopes
 
 A scope is a named population specification. It packages a relationship-loading policy without hiding the fact that related data is being fetched.
@@ -32,9 +33,7 @@ Only scopes defined for the current model can be passed to `.with()`. The popula
 Use explicit population for one-off queries:
 
 ```ts
-await db.post.filter({}).populate([
-  { ref: 'author', select: ['name'] },
-]);
+await db.post.filter({}).populate([{ ref: 'author', select: ['name'] }]);
 ```
 
 Use a scope when a shape is reused by many endpoints:

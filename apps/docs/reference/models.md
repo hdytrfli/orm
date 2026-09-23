@@ -1,6 +1,7 @@
 ---
 order: 2
 ---
+
 # Database and Models API
 
 ## `createDatabase(options)`

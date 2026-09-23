@@ -1,6 +1,7 @@
 ---
 order: 5
 ---
+
 # Mutations
 
 Mongorm exposes `create`, `update`, and `delete` on models.
@@ -19,10 +20,7 @@ Create validates the full input, generates a MongoDB `ObjectId`, inserts the doc
 ## Update
 
 ```ts
-const updated = await db.user.update(
-  { _id: userId },
-  { name: 'Ada Byron Lovelace' },
-);
+const updated = await db.user.update({ _id: userId }, { name: 'Ada Byron Lovelace' });
 ```
 
 The patch is partial and is parsed against the schema. The first matching document is updated with `$set`; the returned value is the updated document or `null` when no document matched.

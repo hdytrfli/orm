@@ -1,6 +1,7 @@
 ---
 order: 5
 ---
+
 # Troubleshooting
 
 ## `DatabaseNotConnectedError`

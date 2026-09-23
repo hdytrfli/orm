@@ -1,6 +1,7 @@
 ---
 order: 1
 ---
+
 # Schema Fundamentals
 
 The primary schema constructor is `orm.schema(shape)`. The shape is a record of Zod schemas. Mongorm retains the Zod behavior while adding MongoDB-aware fields and ORM metadata.
@@ -68,10 +69,12 @@ const order = orm.schema({
     city: orm.string(),
     postalCode: orm.string(),
   }),
-  items: orm.array(orm.object({
-    sku: orm.string(),
-    quantity: orm.number().int().positive(),
-  })),
+  items: orm.array(
+    orm.object({
+      sku: orm.string(),
+      quantity: orm.number().int().positive(),
+    }),
+  ),
 });
 ```
 

@@ -1,6 +1,7 @@
 ---
 order: 2
 ---
+
 # Selection and Projection
 
 Without `.select()`, a query returns all visible schema fields plus `_id`. Hidden fields are excluded by default.
@@ -12,9 +13,7 @@ const users = await db.user.filter({ active: true });
 ## Select Top-Level Fields
 
 ```ts
-const users = await db.user
-  .filter({ active: true })
-  .select(['name', 'email']);
+const users = await db.user.filter({ active: true }).select(['name', 'email']);
 ```
 
 `_id` remains in the result. The TypeScript result contains only `_id`, `name`, and `email` from this selection.
@@ -22,9 +21,7 @@ const users = await db.user
 ## Select Nested Paths
 
 ```ts
-const user = await db.user
-  .find({ _id: id })
-  .select(['name', 'profile.avatarUrl']);
+const user = await db.user.find({ _id: id }).select(['name', 'profile.avatarUrl']);
 ```
 
 Nested selections are normalized so a parent path does not conflict with one of its child paths. The nested result remains shaped as an object rather than a flattened key.
@@ -32,9 +29,7 @@ Nested selections are normalized so a parent path does not conflict with one of 
 ## Show Hidden Fields
 
 ```ts
-const user = await db.user
-  .find({ _id: id })
-  .show(['passwordHash']);
+const user = await db.user.find({ _id: id }).show(['passwordHash']);
 ```
 
 The field must be declared hidden in the schema and listed explicitly. Use `.show()` only where the value is required.

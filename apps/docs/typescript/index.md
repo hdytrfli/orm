@@ -1,6 +1,7 @@
 ---
 order: 4
 ---
+
 # TypeScript
 
 Mongorm uses TypeScript to make schema and query behavior visible at compile time. You do not need to manually maintain a second interface for every collection.
@@ -15,12 +16,10 @@ Mongorm uses TypeScript to make schema and query behavior visible at compile tim
 ## The Core Principle
 
 ```ts
-const users = await db.user
-  .filter({ role: 'admin' })
-  .select(['email', 'name']);
+const users = await db.user.filter({ role: 'admin' }).select(['email', 'name']);
 
 users[0].email; // string
-users[0].name;  // string
+users[0].name; // string
 // users[0].passwordHash; // compile-time error when hidden
 ```
 

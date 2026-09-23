@@ -1,6 +1,7 @@
 ---
 order: 3
 ---
+
 # Queries
 
 Mongorm queries are lazy, typed builders. A query is assembled synchronously and executed when awaited or iterated. This makes it easy to compose filters, sorting, limits, projections, and population in a readable order.

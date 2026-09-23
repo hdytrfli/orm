@@ -1,6 +1,7 @@
 ---
 order: 2
 ---
+
 # Security and Data Exposure
 
 Treat every query result as an output contract. The safest default is to return less data than the database contains.
@@ -20,9 +21,7 @@ Use `.show()` only inside a narrowly scoped credential or security service.
 ## Select Public Fields
 
 ```ts
-const publicUsers = await db.user
-  .filter({ active: true })
-  .select(['name', 'avatarUrl']);
+const publicUsers = await db.user.filter({ active: true }).select(['name', 'avatarUrl']);
 ```
 
 Explicit selection protects endpoints from exposing fields added later to a schema.

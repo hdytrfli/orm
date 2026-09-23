@@ -1,6 +1,7 @@
 ---
 order: 4
 ---
+
 # Registries and Relations
 
 Relations are declared after schemas exist. This two-step design supports circular graphs and keeps each schema's document shape independent from how the application chooses to load related documents.
@@ -37,9 +38,7 @@ const post = orm.schema({
   authorId: orm.objectId(),
 });
 
-const schemas = orm
-  .defineSchemas({ user, post })
-  .defineRelations({ post: { authorId: 'user' } });
+const schemas = orm.defineSchemas({ user, post }).defineRelations({ post: { authorId: 'user' } });
 ```
 
 ## Relations Are Opt-In
@@ -53,9 +52,7 @@ const posts = await db.post.filter({});
 This query does:
 
 ```ts
-const posts = await db.post
-  .filter({})
-  .populate([{ ref: 'author', select: ['name'] }]);
+const posts = await db.post.filter({}).populate([{ ref: 'author', select: ['name'] }]);
 ```
 
 Keeping population explicit makes query cost and response shape visible at the call site.

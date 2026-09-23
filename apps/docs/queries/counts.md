@@ -1,14 +1,13 @@
 ---
 order: 6
 ---
+
 # Counts
 
 Call `.count()` on a list query to count documents matching its filter.
 
 ```ts
-const activeCount = await db.user
-  .filter({ active: true })
-  .count();
+const activeCount = await db.user.filter({ active: true }).count();
 ```
 
 The default is an exact `countDocuments()` operation and respects the query filter.

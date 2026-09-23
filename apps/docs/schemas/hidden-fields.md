@@ -1,6 +1,7 @@
 ---
 order: 3
 ---
+
 # Hidden Fields
 
 Mark a field with `.hidden()` when it should be stored and validated but excluded from the default result projection.
@@ -26,9 +27,7 @@ The result includes visible fields and `_id`, but not `passwordHash` or `recover
 Use `.show()` only in the narrow service that needs the field:
 
 ```ts
-const account = await db.user
-  .find({ email: 'ada@example.com' })
-  .show(['passwordHash']);
+const account = await db.user.find({ email: 'ada@example.com' }).show(['passwordHash']);
 ```
 
 The returned type includes the shown field. Keep this operation close to authentication or another explicit security boundary.
@@ -38,10 +37,7 @@ The returned type includes the shown field. Keep this operation close to authent
 Selection and showing fields are separate concerns:
 
 ```ts
-const account = await db.user
-  .find({ _id: id })
-  .select(['email'])
-  .show(['passwordHash']);
+const account = await db.user.find({ _id: id }).select(['email']).show(['passwordHash']);
 ```
 
 Use this sparingly. A safer pattern is to keep credential verification in a dedicated function that never returns the full account object.

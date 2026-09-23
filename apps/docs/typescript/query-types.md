@@ -1,6 +1,7 @@
 ---
 order: 2
 ---
+
 # Typed Query Composition
 
 Query methods are designed to transform the result type as the query changes.
@@ -8,9 +9,7 @@ Query methods are designed to transform the result type as the query changes.
 ## Selection Narrows
 
 ```ts
-const users = await db.user
-  .filter({ active: true })
-  .select(['name', 'email']);
+const users = await db.user.filter({ active: true }).select(['name', 'email']);
 
 const first = users[0];
 first.name;
@@ -23,9 +22,7 @@ The selection list is checked against schema keys. Misspelled fields fail during
 ## Nested Selection Preserves Shape
 
 ```ts
-const users = await db.user
-  .filter()
-  .select(['name', 'profile.avatarUrl']);
+const users = await db.user.filter().select(['name', 'profile.avatarUrl']);
 
 users[0].profile.avatarUrl;
 ```
@@ -35,9 +32,7 @@ The path is represented as a nested object in the result type.
 ## Population Adds Relations
 
 ```ts
-const posts = await db.post.filter({}).populate([
-  { ref: 'author', select: ['name'] },
-]);
+const posts = await db.post.filter({}).populate([{ ref: 'author', select: ['name'] }]);
 
 posts[0].author?.name;
 ```

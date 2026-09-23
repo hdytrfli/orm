@@ -1,6 +1,7 @@
 ---
 order: 1
 ---
+
 # Query Fundamentals
 
 Models expose two read builders:
@@ -32,10 +33,7 @@ This applies to both `filter()` and `find()`. Use the explicit methods instead o
 The builders implement `PromiseLike`, so `await` executes the query:
 
 ```ts
-const users = await db.user
-  .filter({ role: 'admin' })
-  .sort({ createdAt: 'desc' })
-  .limit(50);
+const users = await db.user.filter({ role: 'admin' }).sort({ createdAt: 'desc' }).limit(50);
 ```
 
 Keep query construction close to the operation that executes it. A query can be passed through a service boundary, but do not accidentally retain a builder when the function contract promises data.
@@ -47,10 +45,7 @@ Field conditions use MongoDB driver condition types:
 ```ts
 const users = await db.user.filter({
   age: { $gte: 18, $lt: 65 },
-  $or: [
-    { role: 'admin' },
-    { role: 'moderator' },
-  ],
+  $or: [{ role: 'admin' }, { role: 'moderator' }],
 });
 ```
 

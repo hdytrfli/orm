@@ -1,6 +1,7 @@
 ---
 order: 4
 ---
+
 # Errors
 
 Mongorm exposes purpose-specific errors for invalid runtime states.

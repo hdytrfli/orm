@@ -1,6 +1,7 @@
 ---
 order: 3
 ---
+
 # Performance
 
 Mongorm makes query intent visible, but MongoDB performance still depends on data volume, indexes, selectivity, and execution plans.

@@ -1,6 +1,7 @@
 ---
 order: 3
 ---
+
 # Project Structure
 
 A useful application separates schema design from connection lifecycle and business operations.
@@ -49,10 +50,7 @@ Services should express business operations rather than repeat connection setup:
 
 ```ts
 export function listPublishedPosts() {
-  return db.post
-    .filter({ published: true })
-    .sort({ publishedAt: 'desc' })
-    .limit(20);
+  return db.post.filter({ published: true }).sort({ publishedAt: 'desc' }).limit(20);
 }
 ```
 

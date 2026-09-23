@@ -1,6 +1,7 @@
 ---
 order: 3
 ---
+
 # Sorting, Limits, and Pagination
 
 ## Sorting
@@ -8,9 +9,7 @@ order: 3
 Sort keys are schema-derived and directions are `'asc'` or `'desc'`:
 
 ```ts
-const posts = await db.post
-  .filter({ published: true })
-  .sort({ publishedAt: 'desc' });
+const posts = await db.post.filter({ published: true }).sort({ publishedAt: 'desc' });
 ```
 
 Use a stable sort for user-facing pagination. Cursor pagination uses `_id` ascending internally.

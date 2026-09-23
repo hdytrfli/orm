@@ -1,6 +1,7 @@
 ---
 order: 2
 ---
+
 # Quick Start
 
 This example builds a small blog with users, posts, a relation, a hidden credential, a named scope, and a typed query.
@@ -36,10 +37,12 @@ const schemas = orm
   })
   .defineScopes({
     post: {
-      detail: [{
-        ref: 'author',
-        select: ['name', 'email'],
-      }],
+      detail: [
+        {
+          ref: 'author',
+          select: ['name', 'email'],
+        },
+      ],
     },
   });
 ```

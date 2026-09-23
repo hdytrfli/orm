@@ -1,6 +1,7 @@
 ---
 order: 2
 ---
+
 # Schemas
 
 Schemas are the source of truth for document validation, field inference, hidden-field behavior, relation keys, and the public shape of query results.

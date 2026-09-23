@@ -1,6 +1,7 @@
 ---
 order: 4
 ---
+
 # Compiler and Runtime Boundaries
 
 TypeScript and Zod protect different moments in the data lifecycle.

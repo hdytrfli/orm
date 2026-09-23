@@ -1,6 +1,7 @@
 ---
 order: 1
 ---
+
 # Inference Fundamentals
 
 Mongorm infers document types from the schema instead of asking you to duplicate them in interfaces.

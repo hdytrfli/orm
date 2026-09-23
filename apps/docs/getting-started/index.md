@@ -1,6 +1,7 @@
 ---
 order: 1
 ---
+
 # Getting Started
 
 This section takes you from an empty TypeScript project to a working Mongorm data layer. It explains installation, connection ownership, the smallest useful schema, and the conventions used throughout the rest of the documentation.
