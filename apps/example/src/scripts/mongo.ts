@@ -1,16 +1,11 @@
 import { faker } from '@faker-js/faker';
-import { createDatabase } from '@mongorm/orm';
 
-import { env } from './env.js';
-import { schema, userSchema } from './schema/index.js';
+import { db } from '@/libs/database';
+import { env } from '@/libs/env';
+import { schema, userSchema } from '@/schemas';
+import { log } from '@/utils/logger';
 
 faker.seed(env.FAKER_SEED);
-
-const db = createDatabase({
-  uri: env.MONGODB_URI,
-  database: env.MONGODB_DATABASE,
-  schema,
-});
 
 await db.connect();
 
@@ -46,10 +41,10 @@ try {
   };
 
   const validated = userSchema.parse(userData);
-  console.log('validated:', validated);
+  log('validated', validated);
 
   const user = await db.users.create(validated);
-  console.log('created:', user);
+  log('created', user);
 
   const another = await db.users.create({
     name: 'Alan Turing',
@@ -96,19 +91,19 @@ try {
     .select(['name', 'group', 'profile.location.city']);
 
   if (!found) throw new Error('User not found');
-  console.log(found.profile.location.city);
+  log('city', found.profile.location.city);
 
-  console.log('found:', found);
-  console.log(
-    'populated:',
+  log('found', found);
+  log(
+    'populated',
     await db.users
       .find({ _id: user._id })
       .populate([{ ref: 'group', populate: [{ ref: 'creator' }] }])
       .withDeleted(),
   );
-  console.log('with detail:', await db.users.find({ _id: user._id }).with('detail'));
-  console.log('with hidden field:', await db.users.find({ _id: user._id }).show(['password']));
-  console.log('filtered simple:', await db.users.filter({ role: 'admin' }));
+  log('with detail', await db.users.find({ _id: user._id }).with('detail'));
+  log('with hidden field', await db.users.find({ _id: user._id }).show(['password']));
+  log('filtered simple', await db.users.filter({ role: 'admin' }));
 
   const filteredSorted = await db.users
     .filter({ $or: [{ role: 'admin' }, { age: { $gte: 18 } }] })
@@ -117,48 +112,48 @@ try {
     .skip(1)
     .limit(3);
 
-  console.log('filtered sorted with skip:', {
+  log('filtered sorted with skip', {
     count: filteredSorted.length,
     preview: filteredSorted.slice(0, 3),
   });
 
-  console.log(
-    'filtered with or:',
+  log(
+    'filtered with or',
     await db.users.filter({ $or: [{ role: 'admin' }, { age: { $gte: 18 } }] }).limit(2),
   );
 
-  console.log(
-    'filtered with and:',
+  log(
+    'filtered with and',
     await db.users.filter({ $and: [{ role: 'member' }, { age: { $gte: 18 } }] }).limit(2),
   );
-  console.log('exact count:', await db.users.filter({ role: 'admin' }).count());
-  console.log('estimated count:', await db.users.filter().count(true));
+  log('exact count', await db.users.filter({ role: 'admin' }).count());
+  log('estimated count', await db.users.filter().withDeleted().count(true));
 
   const test = await db.users.filter().sort({ _id: 'asc' }).limit(6);
-  console.log('test:', test);
+  log('test', test);
 
   let count = 0;
 
   const first = db.users.filter().limit(3).cursor();
-  for await (const item of first) console.log({ count: ++count, item });
+  for await (const item of first) log('cursor item', { count: ++count, item });
 
   const next = first.next ?? undefined;
   const second = db.users.filter().limit(3).cursor(next);
-  for await (const item of second) console.log({ count: ++count, item });
+  for await (const item of second) log('cursor item', { count: ++count, item });
 
-  console.log('cursor pages:', { next: second.next });
-  console.log('updated:', await db.users.update({ _id: user._id }, { role: 'admin', age: 20 }));
-  console.log('deleted:', await db.users.delete({ _id: { $in: [user._id, another._id] } }));
+  log('cursor pages', { next: second.next });
+  log('updated', await db.users.update({ _id: user._id }, { role: 'admin', age: 20 }));
+  log('deleted', await db.users.delete({ _id: { $in: [user._id, another._id] } }));
 
   if (found) {
     const groupRelation = schema.users.relationMap.group;
     const relatedGroupModel = db.model('groups', groupRelation.resolve());
 
-    console.log('relation path:', 'group');
-    console.log('relation value:', found.group);
+    log('relation path', 'group');
+    log('relation value', found.group);
 
     const relatedGroup = await relatedGroupModel.find({ _id: found.group });
-    console.log('related group:', relatedGroup);
+    log('related group', relatedGroup);
   }
 } finally {
   await db.disconnect();

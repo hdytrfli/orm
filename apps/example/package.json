@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "db": "pnpm --filter @mongorm/orm run build && tsx src/mongo.ts",
+    "db": "pnpm --filter @mongorm/orm run build && tsx src/scripts/mongo.ts",
     "dev": "tsx src/index.ts",
     "typecheck": "tsc --noEmit"
   },
@@ -11,6 +11,8 @@
     "@faker-js/faker": "^10.6.0",
     "@mongorm/orm": "workspace:*",
     "dotenv": "^17.2.2",
+    "pino": "^9.14.0",
+    "pino-pretty": "^13.1.2",
     "zod": "^4.6.5"
   },
   "devDependencies": {

@@ -1,12 +1,12 @@
 import { orm } from '@mongorm/orm';
 
-import { companySchema } from './company.js';
-import { groupSchema } from './group.js';
-import { userSchema } from './user.js';
+import { companySchema } from '@/schemas/company';
+import { groupSchema } from '@/schemas/group';
+import { userSchema } from '@/schemas/user';
 
-export { companySchema } from './company.js';
-export { groupSchema } from './group.js';
-export { userSchema } from './user.js';
+export { companySchema } from '@/schemas/company';
+export { groupSchema } from '@/schemas/group';
+export { userSchema } from '@/schemas/user';
 
 export const schema = orm
   .defineSchemas({
