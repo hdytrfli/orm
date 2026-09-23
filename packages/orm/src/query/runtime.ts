@@ -13,10 +13,15 @@ export type RuntimePopulateSpec = {
 export type DeletedMode = 'active' | 'all' | 'deleted';
 
 export const normalizeProjectionFields = (fields: readonly string[]): string[] => {
-  const unique = [...new Set(fields)];
-  return unique.filter(
-    (field) => !unique.some((parent) => parent !== field && field.startsWith(`${parent}.`)),
-  );
+  const unique = new Set(fields);
+  return [...unique].filter((field) => {
+    let separator = field.indexOf('.');
+    while (separator !== -1) {
+      if (unique.has(field.slice(0, separator))) return false;
+      separator = field.indexOf('.', separator + 1);
+    }
+    return true;
+  });
 };
 
 export const projectionFor = (
