@@ -19,15 +19,15 @@
     "lint:fix": "oxlint --fix packages apps",
     "test": "pnpm --filter @mongorm/orm run test",
     "typecheck": "pnpm --filter @mongorm/orm run typecheck && pnpm --filter @mongorm/orm run build && pnpm --filter @mongorm/example run typecheck",
-    "version:bump": "node scripts/bump-version.mjs"
+    "version:bump": "bumpp --recursive"
   },
   "devDependencies": {
     "@types/node": "^26.6.2",
+    "bumpp": "^12.3.0",
     "concurrently": "^10.0.5",
     "lefthook": "^2.1.14",
     "oxfmt": "^0.68.0",
     "oxlint": "^1.83.0",
-    "semver": "^7.8.5",
     "tsdown": "^0.23.0",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"
