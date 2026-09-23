@@ -4,8 +4,8 @@ import { log } from '@/utils/logger';
 await db.connect();
 
 try {
-  log('application', 'Mongorm example is connected');
-  log('models', ['users', 'groups', 'companies']);
+  log.info({ context: 'application', value: 'Mongorm example is connected' }, 'data');
+  log.info({ context: 'models', value: ['users', 'groups', 'companies'] }, 'data');
 } finally {
   await db.disconnect();
 }

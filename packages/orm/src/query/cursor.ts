@@ -1,14 +1,7 @@
 import { ObjectId, type FindCursor, type WithId } from 'mongodb';
 
 import type { SchemaShape } from '../schema/contracts.js';
-import type { StoredDocument } from './query.js';
-
-/** A cursor factory is available only while a query is cursor-compatible. */
-export type CursorMethod<
-  Shape extends SchemaShape,
-  Result extends object,
-  Ready extends boolean,
-> = Ready extends true ? (after?: ObjectId) => ModelCursor<Shape, Result> : undefined;
+import type { StoredDocument } from './types.js';
 
 /** A lazy async iterable for one cursor-pagination page. */
 export class ModelCursor<
