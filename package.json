@@ -26,11 +26,10 @@
     "fix": "oxfmt && oxlint --fix",
     "check": "pnpm --recursive typecheck && oxlint && oxfmt --check",
     "typecheck": "pnpm --recursive typecheck",
-    "version:bump": "bumpp"
+    "version:bump": "pnpm --filter @mongorm/orm run version:bump"
   },
   "devDependencies": {
     "@types/node": "^26.6.2",
-    "bumpp": "^12.3.0",
     "lefthook": "^2.1.14",
     "oxfmt": "^0.68.0",
     "oxlint": "^1.83.0",

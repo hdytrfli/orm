@@ -210,9 +210,6 @@ importers:
       '@types/node':
         specifier: ^26.6.2
         version: 26.6.2
-      bumpp:
-        specifier: ^12.3.0
-        version: 12.3.0
       lefthook:
         specifier: ^2.1.14
         version: 2.1.14
@@ -284,6 +281,9 @@ importers:
       '@types/node':
         specifier: ^26.6.2
         version: 26.6.2
+      bumpp:
+        specifier: ^12.3.0
+        version: 12.3.0
       dotenv:
         specifier: ^17.2.2
         version: 17.4.2

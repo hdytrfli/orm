@@ -32,7 +32,8 @@
   "scripts": {
     "build": "tsdown",
     "test": "vitest run --config vitest.config.ts",
-    "typecheck": "pnpm build && tsc --noEmit"
+    "typecheck": "pnpm build && tsc --noEmit",
+    "version:bump": "bumpp"
   },
   "dependencies": {
     "mongodb": "^7.6.0",
@@ -40,6 +41,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.2",
+    "bumpp": "^12.3.0",
     "dotenv": "^17.2.2"
   }
 }
