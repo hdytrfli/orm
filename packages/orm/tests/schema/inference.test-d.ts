@@ -48,6 +48,16 @@ void member;
 declare const db: Db;
 const users = db.model('users', userSchema);
 await users.create({ name: 'Ada', role: 'member' });
+
+const defaultedSchema = orm.schema({ status: orm.string().default('pending') });
+const defaultedModel = db.model('defaulted', defaultedSchema);
+await defaultedModel.create({});
+const defaultedDocument: Infer<typeof defaultedSchema> = { _id: userId, status: 'pending' };
+void defaultedDocument;
+// @ts-expect-error Defaulted fields are required in persisted documents.
+const missingDefault: Infer<typeof defaultedSchema> = { _id: userId };
+void missingDefault;
+
 await users.filter({ role: 'member' });
 await users.filter({ role: { $in: ['admin', 'member'] } });
 await users.filter({}).sort({ name: 'asc', role: 'desc' });

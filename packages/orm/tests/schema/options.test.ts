@@ -25,4 +25,11 @@ describe('schema options', () => {
       'managed by Mongorm',
     );
   });
+
+  it('uses defaults for optional input and required parsed output', () => {
+    const account = orm.schema({ status: orm.string().default('pending') });
+    const parsed = account.parse({});
+
+    expect(parsed.status).toBe('pending');
+  });
 });
