@@ -11,13 +11,18 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
           version: 11.27.1
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm check
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run checks
+        run: pnpm check

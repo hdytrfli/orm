@@ -7,16 +7,12 @@
   "author": "",
   "type": "module",
   "scripts": {
-    "build": "pnpm --recursive --if-present --parallel run build",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
-    "dev": "pnpm --recursive --parallel --filter './apps/*' run dev",
-    "docs:build": "pnpm --filter @mongorm/docs run build",
-    "format": "oxfmt .",
-    "format:check": "oxfmt --check .",
-    "lint": "oxlint packages apps",
-    "lint:fix": "oxlint --fix packages apps",
-    "test": "pnpm --recursive --if-present run test",
-    "typecheck": "pnpm build && pnpm --recursive --if-present run typecheck",
+    "test": "pnpm --recursive test",
+    "build": "pnpm --recursive build",
+    "dev": "pnpm --recursive dev",
+    "fix": "oxfmt && oxlint --fix",
+    "check": "pnpm --recursive typecheck && oxlint && oxfmt --check",
+    "typecheck": "pnpm --recursive typecheck",
     "version:bump": "bumpp --recursive"
   },
   "devDependencies": {
