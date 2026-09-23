@@ -74,11 +74,13 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
     documents: Result[],
     specs: readonly RuntimePopulateSpec[],
   ): Promise<Result[]> {
-    for (const document of documents) {
-      for (const spec of specs) {
-        await this.populateDocument(document as Record<string, unknown>, spec, this.relations);
-      }
-    }
+    await Promise.all(
+      documents.map(async (document) => {
+        for (const spec of specs) {
+          await this.populateDocument(document as Record<string, unknown>, spec, this.relations);
+        }
+      }),
+    );
     return documents;
   }
 
