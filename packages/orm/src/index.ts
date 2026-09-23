@@ -3,6 +3,7 @@ export { orm } from './api.js';
 export { Schema } from './schema/index.js';
 export type { Infer, InferShape } from './schema/index.js';
 export type { SchemaDefinition, SchemaShape } from './schema/index.js';
+export type { ManagedField, SchemaOptions } from './schema/index.js';
 export type {
   RefDefinition,
   RefField,

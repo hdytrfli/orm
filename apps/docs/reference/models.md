@@ -46,4 +46,12 @@ Parses a partial patch, applies `$set` to the first matching document, and retur
 
 ## `Model.delete(filter)`
 
-Deletes all matching documents and returns MongoDB's `DeleteResult`.
+Deletes all matching documents and returns MongoDB's `DeleteResult`. For a soft-delete schema, it marks active matching documents with `deletedAt` instead.
+
+## `Model.restore(filter)`
+
+Restores the first matching soft-deleted document by setting `deletedAt` to `null`.
+
+## `Model.forceDelete(filter)`
+
+Permanently deletes all matching documents, including soft-deleted documents.

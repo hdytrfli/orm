@@ -13,6 +13,23 @@ const user = orm.schema({
 });
 ```
 
+## Managed Persistence Options
+
+Add built-in lifecycle fields after defining the document shape:
+
+```ts
+const user = orm
+  .schema({
+    email: orm.string().email(),
+    name: orm.string(),
+  })
+  .options({ timestamps: true, softDelete: true });
+```
+
+`timestamps: true` adds `createdAt` and `updatedAt` dates. Mongorm sets both on creation and refreshes `updatedAt` on updates and soft deletion. `softDelete: true` adds nullable `deletedAt`, hides deleted documents from normal queries, and makes `delete()` mark documents as deleted instead of removing them.
+
+Managed fields are not accepted as normal create or update input. They are owned by Mongorm. Use `withDeleted()` to include deleted documents, `onlyDeleted()` to inspect the deleted set, `restore()` to recover a document, and `forceDelete()` for permanent removal.
+
 ## Parsing and Inference
 
 The schema parses input at write boundaries and supplies the source for inferred types.

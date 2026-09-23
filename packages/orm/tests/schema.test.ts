@@ -27,6 +27,29 @@ describe('schema', () => {
     });
   });
 
+  it('adds managed timestamp and soft-delete fields through schema options', () => {
+    const account = orm
+      .schema({ name: orm.string() })
+      .options({ timestamps: true, softDelete: true });
+
+    const parsed = account.parse({ name: 'Ada' });
+
+    expect(parsed.name).toBe('Ada');
+    expect(parsed.createdAt).toBeInstanceOf(Date);
+    expect(parsed.updatedAt).toBeInstanceOf(Date);
+    expect(parsed.deletedAt).toBeNull();
+    expect(account.optionsConfig).toEqual({ timestamps: true, softDelete: true });
+  });
+
+  it('rejects managed field name collisions', () => {
+    expect(() => orm.schema({ createdAt: orm.string() }).options({ timestamps: true })).toThrow(
+      'managed by Mongorm',
+    );
+    expect(() => orm.schema({ deletedAt: orm.date() }).options({ softDelete: true })).toThrow(
+      'managed by Mongorm',
+    );
+  });
+
   it('preserves hidden metadata through common Zod wrappers', () => {
     const account = orm.schema({
       email: orm.string().email(),

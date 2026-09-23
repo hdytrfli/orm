@@ -36,7 +36,14 @@ const result = await db.user.delete({ _id: userId });
 console.log(result.deletedCount);
 ```
 
-Delete removes every document matching the filter. Always use a precise filter for production data and consider requiring an explicit confirmation for broad administrative operations.
+On a normal schema, delete removes every document matching the filter. On a schema with `softDelete: true`, it sets `deletedAt` and leaves the document stored:
+
+```ts
+await db.user.delete({ _id: userId });
+await db.user.restore({ _id: userId });
+```
+
+Use `forceDelete()` to permanently remove matching documents, including documents already soft-deleted. Always use a precise filter for production data and consider requiring an explicit confirmation for broad administrative operations.
 
 ## Mutation Transactions
 

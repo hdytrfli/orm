@@ -18,15 +18,20 @@ const ticketSchema = orm.schema({
 });
 const ownerSchema = orm.schema({ name: orm.string() });
 const relatedTicketSchema = ticketSchema.relations({ owner: () => ownerSchema });
+const lifecycleSchema = orm
+  .schema({ name: orm.string() })
+  .options({ timestamps: true, softDelete: true });
 
 const owners = database.model('owners', ownerSchema);
 const tickets = database.model('tickets', relatedTicketSchema);
+const lifecycle = database.model('lifecycle', lifecycleSchema);
 
 describe.skipIf(!runDatabaseTests)('database CRUD', () => {
   beforeAll(() => database.connect());
   beforeEach(async () => {
     await tickets.delete({});
     await owners.delete({});
+    await lifecycle.forceDelete({});
   });
   afterAll(() => database.disconnect());
 
@@ -111,5 +116,29 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     const deleted = await tickets.delete({ owner: otherOwner._id });
     expect(deleted.deletedCount).toBe(1);
     expect(await tickets.filter({})).toHaveLength(2);
+  });
+
+  it('manages timestamps and soft deletion', async () => {
+    const first = await lifecycle.create({ name: 'Ada' });
+    const second = await lifecycle.create({ name: 'Alan' });
+
+    expect(first.createdAt).toBeInstanceOf(Date);
+    expect(first.updatedAt).toBeInstanceOf(Date);
+    expect(first.deletedAt).toBeNull();
+    expect(await lifecycle.filter({})).toHaveLength(2);
+
+    const deleted = await lifecycle.delete({ _id: first._id });
+    expect(deleted.deletedCount).toBe(1);
+    expect(await lifecycle.filter({})).toHaveLength(1);
+    expect(await lifecycle.filter({}).withDeleted()).toHaveLength(2);
+    expect((await lifecycle.filter({}).onlyDeleted())[0]._id).toEqual(first._id);
+
+    const restored = await lifecycle.restore({ _id: first._id });
+    expect(restored?.deletedAt).toBeNull();
+    expect(await lifecycle.filter({})).toHaveLength(2);
+
+    const updated = await lifecycle.update({ _id: second._id }, { name: 'Alan Turing' });
+    expect(updated?.name).toBe('Alan Turing');
+    expect(updated?.updatedAt.getTime()).toBeGreaterThanOrEqual(second.updatedAt.getTime());
   });
 });

@@ -205,6 +205,7 @@ export class ModelQuery<
   private shownFields: readonly string[] = [];
   private populateSpecs: PopulateSpecs<Relations> = [];
   private populationMode: PopulationMode = 'none';
+  private deletedMode: 'active' | 'all' | 'deleted' = 'active';
   readonly cursor = ((after?: ObjectId) => this.createCursor(after)) as CursorMethod<
     Shape,
     Result,
@@ -219,7 +220,27 @@ export class ModelQuery<
     private readonly db: Db,
     private readonly relations: Relations,
     private readonly scopes: Scopes,
+    private readonly softDelete: boolean,
   ) {}
+
+  /** Include both active and soft-deleted documents in this query. */
+  withDeleted(): this {
+    this.deletedMode = 'all';
+    return this;
+  }
+
+  /** Restrict this query to soft-deleted documents. */
+  onlyDeleted(): this {
+    this.deletedMode = 'deleted';
+    return this;
+  }
+
+  private effectiveFilter(): ModelFilter<Shape> {
+    if (!this.softDelete || this.deletedMode === 'all') return this.filterSpec;
+    const deletionFilter =
+      this.deletedMode === 'deleted' ? { deletedAt: { $ne: null } } : { deletedAt: null };
+    return { $and: [deletionFilter, this.filterSpec] } as ModelFilter<Shape>;
+  }
 
   /** Sort results by one or more schema fields. */
   sort(spec: ModelSort<Shape>): ModelQuery<Shape, Result, false, Relations, Scopes, Mode> {
@@ -347,12 +368,17 @@ export class ModelQuery<
   /** Count matching documents, optionally using MongoDB's collection estimate. */
   async count(estimate = false): Promise<number> {
     if (estimate) {
-      if (Object.keys(this.filterSpec).length > 0) {
+      if (
+        Object.keys(this.filterSpec).length > 0 ||
+        (this.softDelete && this.deletedMode !== 'all')
+      ) {
         throw new EstimatedCountError();
       }
       return this.collection.estimatedDocumentCount();
     }
-    return this.collection.countDocuments(this.filterSpec as MongoFilter<StoredDocument<Shape>>);
+    return this.collection.countDocuments(
+      this.effectiveFilter() as MongoFilter<StoredDocument<Shape>>,
+    );
   }
 
   /** Return one `_id`-ordered page and the cursor for the next page. */
@@ -370,7 +396,8 @@ export class ModelQuery<
       }
     }
 
-    const filter = after ? { $and: [this.filterSpec, { _id: { $gt: after } }] } : this.filterSpec;
+    const baseFilter = this.effectiveFilter();
+    const filter = after ? { $and: [baseFilter, { _id: { $gt: after } }] } : baseFilter;
     return new ModelCursor<Shape, Result>(() => {
       let cursor = this.collection
         .find(filter as MongoFilter<StoredDocument<Shape>>)
@@ -390,7 +417,7 @@ export class ModelQuery<
   }
 
   private execute(): Promise<Result[]> {
-    let cursor = this.collection.find(this.filterSpec as MongoFilter<StoredDocument<Shape>>);
+    let cursor = this.collection.find(this.effectiveFilter() as MongoFilter<StoredDocument<Shape>>);
     if (this.sortSpec) {
       cursor = cursor.sort(this.sortSpec as Sort);
     }
@@ -485,6 +512,7 @@ export class ModelFindQuery<
   private shownFields: readonly string[] = [];
   private populateSpecs: PopulateSpecs<Relations> = [];
   private populationMode: PopulationMode = 'none';
+  private deletedMode: 'active' | 'all' | 'deleted' = 'active';
 
   constructor(
     private readonly collection: Collection<StoredDocument<Shape>>,
@@ -494,7 +522,27 @@ export class ModelFindQuery<
     private readonly db: Db,
     private readonly relations: Relations,
     private readonly scopes: Scopes,
+    private readonly softDelete: boolean,
   ) {}
+
+  /** Include both active and soft-deleted documents in this query. */
+  withDeleted(): this {
+    this.deletedMode = 'all';
+    return this;
+  }
+
+  /** Restrict this query to soft-deleted documents. */
+  onlyDeleted(): this {
+    this.deletedMode = 'deleted';
+    return this;
+  }
+
+  private effectiveFilter(): ModelFilter<Shape> {
+    if (!this.softDelete || this.deletedMode === 'all') return this.filterSpec;
+    const deletionFilter =
+      this.deletedMode === 'deleted' ? { deletedAt: { $ne: null } } : { deletedAt: null };
+    return { $and: [deletionFilter, this.filterSpec] } as ModelFilter<Shape>;
+  }
 
   /** Return only selected fields, while retaining MongoDB's default `_id`. */
   select<Keys extends SelectableKey<Shape> = never>(
@@ -592,7 +640,7 @@ export class ModelFindQuery<
           }
         : undefined;
     return this.collection
-      .findOne(this.filterSpec as MongoFilter<StoredDocument<Shape>>, options)
+      .findOne(this.effectiveFilter() as MongoFilter<StoredDocument<Shape>>, options)
       .then(async (document) => {
         if (!document) return null;
         const result = document as unknown as Result;

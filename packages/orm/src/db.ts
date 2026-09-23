@@ -10,6 +10,7 @@ import { DatabaseNotConnectedError } from './errors/errors.js';
 import { Model } from './model.js';
 import type {
   Schema,
+  SchemaOptions,
   SchemaLike,
   SchemaShape,
   SchemaRelationMap,
@@ -32,8 +33,8 @@ export interface DbOptions<Registry extends SchemaRegistry = SchemaRegistry> {
 }
 
 type ModelForSchema<SchemaType> =
-  SchemaType extends Schema<infer Shape, infer Relations, infer Scopes>
-    ? Model<Shape, Relations, Scopes>
+  SchemaType extends Schema<infer Shape, infer Relations, infer Scopes, infer Options>
+    ? Model<Shape, Relations, Scopes, Options>
     : never;
 
 export type DatabaseModels<Registry extends SchemaRegistry> = {
@@ -81,7 +82,11 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
     Shape extends SchemaShape,
     Relations extends SchemaRelationMap,
     Scopes extends ScopeDefinitions,
-  >(name: string, schema: Schema<Shape, Relations, Scopes>): Model<Shape, Relations, Scopes> {
+    Options extends SchemaOptions,
+  >(
+    name: string,
+    schema: Schema<Shape, Relations, Scopes, Options>,
+  ): Model<Shape, Relations, Scopes, Options> {
     this.schemaCollections.set(schema, name);
     return new Model(this, name, schema);
   }

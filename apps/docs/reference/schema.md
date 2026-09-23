@@ -31,6 +31,20 @@ Creates a Zod field for MongoDB `ObjectId` values.
 
 Marks a field as excluded from default model projections. Hidden fields can be requested explicitly with `.show()`.
 
+## `schema.options(options)`
+
+Enables managed persistence behavior once per schema:
+
+```ts
+const user = orm.schema({ name: orm.string() }).options({
+  timestamps: true,
+  softDelete: true,
+});
+```
+
+- `timestamps` manages `createdAt` and `updatedAt`.
+- `softDelete` manages nullable `deletedAt` and filters deleted documents from normal reads.
+
 ## `orm.defineSchemas(registry)`
 
 Creates a typed registry from named schemas.

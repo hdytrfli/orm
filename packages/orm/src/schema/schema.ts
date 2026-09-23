@@ -14,6 +14,30 @@ import type {
   SchemaLike,
 } from './relations.js';
 
+/** Built-in persistence behavior applied by a schema. */
+export interface SchemaOptions {
+  readonly timestamps?: boolean;
+  readonly softDelete?: boolean;
+}
+
+type TimestampShape = {
+  createdAt: z.ZodDefault<z.ZodDate>;
+  updatedAt: z.ZodDefault<z.ZodDate>;
+};
+
+type SoftDeleteShape = {
+  deletedAt: z.ZodDefault<z.ZodNullable<z.ZodDate>>;
+};
+
+type ManagedShape<Options extends SchemaOptions> = (Options['timestamps'] extends true
+  ? TimestampShape
+  : {}) &
+  (Options['softDelete'] extends true ? SoftDeleteShape : {});
+
+export type ManagedField<Options extends SchemaOptions> =
+  | (Options['timestamps'] extends true ? 'createdAt' | 'updatedAt' : never)
+  | (Options['softDelete'] extends true ? 'deletedAt' : never);
+
 type ObjectIdFieldKeys<Shape extends SchemaShape> = {
   [Key in keyof InferShape<Schema<Shape>>]-?: NonNullable<
     InferShape<Schema<Shape>>[Key]
@@ -29,6 +53,7 @@ export class Schema<
   Shape extends SchemaShape,
   Relations extends SchemaRelationMap = {},
   Scopes extends ScopeDefinitions = {},
+  Options extends SchemaOptions = {},
 > {
   /** The underlying Zod object for advanced validation use cases. */
   readonly definition: SchemaDefinition<Shape>;
@@ -48,14 +73,58 @@ export class Schema<
   /** Field names declared by this schema. */
   readonly fields: readonly (keyof Shape & string)[];
 
+  /** Persistence behavior enabled for this schema. */
+  readonly optionsConfig: Options;
+
   /** Construct a schema from a Zod object shape. */
-  constructor(shape: Shape, relations = {} as Relations, scopeMap = {} as Scopes) {
+  constructor(
+    shape: Shape,
+    relations = {} as Relations,
+    scopeMap = {} as Scopes,
+    optionsConfig = {} as Options,
+  ) {
     this.definition = z.object(shape);
     this.refs = collectRefs(shape);
     this.relationMap = relations;
     this.scopeMap = scopeMap;
     this.fields = Object.keys(shape) as (keyof Shape & string)[];
     this.hiddenFields = this.fields.filter((field) => '__hidden' in shape[field]);
+    this.optionsConfig = optionsConfig;
+  }
+
+  /** Enable managed timestamps and/or soft deletion for this schema. */
+  options<const Enabled extends SchemaOptions>(
+    options: Enabled,
+  ): Schema<Shape & ManagedShape<Enabled>, Relations, Scopes, Enabled> {
+    if (this.optionsConfig && Object.keys(this.optionsConfig).length > 0) {
+      throw new Error('Schema options can only be configured once');
+    }
+    if (
+      options.timestamps &&
+      ('createdAt' in this.definition.shape || 'updatedAt' in this.definition.shape)
+    ) {
+      throw new Error('Timestamp fields createdAt and updatedAt are managed by Mongorm');
+    }
+    if (options.softDelete && 'deletedAt' in this.definition.shape) {
+      throw new Error('The deletedAt field is managed by Mongorm');
+    }
+
+    const managedShape = {
+      ...(options.timestamps
+        ? {
+            createdAt: z.date().default(() => new Date()),
+            updatedAt: z.date().default(() => new Date()),
+          }
+        : {}),
+      ...(options.softDelete ? { deletedAt: z.date().nullable().default(null) } : {}),
+    } as ManagedShape<Enabled>;
+    const next = new Schema(
+      { ...this.definition.shape, ...managedShape } as Shape & ManagedShape<Enabled>,
+      this.relationMap,
+      this.scopeMap,
+      options,
+    );
+    return next as Schema<Shape & ManagedShape<Enabled>, Relations, Scopes, Enabled>;
   }
 
   /** Add one or more one-way relations without requiring circular schema declarations. */
@@ -77,7 +146,8 @@ export class Schema<
           : '_id'
       >;
     },
-    Scopes
+    Scopes,
+    Options
   > {
     for (const [name, input] of Object.entries(definitions)) {
       const definition = (typeof input === 'function' ? { target: input } : input) as {
@@ -101,16 +171,17 @@ export class Schema<
             : '_id'
         >;
       },
-      Scopes
+      Scopes,
+      Options
     >;
   }
 
   /** Declare named, reusable population scopes. */
   scopes<const Definitions extends Record<string, PopulateSpecs<Relations>>>(
     definitions: Definitions,
-  ): Schema<Shape, Relations, Definitions> {
+  ): Schema<Shape, Relations, Definitions, Options> {
     this.scopeMap = definitions as unknown as Scopes;
-    return this as unknown as Schema<Shape, Relations, Definitions>;
+    return this as unknown as Schema<Shape, Relations, Definitions, Options>;
   }
 
   /** Parse unknown input and return the inferred document type. */

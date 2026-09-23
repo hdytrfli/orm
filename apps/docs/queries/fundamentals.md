@@ -15,6 +15,18 @@ const activeUsers = await db.user.filter({ active: true });
 const user = await db.user.find({ email: 'ada@example.com' });
 ```
 
+## Soft-Delete Queries
+
+Schemas configured with `softDelete: true` automatically add `{ deletedAt: null }` to normal reads:
+
+```ts
+const activeUsers = await db.user.filter({});
+const allUsers = await db.user.filter({}).withDeleted();
+const deletedUsers = await db.user.filter({}).onlyDeleted();
+```
+
+This applies to both `filter()` and `find()`. Use the explicit methods instead of manually repeating a `deletedAt` predicate so the intent remains clear.
+
 ## Queries Are Awaitable
 
 The builders implement `PromiseLike`, so `await` executes the query:
