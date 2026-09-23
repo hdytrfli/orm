@@ -1,6 +1,23 @@
-# Mongorm
+<p align="center">
+  <img src="./.github/assets/backdrop.svg" alt="Mongorm" width="100%" />
+</p>
 
-Mongorm is a TypeScript-first MongoDB ORM built on the official MongoDB driver, Zod, and pnpm.
+<h1 align="center">Mongorm</h1>
+
+<p align="center">
+  TypeScript-first MongoDB ORM with a small, strongly typed API.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
+  <img src="https://img.shields.io/badge/Zod-3E67B1?style=for-the-badge&logo=zod&logoColor=white" alt="Zod" />
+  <img src="https://img.shields.io/badge/pnpm-F69220?style=for-the-badge&logo=pnpm&logoColor=white" alt="pnpm" />
+  <img src="https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white" alt="Vitest" />
+  <img src="https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white" alt="GitHub Actions" />
+</p>
+
+Built on the official MongoDB driver, Zod, and pnpm.
 
 ## Development
 
