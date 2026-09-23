@@ -3,14 +3,14 @@ order: 1
 ---
 # Installation
 
-Mongorm is a small layer over the official MongoDB Node.js driver. Install both packages in the application that owns the database connection.
+Mongorm includes the official MongoDB Node.js driver as a runtime dependency. Install the ORM package in the application that owns the database connection.
 
 ```bash
-pnpm add @mongorm/orm mongodb
+pnpm add @mongorm/orm
 ```
 
 ```bash
-npm install @mongorm/orm mongodb
+npm install @mongorm/orm
 ```
 
 ## Requirements
@@ -38,7 +38,7 @@ if (!uri || !databaseName) {
 }
 ```
 
-Do not create a new `MongoClient` for every request. Create one database handle during application startup and reuse it.
+Do not create a new database handle for every request. Create one during application startup and reuse it.
 
 ## TypeScript Configuration
 

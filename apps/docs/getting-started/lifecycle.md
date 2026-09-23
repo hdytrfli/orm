@@ -3,7 +3,7 @@ order: 4
 ---
 # Runtime Lifecycle
 
-MongoDB connections are process resources. Mongorm creates models around a supplied database; it does not remove the need to manage the client lifecycle.
+MongoDB connections are process resources. `createDatabase()` owns the underlying client, while your application controls when the database handle connects and disconnects.
 
 ## Startup
 

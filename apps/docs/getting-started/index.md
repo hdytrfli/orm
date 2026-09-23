@@ -7,7 +7,7 @@ This section takes you from an empty TypeScript project to a working Mongorm dat
 
 ## Recommended Path
 
-1. Install `@mongorm/orm` and `mongodb`.
+1. Install `@mongorm/orm`.
 2. Create a schema with `orm.schema()`.
 3. Register the schemas with `orm.defineSchemas()`.
 4. Create and connect a database handle with `createDatabase()`.

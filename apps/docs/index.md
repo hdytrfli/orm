@@ -45,7 +45,6 @@ Mongorm has four layers:
 4. **Queries** turn typed intent into MongoDB operations and typed results.
 
 ```ts
-import { MongoClient } from 'mongodb';
 import { createDatabase, orm } from '@mongorm/orm';
 
 const user = orm.schema({

@@ -17,7 +17,6 @@ export default defineConfig({
     sidebar: generateSidebar({
       documentRootPath: '.',
       collapsed: false,
-      sortMenusBy: 'displayOrder',
       useTitleFromFileHeading: true,
       hyphenToSpace: true,
       capitalizeFirst: true,

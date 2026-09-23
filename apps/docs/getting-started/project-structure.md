@@ -9,7 +9,7 @@ A useful application separates schema design from connection lifecycle and busin
 src/
   db/
     schemas.ts       # schema and registry definitions
-    client.ts        # createDatabase() and connection lifecycle
+    database.ts      # createDatabase() and connection lifecycle
     index.ts         # shared db export
   modules/
     users/
@@ -29,18 +29,17 @@ export const schemas = orm
   .defineRelations({ post: { authorId: 'user' } });
 ```
 
-## `client.ts`
+## `database.ts`
 
-Own the connection in one place:
+Own the connection in one place. `createDatabase()` creates and owns the underlying MongoDB client:
 
 ```ts
-const client = new MongoClient(uri);
-await client.connect();
 export const db = createDatabase({
   uri,
   database: databaseName,
   schema: schemas,
 });
+await db.connect();
 export { client };
 ```
 
