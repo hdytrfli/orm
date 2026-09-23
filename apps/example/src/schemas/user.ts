@@ -17,6 +17,7 @@ export const userSchema = orm
       }),
     }),
   })
+  .indexes([{ fields: { company: 1, role: 1 }, options: { name: 'user_company_role' } }])
   .options({
     timestamps: true,
     softdelete: true,

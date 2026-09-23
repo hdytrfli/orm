@@ -109,7 +109,7 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
   }
 
   /** Explicitly create all indexes declared by registered schemas. */
-  async syncIndexes(): Promise<Record<string, string[]>> {
+  async sync(): Promise<Record<string, string[]>> {
     const synchronized: Record<string, string[]> = {};
     for (const [schema, name] of this.schemaCollections) {
       const definitions = schema.indexDefinitions ?? [];

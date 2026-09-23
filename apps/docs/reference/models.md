@@ -37,7 +37,7 @@ Parses a complete input, generates `_id`, inserts one document, and returns the 
 
 Validates and inserts multiple documents with one MongoDB `insertMany` operation. Each document receives the same generated fields as `create()`, and the created documents are returned in input order.
 
-## `Schema.indexes(definitions)` and `Db.syncIndexes()`
+## `Schema.indexes(definitions)` and `Db.sync()`
 
 Declare typed MongoDB indexes on a schema, then explicitly create them after connecting:
 
@@ -50,7 +50,7 @@ const userSchema = orm
   ]);
 
 await db.connect();
-await db.syncIndexes();
+await db.sync();
 ```
 
 Index creation is explicit and is not triggered by model access.

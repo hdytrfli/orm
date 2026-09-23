@@ -17,8 +17,9 @@
     "format:check": "oxfmt --check .",
     "lint": "oxlint packages apps",
     "lint:fix": "oxlint --fix packages apps",
-    "test": "pnpm --filter @mongorm/orm run test && pnpm --filter @mongorm/example run test",
-    "typecheck": "pnpm --filter @mongorm/orm run typecheck && pnpm --filter @mongorm/orm run build && pnpm --filter @mongorm/example run typecheck"
+    "test": "pnpm --filter @mongorm/orm run test",
+    "typecheck": "pnpm --filter @mongorm/orm run typecheck && pnpm --filter @mongorm/orm run build && pnpm --filter @mongorm/example run typecheck",
+    "version:bump": "node scripts/bump-version.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.2",

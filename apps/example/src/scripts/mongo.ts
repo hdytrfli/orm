@@ -7,6 +7,7 @@ import { log } from '@/utils/logger';
 
 faker.seed(env.FAKER_SEED);
 await db.connect();
+await db.sync();
 
 try {
   await db.users.delete({
