@@ -55,7 +55,7 @@ pnpm version:bump major
 pnpm version:bump 1.0.0
 ```
 
-Commit the changed manifests, then create a GitHub release with the matching tag, for example `v1.0.0`. The release workflow publishes `@mongorm/orm` to npm.
+`bumpp` updates both workspace versions, creates the commit and tag, and leaves pushing to you. Push the commit and tag, then create a GitHub release with the matching tag, for example `v1.0.0`. The release workflow publishes `@mongorm/orm` to npm.
 
 ## License
 
