@@ -4,4 +4,5 @@ export default defineConfig({
   commit: true,
   push: false,
   tag: true,
+  recursive: true,
 });

@@ -13,7 +13,7 @@
     "fix": "oxfmt && oxlint --fix",
     "check": "pnpm --recursive typecheck && oxlint && oxfmt --check",
     "typecheck": "pnpm --recursive typecheck",
-    "version:bump": "bumpp --recursive"
+    "version:bump": "bumpp"
   },
   "devDependencies": {
     "@types/node": "^26.6.2",

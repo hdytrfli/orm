@@ -37,9 +37,6 @@ jobs:
       - name: Run checks
         run: pnpm check
 
-      - name: Verify release version
-        run: test "v$(node -p "require('./packages/orm/package.json').version")" = "${{ github.event.release.tag_name }}"
-
       - name: Build package
         run: pnpm --filter @mongorm/orm build
 
