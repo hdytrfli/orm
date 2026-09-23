@@ -1,12 +1,33 @@
 {
   "name": "@mongorm/orm",
   "version": "0.1.0",
+  "description": "A TypeScript-first MongoDB ORM for applications that want strong types without hiding MongoDB",
+  "keywords": [
+    "mongodb",
+    "orm",
+    "typescript",
+    "zod"
+  ],
+  "homepage": "https://github.com/hdytrfli/orm#readme",
+  "bugs": {
+    "url": "https://github.com/hdytrfli/orm/issues"
+  },
+  "license": "MIT",
+  "author": "hdytrfli",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hdytrfli/orm"
+  },
   "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
     }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "build": "tsdown",
