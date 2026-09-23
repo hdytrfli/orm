@@ -34,8 +34,8 @@ export const projectionFor = (
   if (!effectiveSelectedFields && hiddenFields.length === 0 && shownFields.length === 0) {
     return undefined;
   }
-  const visibleFields =
-    effectiveSelectedFields ?? fields.filter((field) => !hiddenFields.includes(field));
+  const hidden = new Set(hiddenFields);
+  const visibleFields = effectiveSelectedFields ?? fields.filter((field) => !hidden.has(field));
   return Object.fromEntries(
     normalizeProjectionFields([...visibleFields, ...shownFields]).map((field) => [field, 1]),
   );
