@@ -104,10 +104,9 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
     const nestedRelationFields = (spec.populate ?? []).map(
       (nested) => targetRelations[nested.ref].localField,
     );
+    const hiddenTargetFields = new Set(target.hiddenFields);
     const projectionFields = normalizeProjectionFields([
-      ...new Set(
-        spec.select ?? target.fields.filter((field) => !target.hiddenFields.includes(field)),
-      ),
+      ...new Set(spec.select ?? target.fields.filter((field) => !hiddenTargetFields.has(field))),
       ...nestedRelationFields,
     ]);
     const related = value
