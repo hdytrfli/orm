@@ -2,8 +2,8 @@ import { createDatabase, orm } from '@mongorm/orm';
 
 import { log } from '@/utils/logger';
 
-// await db.connect();
 const ROLES = ['admin', 'member'];
+
 const userSchema = orm
   .schema({
     name: orm.string(),

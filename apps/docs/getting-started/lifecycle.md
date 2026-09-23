@@ -9,11 +9,16 @@ MongoDB connections are process resources. `createDatabase()` owns the underlyin
 ## Startup
 
 ```ts
-const db = createDatabase({ uri, database: name, schema: schemas });
+const db = createDatabase({
+  uri,
+  database: name,
+  schema: schemas,
+});
+
 await db.connect();
 ```
 
-Construct the database handle only after the client is connected when your application needs startup connectivity checks.
+Construct the database handle only after the database is connected when your application needs startup connectivity checks.
 
 ## Requests
 
@@ -40,4 +45,4 @@ process.on('SIGINT', shutdown);
 
 ## Serverless Runtimes
 
-Cache the client outside the request handler when the platform reuses the process. Reconnecting for every invocation adds latency and can exhaust connection limits.
+Cache the client outside the request handler when the platform reuses the process. Reconnecting for every invocation adds latency and can exhaust client limits.

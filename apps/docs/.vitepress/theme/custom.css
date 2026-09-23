@@ -1,0 +1,64 @@
+.dark {
+  --mongorm-background: #09090b;
+  --mongorm-foreground: #ffffff;
+  --mongorm-card: #101014;
+  --mongorm-muted: #bbbbbb;
+
+  --vp-c-bg: var(--mongorm-background);
+
+  --vp-c-bg-elv: var(--mongorm-card);
+  --vp-c-bg-soft: var(--mongorm-card);
+  --vp-c-default-3: var(--mongorm-card);
+
+  --vp-c-text-1: var(--mongorm-foreground);
+  --vp-c-text-2: var(--mongorm-muted);
+  --vp-c-text-3: var(--mongorm-foreground);
+
+  --vp-c-brand-1: var(--mongorm-foreground);
+  --vp-c-brand-2: var(--mongorm-foreground);
+  --vp-c-brand-3: var(--mongorm-foreground);
+
+  --vp-code-block-bg: var(--mongorm-card);
+  --vp-c-brand-soft: var(--mongorm-background);
+
+  --vp-home-hero-name-background: linear-gradient(
+    120deg,
+    var(--mongorm-foreground) 30%,
+    var(--mongorm-foreground)
+  );
+
+  --vp-home-hero-image-background-image: linear-gradient(
+    -45deg,
+    var(--mongorm-background) 50%,
+    var(--mongorm-foreground) 80%
+  );
+
+  --vp-c-border: transparent;
+  --vp-c-divider: transparent;
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-image-filter: blur(90px) opacity(30%);
+
+  & .VPButton.brand {
+    color: var(--mongorm-background);
+    &:hover {
+      color: var(--mongorm-background);
+    }
+  }
+}
+
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.VPSidebar {
+  border-right: 1px solid var(--vp-c-brand-soft);
+  background-color: var(--vp-c-bg) !important;
+}
+
+.curtain {
+  background-color: var(--vp-c-bg) !important;
+}

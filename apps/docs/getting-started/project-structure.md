@@ -26,13 +26,18 @@ Keep schema objects at module scope. They are definitions, not per-request state
 
 ```ts
 export const schemas = orm
-  .defineSchemas({ user, post })
-  .defineRelations({ post: { authorId: 'user' } });
+  .defineSchemas({
+    user,
+    post,
+  })
+  .defineRelations({
+    post: { authorId: 'user' },
+  });
 ```
 
 ## `database.ts`
 
-Own the connection in one place. `createDatabase()` creates and owns the underlying MongoDB client:
+Own the client in one place. `createDatabase()` creates and owns the underlying MongoDB client:
 
 ```ts
 export const db = createDatabase({
@@ -40,17 +45,22 @@ export const db = createDatabase({
   database: databaseName,
   schema: schemas,
 });
+
 await db.connect();
-export { client };
 ```
 
 ## Services
 
-Services should express business operations rather than repeat connection setup:
+Services should express business operations rather than repeat client setup:
 
 ```ts
 export function listPublishedPosts() {
-  return db.post.find({ published: true }).sort({ publishedAt: 'desc' }).limit(20);
+  return db.post
+    .find({
+      published: true,
+    })
+    .sort({ publishedAt: 'desc' })
+    .limit(20);
 }
 ```
 

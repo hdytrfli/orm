@@ -30,17 +30,6 @@ MONGODB_URI=mongodb://127.0.0.1:27017
 MONGODB_DATABASE=example
 ```
 
-```ts
-const uri = process.env.MONGODB_URI;
-const databaseName = process.env.MONGODB_DATABASE;
-
-if (!uri || !databaseName) {
-  throw new Error('MONGODB_URI and MONGODB_DATABASE are required');
-}
-```
-
-Do not create a new database handle for every request. Create one during application startup and reuse it.
-
 ## TypeScript Configuration
 
 Mongorm publishes ESM-compatible modules. A modern configuration is the safest starting point:
@@ -67,13 +56,15 @@ const schemas = orm.defineSchemas({
 });
 
 const db = createDatabase({
-  uri: process.env.MONGODB_URI!,
-  database: process.env.MONGODB_DATABASE!,
+  uri: process.env.MONGODB_URI,
+  database: process.env.MONGODB_DATABASE,
   schema: schemas,
 });
+
 await db.connect();
 
 console.log(db.healthCheck.name);
+
 await db.disconnect();
 ```
 

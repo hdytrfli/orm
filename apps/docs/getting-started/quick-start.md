@@ -59,6 +59,7 @@ const db = createDatabase({
   database: 'blog',
   schema: schemas,
 });
+
 await db.connect();
 ```
 
@@ -87,16 +88,16 @@ const post = await db.post.create({
 ```ts
 const result = await db.post
   .find({ published: true })
-  .with('detail')
   .select(['title', 'author.name']);
+  .with('detail')
 ```
 
 The result contains `_id`, `title`, and the selected author projection. The scope and selection are reflected in the inferred TypeScript result.
 
-## 6. Close the Client
+## 6. Close the client connection
 
 ```ts
-await client.close();
+await db.disconnect();
 ```
 
-In an HTTP server, close the client during graceful shutdown rather than after each request.
+In an HTTP server, close the client connection during graceful shutdown rather than after each request.

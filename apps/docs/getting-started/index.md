@@ -4,7 +4,7 @@ order: 1
 
 # Getting Started
 
-This section takes you from an empty TypeScript project to a working Mongorm data layer. It explains installation, connection ownership, the smallest useful schema, and the conventions used throughout the rest of the documentation.
+This section takes you from an empty TypeScript project to a working Mongorm data layer. It explains installation, client ownership, the smallest useful schema, and the conventions used throughout the rest of the documentation.
 
 ## Recommended Path
 
@@ -18,7 +18,7 @@ This section takes you from an empty TypeScript project to a working Mongorm dat
 
 - [Installation](/getting-started/installation): packages, runtime requirements, and environment variables.
 - [Quick Start](/getting-started/quick-start): a complete users-and-posts example.
-- [Project Structure](/getting-started/project-structure): where schemas, connection code, and model access belong.
+- [Project Structure](/getting-started/project-structure): where schemas, client code, and model access belong.
 - [Runtime Lifecycle](/getting-started/lifecycle): connect, reuse, and close MongoDB resources safely.
 
 ## The Smallest Complete Example

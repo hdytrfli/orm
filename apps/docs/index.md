@@ -5,7 +5,7 @@ hero:
   text: Type-safe MongoDB, shaped by Zod
   tagline: A schema-first TypeScript ORM for teams that want MongoDB flexibility without giving up reliable contracts.
   image:
-    src: /mongorm-mark.svg
+    src: /logo.svg
     alt: Mongorm
   actions:
     - theme: brand
@@ -15,23 +15,17 @@ hero:
       text: Explore the schemas
       link: /schemas/
 features:
-  - icon: 🧩
-    title: Native Zod schemas
+  - title: Native Zod schemas
     details: Use familiar Zod constructors directly through orm, with validation and inference in one definition.
-  - icon: 🔒
-    title: Safe by default
+  - title: Safe by default
     details: Hidden fields, typed filters, typed projections, and explicit population keep accidental data exposure difficult.
-  - icon: ⚡
-    title: MongoDB underneath
+  - title: MongoDB underneath
     details: Keep MongoDB's document model and query capabilities while gaining a small, composable application API.
-  - icon: 🔗
-    title: Relations without magic
+  - title: Relations without magic
     details: Declare relation graphs centrally, then opt into explicit or named population with nested type inference.
-  - icon: 📦
-    title: Practical CRUD
+  - title: Practical CRUD
     details: Create, filter, find, update, delete, count, paginate, select, and populate through one consistent model surface.
-  - icon: 🧠
-    title: TypeScript first
+  - title: TypeScript first
     details: Query result types change as you select fields, show hidden fields, or populate related documents.
 ---
 
