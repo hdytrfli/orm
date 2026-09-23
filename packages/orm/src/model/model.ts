@@ -29,6 +29,12 @@ type CreateInput<Shape extends SchemaShape, Options extends SchemaOptions> = Omi
 type UpdateInput<Shape extends SchemaShape, Options extends SchemaOptions> = Partial<
   Omit<InferInput<Schema<Shape, {}, {}, Options>>, '_id'>
 >;
+type ModelDocument<
+  Shape extends SchemaShape,
+  Relations extends SchemaRelationMap,
+  Scopes extends ScopeDefinitions,
+  Options extends SchemaOptions,
+> = Infer<Schema<Shape, Relations, Scopes, Options>>;
 /** A MongoDB collection with CRUD operations derived from a schema. */
 export class Model<
   Shape extends SchemaShape,
@@ -36,6 +42,11 @@ export class Model<
   Scopes extends ScopeDefinitions = {},
   Options extends SchemaOptions = {},
 > {
+  declare readonly bulk: {
+    create: (
+      inputs: readonly CreateInput<Shape, Options>[],
+    ) => Promise<ModelDocument<Shape, Relations, Scopes, Options>[]>;
+  };
   declare readonly restore: SoftDeleteEnabled<Options> extends true
     ? (
         filter: ModelFilter<Shape>,
@@ -51,6 +62,13 @@ export class Model<
     readonly name: string,
     private readonly schema: Schema<Shape, Relations, Scopes, Options>,
   ) {
+    Object.defineProperty(this, 'bulk', {
+      configurable: false,
+      enumerable: false,
+      value: {
+        create: (inputs: readonly CreateInput<Shape, Options>[]) => this.bulkCreate(inputs),
+      },
+    });
     if (hasSoftDelete(schema.optionsConfig)) {
       Object.defineProperties(this, {
         restore: {
@@ -80,7 +98,15 @@ export class Model<
   /** Validate and insert one document, generating its ObjectId. */
   async create(
     input: CreateInput<Shape, Options>,
-  ): Promise<Infer<Schema<Shape, Relations, Scopes, Options>>> {
+  ): Promise<ModelDocument<Shape, Relations, Scopes, Options>> {
+    const document = this.prepareDocument(input);
+    await this.collection.insertOne(
+      document as unknown as OptionalUnlessRequiredId<StoredDocument<Shape>>,
+    );
+    return document as ModelDocument<Shape, Relations, Scopes, Options>;
+  }
+
+  private prepareDocument(input: CreateInput<Shape, Options>): Record<string, unknown> {
     const now = new Date();
     const document: Record<string, unknown> = {
       _id: new ObjectId(),
@@ -91,10 +117,18 @@ export class Model<
       document.updatedAt = now;
     }
     if (hasSoftDelete(this.schema.optionsConfig)) document.deletedAt = null;
-    await this.collection.insertOne(
-      document as unknown as OptionalUnlessRequiredId<StoredDocument<Shape>>,
+    return document;
+  }
+
+  private async bulkCreate(
+    inputs: readonly CreateInput<Shape, Options>[],
+  ): Promise<ModelDocument<Shape, Relations, Scopes, Options>[]> {
+    if (inputs.length === 0) return [];
+    const documents = inputs.map((input) => this.prepareDocument(input));
+    await this.collection.insertMany(
+      documents as unknown as OptionalUnlessRequiredId<StoredDocument<Shape>>[],
     );
-    return document as Infer<Schema<Shape, Relations, Scopes, Options>>;
+    return documents as ModelDocument<Shape, Relations, Scopes, Options>[];
   }
 
   /** Build a query for all documents matching a MongoDB filter. */

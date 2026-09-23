@@ -25,8 +25,12 @@ export const projectionFor = (
   selectedFields: readonly string[] | undefined,
   shownFields: readonly string[],
 ): Record<string, 1> | undefined => {
-  if (!selectedFields && hiddenFields.length === 0) return undefined;
-  const visibleFields = selectedFields ?? fields.filter((field) => !hiddenFields.includes(field));
+  const effectiveSelectedFields = selectedFields?.length ? selectedFields : undefined;
+  if (!effectiveSelectedFields && hiddenFields.length === 0 && shownFields.length === 0) {
+    return undefined;
+  }
+  const visibleFields =
+    effectiveSelectedFields ?? fields.filter((field) => !hiddenFields.includes(field));
   return Object.fromEntries(
     normalizeProjectionFields([...visibleFields, ...shownFields]).map((field) => [field, 1]),
   );

@@ -65,25 +65,23 @@ try {
 
   await db.groups.update({ _id: group._id }, { creator: user._id });
 
-  await Promise.all(
-    Array.from({ length: 18 }, () => {
-      return db.users.create({
-        name: faker.person.fullName(),
-        age: faker.number.int({ min: 18, max: 65 }),
-        role: faker.helpers.arrayElement(['admin', 'member']),
-        password: faker.internet.password(),
-        group: group._id,
-        company: company._id,
-        profile: {
-          email: faker.internet.email(),
-          website: faker.internet.url(),
-          location: {
-            city: faker.location.city(),
-            country: faker.location.country(),
-          },
+  await db.users.bulk.create(
+    Array.from({ length: 18 }, () => ({
+      name: faker.person.fullName(),
+      age: faker.number.int({ min: 18, max: 65 }),
+      role: faker.helpers.arrayElement(['admin', 'member']),
+      password: faker.internet.password(),
+      group: group._id,
+      company: company._id,
+      profile: {
+        email: faker.internet.email(),
+        website: faker.internet.url(),
+        location: {
+          city: faker.location.city(),
+          country: faker.location.country(),
         },
-      });
-    }),
+      },
+    })),
   );
 
   const found = await db.users

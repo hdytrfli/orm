@@ -59,6 +59,8 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     expect(first._id).toBeInstanceOf(ObjectId);
     expect((await tickets.filter({}))[0]).not.toHaveProperty('secret');
     expect((await tickets.filter({}).show(['secret']))[0]).toHaveProperty('secret');
+    const defaultSelection = await tickets.filter({}).select();
+    expect(defaultSelection[0]).not.toHaveProperty('secret');
     expect(await tickets.filter({ status: 'open', owner: owner._id })).toHaveLength(2);
     expect(await tickets.find({ title: 'Missing ticket' })).toBeNull();
     const populated = await tickets
@@ -66,6 +68,14 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
       .populate([{ ref: 'owner', select: ['name'] }]);
     expect(populated[0].owner?.name).toBe('Ada');
     expect(populated[0].owner).toHaveProperty('_id');
+    const populatedCursor = tickets
+      .filter({ status: 'open' })
+      .populate([{ ref: 'owner', select: ['name'] }])
+      .limit(1)
+      .cursor();
+    const cursorDocuments = [];
+    for await (const ticket of populatedCursor) cursorDocuments.push(ticket);
+    expect(cursorDocuments[0].owner?.name).toBe('Ada');
     expect(await tickets.filter()).toEqual(await tickets.filter({}));
     expect(await tickets.filter({ status: 'open' }).count()).toBe(2);
     expect(await tickets.filter().count(true)).toBeGreaterThanOrEqual(3);
@@ -124,5 +134,31 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     const deleted = await tickets.delete({ owner: otherOwner._id });
     expect(deleted.deletedCount).toBe(1);
     expect(await tickets.filter({})).toHaveLength(2);
+  });
+
+  it('bulk creates validated documents with generated ids', async () => {
+    const owner = await owners.create({ name: 'Grace' });
+    const created = await tickets.bulk.create([
+      {
+        title: 'Bulk one',
+        status: 'open',
+        priority: 1,
+        owner: owner._id,
+        secret: 'first-secret',
+      },
+      {
+        title: 'Bulk two',
+        status: 'closed',
+        priority: 2,
+        owner: owner._id,
+        secret: 'second-secret',
+      },
+    ]);
+
+    expect(created).toHaveLength(2);
+    expect(created[0]._id).toBeInstanceOf(ObjectId);
+    expect(created[0]._id).not.toEqual(created[1]._id);
+    expect(await tickets.filter({})).toHaveLength(2);
+    expect((await tickets.filter({}).show(['secret']))[1].secret).toBe('second-secret');
   });
 });

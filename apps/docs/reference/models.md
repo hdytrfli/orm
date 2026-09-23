@@ -33,6 +33,10 @@ Creates a model bound to a collection name and schema. Registered schemas are no
 
 Parses a complete input, generates `_id`, inserts one document, and returns the created document.
 
+## `Model.bulk.create(inputs)`
+
+Validates and inserts multiple documents with one MongoDB `insertMany` operation. Each document receives the same generated fields as `create()`, and the created documents are returned in input order.
+
 ## `Model.filter(filter?)`
 
 Builds a list query resolving to an array. The filter defaults to `{}`.

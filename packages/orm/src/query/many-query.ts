@@ -271,22 +271,26 @@ export class ModelQuery<
     }
 
     const filter = createCursorFilter(this.effectiveFilter(), after);
-    return new ModelCursor<Shape, Result>(() => {
-      let cursor = this.collection
-        .find(filter as MongoFilter<StoredDocument<Shape>>)
-        .sort({ _id: 1 })
-        .limit((this.limitCount as number) + 1);
-      const projection = projectionFor(
-        this.fields,
-        this.hiddenFields,
-        this.selectedFields,
-        this.shownFields,
-      );
-      if (projection) {
-        cursor = cursor.project(projection);
-      }
-      return cursor;
-    }, this.limitCount);
+    return new ModelCursor<Shape, Result>(
+      () => {
+        let cursor = this.collection
+          .find(filter as MongoFilter<StoredDocument<Shape>>)
+          .sort({ _id: 1 })
+          .limit((this.limitCount as number) + 1);
+        const projection = projectionFor(
+          this.fields,
+          this.hiddenFields,
+          this.selectedFields,
+          this.shownFields,
+        );
+        if (projection) {
+          cursor = cursor.project(projection);
+        }
+        return cursor;
+      },
+      this.limitCount,
+      (documents) => this.population.apply(documents, this.populateSpecs),
+    );
   }
 
   private execute(): Promise<Result[]> {
