@@ -31,8 +31,10 @@ export {
   DatabaseNotConnectedError,
   EstimatedCountError,
   InvalidQueryError,
+  ORM_ERROR_CODES,
   OrmError,
 } from './validation/errors.js';
+export type { OrmErrorCode } from './validation/errors.js';
 export { Model } from './model/model.js';
 export { ModelCursor, ModelQuery } from './query/query.js';
 export type {

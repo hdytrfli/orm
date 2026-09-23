@@ -6,19 +6,21 @@ order: 4
 
 Mongorm exposes purpose-specific errors for invalid runtime states.
 
-## `DatabaseNotConnectedError`
+Each ORM error exposes a stable `code` value for machine-readable handling.
+
+## `DatabaseNotConnectedError` (`DATABASE_NOT_CONNECTED`)
 
 Thrown when a model attempts to access the native database before `connect()` has completed.
 
-## `InvalidQueryError`
+## `InvalidQueryError` (`INVALID_QUERY`)
 
 Thrown when incompatible query modes are combined, such as explicit population and a named scope.
 
-## `CursorQueryError`
+## `CursorQueryError` (`CURSOR_QUERY_INVALID`)
 
 Thrown when cursor pagination is requested without a positive limit, with `skip()`, or with an unsupported sort.
 
-## `EstimatedCountError`
+## `EstimatedCountError` (`ESTIMATED_COUNT_FILTER_UNSUPPORTED`)
 
 Thrown when `count(true)` is used with a non-empty filter. Estimated counts are collection-wide and cannot represent a filtered total.
 
