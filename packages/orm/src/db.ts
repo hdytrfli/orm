@@ -16,7 +16,6 @@ import type {
   SchemaRelationMap,
   ScopeDefinitions,
 } from './schema/index.js';
-import type { SchemaRegistryBuilder } from './schema/registry.js';
 
 export type SchemaRegistry = Record<string, SchemaLike>;
 

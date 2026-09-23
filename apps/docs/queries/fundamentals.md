@@ -17,7 +17,7 @@ const user = await db.user.find({ email: 'ada@example.com' });
 
 ## Soft-Delete Queries
 
-Schemas configured with `softDelete: true` automatically add `{ deletedAt: null }` to normal reads:
+Schemas configured with `softdelete: true` automatically add `{ deletedAt: null }` to normal reads:
 
 ```ts
 const activeUsers = await db.user.filter({});

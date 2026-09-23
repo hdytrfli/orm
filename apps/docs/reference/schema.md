@@ -38,12 +38,12 @@ Enables managed persistence behavior once per schema:
 ```ts
 const user = orm.schema({ name: orm.string() }).options({
   timestamps: true,
-  softDelete: true,
+  softdelete: true,
 });
 ```
 
 - `timestamps` manages `createdAt` and `updatedAt`.
-- `softDelete` manages nullable `deletedAt` and filters deleted documents from normal reads.
+- `softdelete` manages nullable `deletedAt` and filters deleted documents from normal reads.
 
 ## `orm.defineSchemas(registry)`
 

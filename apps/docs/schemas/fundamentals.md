@@ -23,12 +23,12 @@ const user = orm
     email: orm.string().email(),
     name: orm.string(),
   })
-  .options({ timestamps: true, softDelete: true });
+  .options({ timestamps: true, softdelete: true });
 ```
 
-`timestamps: true` adds `createdAt` and `updatedAt` dates. Mongorm sets both on creation and refreshes `updatedAt` on updates and soft deletion. `softDelete: true` adds nullable `deletedAt`, hides deleted documents from normal queries, and makes `delete()` mark documents as deleted instead of removing them.
+`timestamps: true` adds `createdAt` and `updatedAt` dates. Mongorm sets both on creation and refreshes `updatedAt` on updates and soft deletion. `softdelete: true` adds nullable `deletedAt`, hides deleted documents from normal queries, and makes `delete()` mark documents as deleted instead of removing them.
 
-Managed fields are not accepted as normal create or update input. They are owned by Mongorm. Use `withDeleted()` to include deleted documents, `onlyDeleted()` to inspect the deleted set, `restore()` to recover a document, and `forceDelete()` for permanent removal.
+Managed fields are optional in create and update input, but always present in the persisted document type. Mongorm supplies missing values and refreshes lifecycle values when appropriate. Use `withDeleted()` to include deleted documents, `onlyDeleted()` to inspect the deleted set, `restore()` to recover a document, and `forceDelete()` for permanent removal.
 
 ## Parsing and Inference
 

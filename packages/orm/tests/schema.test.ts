@@ -9,7 +9,7 @@ describe('schema', () => {
 
     expect(user.parse({ name: 'Ada', age: 36 })).toEqual({ name: 'Ada', age: 36 });
     expect(user.parsePartial({ age: 37 })).toEqual({ age: 37 });
-    expect(() => user.parsePartial({ age: 'thirty-seven' })).toThrow();
+    expect(() => user.parsePartial({ age: 'thirty-seven' })).toThrow('Invalid input');
   });
 
   it('parses nested object fields', () => {
@@ -30,7 +30,7 @@ describe('schema', () => {
   it('adds managed timestamp and soft-delete fields through schema options', () => {
     const account = orm
       .schema({ name: orm.string() })
-      .options({ timestamps: true, softDelete: true });
+      .options({ timestamps: true, softdelete: true });
 
     const parsed = account.parse({ name: 'Ada' });
 
@@ -38,14 +38,14 @@ describe('schema', () => {
     expect(parsed.createdAt).toBeInstanceOf(Date);
     expect(parsed.updatedAt).toBeInstanceOf(Date);
     expect(parsed.deletedAt).toBeNull();
-    expect(account.optionsConfig).toEqual({ timestamps: true, softDelete: true });
+    expect(account.optionsConfig).toEqual({ timestamps: true, softdelete: true });
   });
 
   it('rejects managed field name collisions', () => {
     expect(() => orm.schema({ createdAt: orm.string() }).options({ timestamps: true })).toThrow(
       'managed by Mongorm',
     );
-    expect(() => orm.schema({ deletedAt: orm.date() }).options({ softDelete: true })).toThrow(
+    expect(() => orm.schema({ deletedAt: orm.date() }).options({ softdelete: true })).toThrow(
       'managed by Mongorm',
     );
   });
@@ -82,7 +82,7 @@ describe('schema', () => {
       nullableGroup: null,
       nullishGroup: undefined,
     });
-    expect(() => user.parse({ group: 'group-1' })).toThrow();
+    expect(() => user.parse({ group: 'group-1' })).toThrow('Invalid input');
   });
 
   it('declares one-way relations after schema construction', () => {

@@ -6,11 +6,6 @@ import type { InferShape } from './inference.js';
 import type { SchemaRelation, SchemaRelationMap, SchemaLike } from './relations.js';
 import type { Schema, ScopeDefinitions } from './schema.js';
 
-type SchemaParts<Value> =
-  Value extends Schema<infer Shape, infer Relations, infer Scopes>
-    ? { shape: Shape; relations: Relations; scopes: Scopes }
-    : never;
-
 type ObjectIdKeys<Shape extends SchemaShape> = {
   [Key in keyof InferShape<Schema<Shape>>]-?: NonNullable<
     InferShape<Schema<Shape>>[Key]
@@ -20,7 +15,7 @@ type ObjectIdKeys<Shape extends SchemaShape> = {
 }[keyof InferShape<Schema<Shape>>];
 
 export type RelationDefinitions<Registry extends Record<string, SchemaLike>> = {
-  [Name in keyof Registry]?: Registry[Name] extends Schema<infer Shape, any, any>
+  [Name in keyof Registry]?: Registry[Name] extends Schema<infer Shape, any, any, any>
     ? Partial<Record<Extract<ObjectIdKeys<Shape>, string>, Extract<keyof Registry, string>>>
     : never;
 };
@@ -30,11 +25,12 @@ type EnrichedSchema<
   AllDefinitions extends RelationDefinitions<Registry>,
   Name,
 > = Name extends keyof Registry
-  ? Registry[Name] extends Schema<infer Shape, infer Relations, infer Scopes>
+  ? Registry[Name] extends Schema<infer Shape, infer Relations, infer Scopes, infer Options>
     ? Schema<
         Shape,
         Relations & RelationsFor<Registry, AllDefinitions, NonNullable<AllDefinitions[Name]>>,
-        Scopes
+        Scopes,
+        Options
       >
     : never
   : never;
@@ -56,17 +52,19 @@ type RegistryWithRelations<
   [Name in keyof Registry]: Registry[Name] extends Schema<
     infer Shape,
     infer Relations,
-    infer Scopes
+    infer Scopes,
+    infer Options
   >
     ? Schema<
         Shape,
         Relations & RelationsFor<Registry, Definitions, NonNullable<Definitions[Name]>>,
-        Scopes
+        Scopes,
+        Options
       >
     : Registry[Name];
 };
 
-type RelationMapOf<Value> = Value extends Schema<any, infer Relations, any> ? Relations : {};
+type RelationMapOf<Value> = Value extends Schema<any, infer Relations, any, any> ? Relations : {};
 
 export type ScopeDefinitionsBySchema<Registry extends Record<string, SchemaLike>> = {
   [Name in keyof Registry]?: Record<string, PopulateSpecs<RelationMapOf<Registry[Name]>>>;
@@ -79,12 +77,14 @@ type RegistryWithScopes<
   [Name in keyof Registry]: Registry[Name] extends Schema<
     infer Shape,
     infer Relations,
-    infer Scopes
+    infer Scopes,
+    infer Options
   >
     ? Schema<
         Shape,
         Relations,
-        Scopes & (Definitions[Name] extends ScopeDefinitions ? Definitions[Name] : {})
+        Scopes & (Definitions[Name] extends ScopeDefinitions ? Definitions[Name] : {}),
+        Options
       >
     : Registry[Name];
 };

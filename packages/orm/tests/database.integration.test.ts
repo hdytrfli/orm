@@ -20,7 +20,7 @@ const ownerSchema = orm.schema({ name: orm.string() });
 const relatedTicketSchema = ticketSchema.relations({ owner: () => ownerSchema });
 const lifecycleSchema = orm
   .schema({ name: orm.string() })
-  .options({ timestamps: true, softDelete: true });
+  .options({ timestamps: true, softdelete: true });
 
 const owners = database.model('owners', ownerSchema);
 const tickets = database.model('tickets', relatedTicketSchema);

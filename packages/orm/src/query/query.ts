@@ -15,7 +15,6 @@ import { CursorQueryError, EstimatedCountError, InvalidQueryError } from '../err
 import type {
   Infer,
   Schema,
-  SchemaRelation,
   SchemaRelationMap,
   SchemaShape,
   ScopeDefinitions,
@@ -197,7 +196,10 @@ export class ModelQuery<
   Relations extends SchemaRelationMap = {},
   Scopes extends ScopeDefinitions = {},
   Mode extends PopulationMode = 'none',
+  SoftDelete extends boolean = false,
 > implements PromiseLike<Result[]> {
+  declare readonly withDeleted: SoftDelete extends true ? () => this : never;
+  declare readonly onlyDeleted: SoftDelete extends true ? () => this : never;
   private sortSpec: ModelSort<Shape> | undefined;
   private skipCount: number | undefined;
   private limitCount: number | undefined;
@@ -220,41 +222,50 @@ export class ModelQuery<
     private readonly db: Db,
     private readonly relations: Relations,
     private readonly scopes: Scopes,
-    private readonly softDelete: boolean,
-  ) {}
+    private readonly softdeleteEnabled: boolean,
+  ) {
+    if (softdeleteEnabled) {
+      Object.defineProperties(this, {
+        withDeleted: { configurable: false, enumerable: false, value: () => this.includeDeleted() },
+        onlyDeleted: { configurable: false, enumerable: false, value: () => this.filterDeleted() },
+      });
+    }
+  }
 
   /** Include both active and soft-deleted documents in this query. */
-  withDeleted(): this {
+  private includeDeleted(): this {
     this.deletedMode = 'all';
     return this;
   }
 
   /** Restrict this query to soft-deleted documents. */
-  onlyDeleted(): this {
+  private filterDeleted(): this {
     this.deletedMode = 'deleted';
     return this;
   }
 
   private effectiveFilter(): ModelFilter<Shape> {
-    if (!this.softDelete || this.deletedMode === 'all') return this.filterSpec;
+    if (!this.softdeleteEnabled || this.deletedMode === 'all') return this.filterSpec;
     const deletionFilter =
       this.deletedMode === 'deleted' ? { deletedAt: { $ne: null } } : { deletedAt: null };
     return { $and: [deletionFilter, this.filterSpec] } as ModelFilter<Shape>;
   }
 
   /** Sort results by one or more schema fields. */
-  sort(spec: ModelSort<Shape>): ModelQuery<Shape, Result, false, Relations, Scopes, Mode> {
+  sort(
+    spec: ModelSort<Shape>,
+  ): ModelQuery<Shape, Result, false, Relations, Scopes, Mode, SoftDelete> {
     this.sortSpec = spec;
-    return this as unknown as ModelQuery<Shape, Result, false, Relations, Scopes, Mode>;
+    return this as unknown as ModelQuery<Shape, Result, false, Relations, Scopes, Mode, SoftDelete>;
   }
 
   /** Skip a non-negative number of matching documents. */
-  skip(count: number): ModelQuery<Shape, Result, false, Relations, Scopes, Mode> {
+  skip(count: number): ModelQuery<Shape, Result, false, Relations, Scopes, Mode, SoftDelete> {
     if (!Number.isInteger(count) || count < 0) {
       throw new RangeError('Query skip must be a non-negative integer');
     }
     this.skipCount = count;
-    return this as unknown as ModelQuery<Shape, Result, false, Relations, Scopes, Mode>;
+    return this as unknown as ModelQuery<Shape, Result, false, Relations, Scopes, Mode, SoftDelete>;
   }
 
   /** Limit the number of matching documents returned. */
@@ -269,7 +280,15 @@ export class ModelQuery<
   /** Return only selected fields, while retaining MongoDB's default `_id`. */
   select<Keys extends SelectableKey<Shape> = never>(
     fields: readonly Keys[] = [],
-  ): ModelQuery<Shape, SelectedDocument<Shape, Keys>, CursorReady, Relations, Scopes, Mode> {
+  ): ModelQuery<
+    Shape,
+    SelectedDocument<Shape, Keys>,
+    CursorReady,
+    Relations,
+    Scopes,
+    Mode,
+    SoftDelete
+  > {
     this.selectedFields = fields;
     return this as unknown as ModelQuery<
       Shape,
@@ -277,7 +296,8 @@ export class ModelQuery<
       CursorReady,
       Relations,
       Scopes,
-      Mode
+      Mode,
+      SoftDelete
     >;
   }
 
@@ -290,7 +310,8 @@ export class ModelQuery<
     CursorReady,
     Relations,
     Scopes,
-    Mode
+    Mode,
+    SoftDelete
   > {
     this.shownFields = fields;
     return this as unknown as ModelQuery<
@@ -299,7 +320,8 @@ export class ModelQuery<
       CursorReady,
       Relations,
       Scopes,
-      Mode
+      Mode,
+      SoftDelete
     >;
   }
 
@@ -307,7 +329,7 @@ export class ModelQuery<
   populate<Specs extends PopulateSpecs<Relations>>(
     this: Mode extends 'scope'
       ? never
-      : ModelQuery<Shape, Result, CursorReady, Relations, Scopes, Mode>,
+      : ModelQuery<Shape, Result, CursorReady, Relations, Scopes, Mode, SoftDelete>,
     specs: Specs,
   ): ModelQuery<
     Shape,
@@ -315,7 +337,8 @@ export class ModelQuery<
     CursorReady,
     Relations,
     Scopes,
-    'populate'
+    'populate',
+    SoftDelete
   > {
     if (this.populationMode === 'scope') {
       throw new InvalidQueryError(
@@ -330,7 +353,8 @@ export class ModelQuery<
       CursorReady,
       Relations,
       Scopes,
-      'populate'
+      'populate',
+      SoftDelete
     >;
   }
 
@@ -338,7 +362,7 @@ export class ModelQuery<
   with<Name extends ScopeName<Scopes>>(
     this: Mode extends 'populate'
       ? never
-      : ModelQuery<Shape, Result, CursorReady, Relations, Scopes, Mode>,
+      : ModelQuery<Shape, Result, CursorReady, Relations, Scopes, Mode, SoftDelete>,
     name: Name,
   ): ModelQuery<
     Shape,
@@ -346,7 +370,8 @@ export class ModelQuery<
     CursorReady,
     Relations,
     Scopes,
-    'scope'
+    'scope',
+    SoftDelete
   > {
     if (this.populationMode === 'populate') {
       throw new InvalidQueryError(
@@ -361,7 +386,8 @@ export class ModelQuery<
       CursorReady,
       Relations,
       Scopes,
-      'scope'
+      'scope',
+      SoftDelete
     >;
   }
 
@@ -370,7 +396,7 @@ export class ModelQuery<
     if (estimate) {
       if (
         Object.keys(this.filterSpec).length > 0 ||
-        (this.softDelete && this.deletedMode !== 'all')
+        (this.softdeleteEnabled && this.deletedMode !== 'all')
       ) {
         throw new EstimatedCountError();
       }
@@ -507,7 +533,10 @@ export class ModelFindQuery<
   Relations extends SchemaRelationMap = {},
   Scopes extends ScopeDefinitions = {},
   Mode extends PopulationMode = 'none',
+  SoftDelete extends boolean = false,
 > implements PromiseLike<Result | null> {
+  declare readonly withDeleted: SoftDelete extends true ? () => this : never;
+  declare readonly onlyDeleted: SoftDelete extends true ? () => this : never;
   private selectedFields: readonly string[] | undefined;
   private shownFields: readonly string[] = [];
   private populateSpecs: PopulateSpecs<Relations> = [];
@@ -522,23 +551,30 @@ export class ModelFindQuery<
     private readonly db: Db,
     private readonly relations: Relations,
     private readonly scopes: Scopes,
-    private readonly softDelete: boolean,
-  ) {}
+    private readonly softdeleteEnabled: boolean,
+  ) {
+    if (softdeleteEnabled) {
+      Object.defineProperties(this, {
+        withDeleted: { configurable: false, enumerable: false, value: () => this.includeDeleted() },
+        onlyDeleted: { configurable: false, enumerable: false, value: () => this.filterDeleted() },
+      });
+    }
+  }
 
   /** Include both active and soft-deleted documents in this query. */
-  withDeleted(): this {
+  private includeDeleted(): this {
     this.deletedMode = 'all';
     return this;
   }
 
   /** Restrict this query to soft-deleted documents. */
-  onlyDeleted(): this {
+  private filterDeleted(): this {
     this.deletedMode = 'deleted';
     return this;
   }
 
   private effectiveFilter(): ModelFilter<Shape> {
-    if (!this.softDelete || this.deletedMode === 'all') return this.filterSpec;
+    if (!this.softdeleteEnabled || this.deletedMode === 'all') return this.filterSpec;
     const deletionFilter =
       this.deletedMode === 'deleted' ? { deletedAt: { $ne: null } } : { deletedAt: null };
     return { $and: [deletionFilter, this.filterSpec] } as ModelFilter<Shape>;
@@ -547,41 +583,53 @@ export class ModelFindQuery<
   /** Return only selected fields, while retaining MongoDB's default `_id`. */
   select<Keys extends SelectableKey<Shape> = never>(
     fields: readonly Keys[] = [],
-  ): ModelFindQuery<Shape, SelectedDocument<Shape, Keys>, Relations, Scopes, Mode> {
+  ): ModelFindQuery<Shape, SelectedDocument<Shape, Keys>, Relations, Scopes, Mode, SoftDelete> {
     this.selectedFields = fields;
     return this as unknown as ModelFindQuery<
       Shape,
       SelectedDocument<Shape, Keys>,
       Relations,
       Scopes,
-      Mode
+      Mode,
+      SoftDelete
     >;
   }
 
   /** Include hidden fields in the query result. */
   show<Keys extends HiddenDocumentKey<Shape>>(
     fields: readonly Keys[],
-  ): ModelFindQuery<Shape, Result & Pick<ModelDocument<Shape>, Keys>, Relations, Scopes, Mode> {
+  ): ModelFindQuery<
+    Shape,
+    Result & Pick<ModelDocument<Shape>, Keys>,
+    Relations,
+    Scopes,
+    Mode,
+    SoftDelete
+  > {
     this.shownFields = fields;
     return this as unknown as ModelFindQuery<
       Shape,
       Result & Pick<ModelDocument<Shape>, Keys>,
       Relations,
       Scopes,
-      Mode
+      Mode,
+      SoftDelete
     >;
   }
 
   /** Populate declared one-way relations, including nested relation arrays. */
   populate<Specs extends PopulateSpecs<Relations>>(
-    this: Mode extends 'scope' ? never : ModelFindQuery<Shape, Result, Relations, Scopes, Mode>,
+    this: Mode extends 'scope'
+      ? never
+      : ModelFindQuery<Shape, Result, Relations, Scopes, Mode, SoftDelete>,
     specs: Specs,
   ): ModelFindQuery<
     Shape,
     PopulatedResult<Result, Relations, Specs>,
     Relations,
     Scopes,
-    'populate'
+    'populate',
+    SoftDelete
   > {
     if (this.populationMode === 'scope') {
       throw new InvalidQueryError(
@@ -595,20 +643,24 @@ export class ModelFindQuery<
       PopulatedResult<Result, Relations, Specs>,
       Relations,
       Scopes,
-      'populate'
+      'populate',
+      SoftDelete
     >;
   }
 
   /** Apply a named population scope. */
   with<Name extends ScopeName<Scopes>>(
-    this: Mode extends 'populate' ? never : ModelFindQuery<Shape, Result, Relations, Scopes, Mode>,
+    this: Mode extends 'populate'
+      ? never
+      : ModelFindQuery<Shape, Result, Relations, Scopes, Mode, SoftDelete>,
     name: Name,
   ): ModelFindQuery<
     Shape,
     PopulatedResult<Result, Relations, Scopes[Name] & PopulateSpecs<Relations>>,
     Relations,
     Scopes,
-    'scope'
+    'scope',
+    SoftDelete
   > {
     if (this.populationMode === 'populate') {
       throw new InvalidQueryError(
@@ -622,7 +674,8 @@ export class ModelFindQuery<
       PopulatedResult<Result, Relations, Scopes[Name] & PopulateSpecs<Relations>>,
       Relations,
       Scopes,
-      'scope'
+      'scope',
+      SoftDelete
     >;
   }
 

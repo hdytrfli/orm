@@ -36,7 +36,7 @@ const result = await db.user.delete({ _id: userId });
 console.log(result.deletedCount);
 ```
 
-On a normal schema, delete removes every document matching the filter. On a schema with `softDelete: true`, it sets `deletedAt` and leaves the document stored:
+On a normal schema, delete removes every document matching the filter. On a schema with `softdelete: true`, it sets `deletedAt` and leaves the document stored:
 
 ```ts
 await db.user.delete({ _id: userId });

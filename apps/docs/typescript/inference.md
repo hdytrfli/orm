@@ -15,6 +15,8 @@ const user = orm.schema({
 
 The schema's inferred document has `name`, `age`, `passwordHash`, and the generated `_id` once stored. A normal query result has the visible fields and `_id`, but not `passwordHash`.
 
+Mongorm also exports `InferInput<T>`. It represents the input before Zod defaults are applied, so default-backed fields such as lifecycle timestamps can be omitted when creating or updating a document while remaining required in `Infer<T>` output.
+
 ## Let the Model Infer Results
 
 ```ts

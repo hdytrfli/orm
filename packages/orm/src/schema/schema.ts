@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import type { PopulateSpecs } from '../query/query.js';
 import type { SchemaDefinition, SchemaShape } from './contracts.js';
-import type { Infer, InferShape } from './inference.js';
+import type { InferShape } from './inference.js';
 import { collectRefs } from './relations.js';
 import type {
   RelationInput,
@@ -17,7 +17,7 @@ import type {
 /** Built-in persistence behavior applied by a schema. */
 export interface SchemaOptions {
   readonly timestamps?: boolean;
-  readonly softDelete?: boolean;
+  readonly softdelete?: boolean;
 }
 
 type TimestampShape = {
@@ -32,11 +32,17 @@ type SoftDeleteShape = {
 type ManagedShape<Options extends SchemaOptions> = (Options['timestamps'] extends true
   ? TimestampShape
   : {}) &
-  (Options['softDelete'] extends true ? SoftDeleteShape : {});
+  (Options['softdelete'] extends true ? SoftDeleteShape : {});
 
 export type ManagedField<Options extends SchemaOptions> =
   | (Options['timestamps'] extends true ? 'createdAt' | 'updatedAt' : never)
-  | (Options['softDelete'] extends true ? 'deletedAt' : never);
+  | (Options['softdelete'] extends true ? 'deletedAt' : never);
+
+export type SoftDeleteEnabled<Options extends SchemaOptions> = Options['softdelete'] extends true
+  ? true
+  : false;
+
+export const hasSoftDelete = (options: SchemaOptions): boolean => options.softdelete === true;
 
 type ObjectIdFieldKeys<Shape extends SchemaShape> = {
   [Key in keyof InferShape<Schema<Shape>>]-?: NonNullable<
@@ -76,6 +82,9 @@ export class Schema<
   /** Persistence behavior enabled for this schema. */
   readonly optionsConfig: Options;
 
+  /** Preserve schema options through registry type transformations. */
+  declare readonly __options: Options;
+
   /** Construct a schema from a Zod object shape. */
   constructor(
     shape: Shape,
@@ -105,7 +114,7 @@ export class Schema<
     ) {
       throw new Error('Timestamp fields createdAt and updatedAt are managed by Mongorm');
     }
-    if (options.softDelete && 'deletedAt' in this.definition.shape) {
+    if (options.softdelete && 'deletedAt' in this.definition.shape) {
       throw new Error('The deletedAt field is managed by Mongorm');
     }
 
@@ -116,7 +125,7 @@ export class Schema<
             updatedAt: z.date().default(() => new Date()),
           }
         : {}),
-      ...(options.softDelete ? { deletedAt: z.date().nullable().default(null) } : {}),
+      ...(options.softdelete ? { deletedAt: z.date().nullable().default(null) } : {}),
     } as ManagedShape<Enabled>;
     const next = new Schema(
       { ...this.definition.shape, ...managedShape } as Shape & ManagedShape<Enabled>,
