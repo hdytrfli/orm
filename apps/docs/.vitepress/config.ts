@@ -7,8 +7,11 @@ export default defineConfig({
   cleanUrls: true,
   themeConfig: {
     nav: [
-      { text: 'Guide', link: '/guide/introduction' },
-      { text: 'API', link: '/api/schema' },
+      { text: 'Getting Started', link: '/getting-started/' },
+      { text: 'Schemas', link: '/schemas/' },
+      { text: 'Queries', link: '/queries/' },
+      { text: 'TypeScript', link: '/typescript/' },
+      { text: 'API Reference', link: '/reference/' },
       { text: 'npm', link: 'https://www.npmjs.com/package/@mongorm/orm' },
     ],
     sidebar: generateSidebar({
@@ -20,6 +23,7 @@ export default defineConfig({
       capitalizeFirst: true,
     }),
     socialLinks: [],
+    search: { provider: 'local' },
     footer: {
       message: 'Released under the MIT License.',
     },
