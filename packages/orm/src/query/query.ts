@@ -4,14 +4,11 @@ import {
   type Condition,
   type Document,
   type Filter as MongoFilter,
-  type FindCursor,
   type RootFilterOperators,
   type Sort,
-  type WithId,
 } from 'mongodb';
 
-import type { Db } from '../db.js';
-import { CursorQueryError, EstimatedCountError, InvalidQueryError } from '../errors/errors.js';
+import type { Db } from '../connection/database.js';
 import type {
   Infer,
   Schema,
@@ -19,6 +16,9 @@ import type {
   SchemaShape,
   ScopeDefinitions,
 } from '../schema/index.js';
+import { CursorQueryError, EstimatedCountError, InvalidQueryError } from '../validation/errors.js';
+import { ModelCursor } from './cursor.js';
+import type { CursorMethod } from './cursor.js';
 
 export type StoredDocument<Shape extends SchemaShape> = Infer<Schema<Shape>> & Document;
 
@@ -73,11 +73,6 @@ type NestedSelectableKey<Shape extends SchemaShape> = {
       : never
     : never;
 }[Extract<keyof Shape, string>];
-type CursorMethod<
-  Shape extends SchemaShape,
-  Result extends object,
-  Ready extends boolean,
-> = Ready extends true ? (after?: ObjectId) => ModelCursor<Shape, Result> : undefined;
 type SelectableKey<Shape extends SchemaShape> =
   | Exclude<Extract<keyof ModelDocument<Shape>, string>, '_id' | HiddenDocumentKey<Shape>>
   | NestedSelectableKey<Shape>;
@@ -160,33 +155,7 @@ type PopulatedRelation<Relation, Spec> = Spec extends {
     : never
   : RelationDocument<Relation>;
 
-/** A lazy async iterable for one cursor-pagination page. */
-export class ModelCursor<
-  Shape extends SchemaShape,
-  Result extends object,
-> implements AsyncIterable<Result> {
-  next: ObjectId | null = null;
-
-  constructor(
-    private readonly open: () => FindCursor<WithId<StoredDocument<Shape>>>,
-    private readonly pageSize: number,
-  ) {}
-
-  async *[Symbol.asyncIterator](): AsyncGenerator<Result> {
-    const cursor = this.open();
-    let last: (Result & { _id: ObjectId }) | undefined;
-    try {
-      for (let index = 0; index < this.pageSize && (await cursor.hasNext()); index += 1) {
-        const document = (await cursor.next()) as unknown as Result & { _id: ObjectId };
-        last = document;
-        yield document as Result;
-      }
-      this.next = (await cursor.hasNext()) && last ? last._id : null;
-    } finally {
-      await cursor.close();
-    }
-  }
-}
+export { ModelCursor } from './cursor.js';
 
 /** A typed, awaitable MongoDB find query. */
 export class ModelQuery<

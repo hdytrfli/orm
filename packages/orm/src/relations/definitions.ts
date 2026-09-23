@@ -1,10 +1,10 @@
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
-import type { SchemaShape } from './contracts.js';
+import type { SchemaShape } from '../schema/contracts.js';
 
 /** A schema-like target resolved lazily to support circular module imports. */
-export type SchemaLike = import('./schema.js').Schema<SchemaShape, any, any, any>;
+export type SchemaLike = import('../schema/schema.js').Schema<SchemaShape, any, any, any>;
 
 /** Metadata attached to a forward relation field. */
 export interface RefDefinition<Target extends SchemaLike = SchemaLike> {

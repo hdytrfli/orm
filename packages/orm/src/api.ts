@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
+import { createRef } from './relations/definitions.js';
+import type { RefField, SchemaLike } from './relations/definitions.js';
+import { createSchemaRegistry } from './relations/registry.js';
 import type { SchemaShape } from './schema/contracts.js';
-import { createSchemaRegistry } from './schema/registry.js';
-import { createRef } from './schema/relations.js';
-import type { RefField, SchemaLike } from './schema/relations.js';
 import { objectId, withZodNamespace } from './schema/scalars.js';
 import { Schema } from './schema/schema.js';
 

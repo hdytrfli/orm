@@ -12,4 +12,4 @@ export type {
   SchemaLike,
   SchemaRelation,
   SchemaRelationMap,
-} from './relations.js';
+} from '../relations/definitions.js';

@@ -1,10 +1,10 @@
 import type { ObjectId } from 'mongodb';
 
 import type { PopulateSpecs } from '../query/query.js';
-import type { SchemaShape } from './contracts.js';
-import type { InferShape } from './inference.js';
-import type { SchemaRelation, SchemaRelationMap, SchemaLike } from './relations.js';
-import type { Schema, ScopeDefinitions } from './schema.js';
+import type { SchemaShape } from '../schema/contracts.js';
+import type { InferShape } from '../schema/inference.js';
+import type { Schema, ScopeDefinitions } from '../schema/schema.js';
+import type { SchemaRelation, SchemaRelationMap, SchemaLike } from './definitions.js';
 
 type ObjectIdKeys<Shape extends SchemaShape> = {
   [Key in keyof InferShape<Schema<Shape>>]-?: NonNullable<

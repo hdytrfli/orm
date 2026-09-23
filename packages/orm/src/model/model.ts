@@ -7,10 +7,10 @@ import {
   type UpdateFilter,
 } from 'mongodb';
 
-import type { Db } from './db.js';
-import { ModelFindQuery, ModelQuery } from './query/query.js';
-import type { ModelFilter, StoredDocument, VisibleDocument } from './query/query.js';
-import { hasSoftDelete } from './schema/index.js';
+import type { Db } from '../connection/database.js';
+import { ModelFindQuery, ModelQuery } from '../query/query.js';
+import type { ModelFilter, StoredDocument, VisibleDocument } from '../query/query.js';
+import { hasSoftDelete } from '../schema/index.js';
 import type {
   Infer,
   InferInput,
@@ -20,7 +20,7 @@ import type {
   SchemaRelationMap,
   SchemaShape,
   ScopeDefinitions,
-} from './schema/index.js';
+} from '../schema/index.js';
 
 type CreateInput<Shape extends SchemaShape, Options extends SchemaOptions> = Omit<
   InferInput<Schema<Shape, {}, {}, Options>>,

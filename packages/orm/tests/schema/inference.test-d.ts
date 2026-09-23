@@ -1,7 +1,9 @@
+/* oxlint-disable no-unused-expressions, no-unused-vars */
+
 import type { ObjectId } from 'mongodb';
 
-import type { Db, Infer, InferShape } from '../src/index.js';
-import { createDatabase, orm } from '../src/index.js';
+import type { Db, Infer, InferShape } from '../../src/index.js';
+import { createDatabase, orm } from '../../src/index.js';
 
 const userSchema = orm.schema({
   name: orm.string(),

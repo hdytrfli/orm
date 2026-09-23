@@ -2,9 +2,7 @@ import type { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
 import type { PopulateSpecs } from '../query/query.js';
-import type { SchemaDefinition, SchemaShape } from './contracts.js';
-import type { InferShape } from './inference.js';
-import { collectRefs } from './relations.js';
+import { collectRefs } from '../relations/definitions.js';
 import type {
   RelationInput,
   RelationInputTarget,
@@ -12,7 +10,9 @@ import type {
   SchemaRelation,
   SchemaRelationMap,
   SchemaLike,
-} from './relations.js';
+} from '../relations/definitions.js';
+import type { SchemaDefinition, SchemaShape } from './contracts.js';
+import type { InferShape } from './inference.js';
 
 /** Built-in persistence behavior applied by a schema. */
 export interface SchemaOptions {

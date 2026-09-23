@@ -6,8 +6,7 @@ import {
   type Db as MongoDatabase,
 } from 'mongodb';
 
-import { DatabaseNotConnectedError } from './errors/errors.js';
-import { Model } from './model.js';
+import { Model } from '../model/model.js';
 import type {
   Schema,
   SchemaOptions,
@@ -15,7 +14,8 @@ import type {
   SchemaShape,
   SchemaRelationMap,
   ScopeDefinitions,
-} from './schema/index.js';
+} from '../schema/index.js';
+import { DatabaseNotConnectedError } from '../validation/errors.js';
 
 export type SchemaRegistry = Record<string, SchemaLike>;
 

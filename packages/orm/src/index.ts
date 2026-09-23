@@ -14,19 +14,19 @@ export type {
   SchemaRelation,
   SchemaRelationMap,
 } from './schema/index.js';
-export { createDatabase, Db } from './db.js';
+export { createDatabase, Db } from './connection/database.js';
 export type {
   RelationDefinitions,
   SchemaRegistryBuilder,
   ScopeDefinitionsBySchema,
-} from './schema/registry.js';
+} from './relations/registry.js';
 export {
   CursorQueryError,
   DatabaseNotConnectedError,
   EstimatedCountError,
   InvalidQueryError,
   OrmError,
-} from './errors/errors.js';
-export { Model } from './model.js';
+} from './validation/errors.js';
+export { Model } from './model/model.js';
 export { ModelCursor, ModelFindQuery, ModelQuery } from './query/query.js';
-export type { DatabaseModels, DbOptions, SchemaRegistry } from './db.js';
+export type { DatabaseModels, DbOptions, SchemaRegistry } from './connection/database.js';
