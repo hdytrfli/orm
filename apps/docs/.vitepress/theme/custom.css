@@ -1,4 +1,6 @@
 .dark {
+  --vp-font-family-base: 'Geist', sans-serif;
+
   --mongorm-background: #09090b;
   --mongorm-foreground: #ffffff;
   --mongorm-card: #101014;
@@ -8,6 +10,9 @@
 
   --vp-c-bg-elv: var(--mongorm-card);
   --vp-c-bg-soft: var(--mongorm-card);
+
+  --vp-c-default-1: var(--mongorm-card);
+  --vp-c-default-2: var(--mongorm-card);
   --vp-c-default-3: var(--mongorm-card);
 
   --vp-c-text-1: var(--mongorm-foreground);

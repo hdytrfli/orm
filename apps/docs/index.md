@@ -2,7 +2,7 @@
 layout: home
 hero:
   name: Mongorm
-  text: Type-safe MongoDB, shaped by Zod
+  text: Typescript first MongoDB Client
   tagline: A schema-first TypeScript ORM for teams that want MongoDB flexibility without giving up reliable contracts.
   image:
     src: /logo.svg

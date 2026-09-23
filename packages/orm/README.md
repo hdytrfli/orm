@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./.github/assets/backdrop.svg" alt="Mongorm" width="100%" style="border-radius: 10px;" />
+  <img src="./.github/assets/backdrop.jpg" alt="Mongorm" width="100%" style="border-radius: 10px;" />
 </p>
 
 <p align="center">

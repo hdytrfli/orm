@@ -36,5 +36,13 @@ export default defineConfig({
         href: '/logo.svg',
       },
     ],
+    ['link', { rel: 'preconnect', href: 'https://fonts.bunny.net' }],
+    [
+      'link',
+      {
+        rel: 'stylesheet',
+        href: 'https://fonts.bunny.net/css?family=geist:400,500,600,700',
+      },
+    ],
   ],
 });
