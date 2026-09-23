@@ -41,7 +41,7 @@ await db.user.delete({ _id: userId });
 await db.user.restore({ _id: userId });
 ```
 
-Use `forceDelete()` to permanently remove matching documents, including documents already soft-deleted. Always use a precise filter for production data and consider requiring an explicit confirmation for broad administrative operations.
+Use `purge()` to permanently remove matching documents, including documents already soft-deleted. Always use a precise filter for production data and consider requiring an explicit confirmation for broad administrative operations.
 
 ## Mutation Transactions
 

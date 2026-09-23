@@ -49,8 +49,8 @@ export class ModelQuery<
   Mode extends PopulationMode = 'none',
   SoftDelete extends boolean = false,
 > implements PromiseLike<Result[]> {
-  declare readonly withDeleted: SoftDelete extends true ? () => this : never;
-  declare readonly onlyDeleted: SoftDelete extends true ? () => this : never;
+  declare readonly all: SoftDelete extends true ? () => this : never;
+  declare readonly deleted: SoftDelete extends true ? () => this : never;
   private sortSpec: ModelSort<Shape> | undefined;
   private skipCount: number | undefined;
   private limitCount: number | undefined;
@@ -80,8 +80,8 @@ export class ModelQuery<
     this.population = new PopulationExecutor(db, relations);
     if (softdeleteEnabled) {
       Object.defineProperties(this, {
-        withDeleted: { configurable: false, enumerable: false, value: () => this.includeDeleted() },
-        onlyDeleted: { configurable: false, enumerable: false, value: () => this.filterDeleted() },
+        all: { configurable: false, enumerable: false, value: () => this.includeDeleted() },
+        deleted: { configurable: false, enumerable: false, value: () => this.filterDeleted() },
       });
     }
   }
@@ -94,7 +94,7 @@ export class ModelQuery<
 
   /** Restrict this query to soft-deleted documents. */
   private filterDeleted(): this {
-    this.softDelete.onlyDeleted();
+    this.softDelete.deleted();
     return this;
   }
 

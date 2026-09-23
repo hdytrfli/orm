@@ -17,8 +17,8 @@ The list and single-document builders share selection and population methods. Li
 | `show(fields)`    | expanded query    | Explicitly includes hidden fields.                         |
 | `populate(specs)` | populated query   | Loads declared relations.                                  |
 | `with(name)`      | scoped query      | Applies a named population scope.                          |
-| `withDeleted()`   | query             | Includes active and soft-deleted documents.                |
-| `onlyDeleted()`   | query             | Restricts results to soft-deleted documents.               |
+| `all()`           | query             | Includes active and soft-deleted documents.                |
+| `deleted()`       | query             | Restricts results to soft-deleted documents.               |
 | `count()`         | promise of number | Exact filtered count.                                      |
 | `count(true)`     | promise of number | Estimated unfiltered count.                                |
 | `cursor(after?)`  | async cursor      | Requires positive limit and default `_id` sort.            |

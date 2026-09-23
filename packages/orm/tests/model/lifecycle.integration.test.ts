@@ -15,7 +15,7 @@ const lifecycle = database.model('lifecycle', lifecycleSchema);
 
 describe.skipIf(!runDatabaseTests)('model lifecycle', () => {
   beforeAll(() => database.connect());
-  beforeEach(() => lifecycle.forceDelete({}));
+  beforeEach(() => lifecycle.purge({}));
   afterAll(() => database.disconnect());
 
   it('manages timestamps and soft deletion', async () => {
@@ -30,8 +30,8 @@ describe.skipIf(!runDatabaseTests)('model lifecycle', () => {
     const deleted = await lifecycle.delete({ _id: first._id });
     expect(deleted.deletedCount).toBe(1);
     expect(await lifecycle.filter({})).toHaveLength(1);
-    expect(await lifecycle.filter({}).withDeleted()).toHaveLength(2);
-    expect((await lifecycle.filter({}).onlyDeleted())[0]._id).toEqual(first._id);
+    expect(await lifecycle.filter({}).all()).toHaveLength(2);
+    expect((await lifecycle.filter({}).deleted())[0]._id).toEqual(first._id);
 
     const restored = await lifecycle.restore({ _id: first._id });
     expect(restored?.deletedAt).toBeNull();

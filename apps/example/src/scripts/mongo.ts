@@ -99,7 +99,7 @@ try {
     value: await db.users
       .find({ _id: user._id })
       .populate([{ ref: 'group', populate: [{ ref: 'creator' }] }])
-      .withDeleted(),
+      .all(),
   });
 
   log.debug({
@@ -140,7 +140,7 @@ try {
 
   log.debug({
     context: 'estimated count',
-    value: await db.users.filter().withDeleted().count(true),
+    value: await db.users.filter().all().count(true),
   });
 
   const test = await db.users.filter().sort({ _id: 'asc' }).limit(6);

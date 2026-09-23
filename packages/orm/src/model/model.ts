@@ -41,7 +41,7 @@ export class Model<
         filter: ModelFilter<Shape>,
       ) => Promise<Infer<Schema<Shape, Relations, Scopes, Options>> | null>
     : never;
-  declare readonly forceDelete: SoftDeleteEnabled<Options> extends true
+  declare readonly purge: SoftDeleteEnabled<Options> extends true
     ? (filter: ModelFilter<Shape>) => Promise<DeleteResult>
     : never;
 
@@ -58,10 +58,10 @@ export class Model<
           enumerable: false,
           value: (filter: ModelFilter<Shape>) => this.restoreDocument(filter),
         },
-        forceDelete: {
+        purge: {
           configurable: false,
           enumerable: false,
-          value: (filter: ModelFilter<Shape>) => this.forceDeleteDocuments(filter),
+          value: (filter: ModelFilter<Shape>) => this.purgeDocuments(filter),
         },
       });
     }
@@ -194,7 +194,7 @@ export class Model<
   }
 
   /** Permanently delete matching documents, including soft-deleted documents. */
-  private forceDeleteDocuments(filter: ModelFilter<Shape>): Promise<DeleteResult> {
+  private purgeDocuments(filter: ModelFilter<Shape>): Promise<DeleteResult> {
     return this.collection.deleteMany(filter as MongoFilter<StoredDocument<Shape>>);
   }
 }

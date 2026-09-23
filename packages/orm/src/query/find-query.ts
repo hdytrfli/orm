@@ -27,8 +27,8 @@ export class ModelFindQuery<
   Mode extends PopulationMode = 'none',
   SoftDelete extends boolean = false,
 > implements PromiseLike<Result | null> {
-  declare readonly withDeleted: SoftDelete extends true ? () => this : never;
-  declare readonly onlyDeleted: SoftDelete extends true ? () => this : never;
+  declare readonly all: SoftDelete extends true ? () => this : never;
+  declare readonly deleted: SoftDelete extends true ? () => this : never;
   private selectedFields: readonly string[] | undefined;
   private shownFields: readonly string[] = [];
   private populateSpecs: PopulateSpecs<Relations> = [];
@@ -50,8 +50,8 @@ export class ModelFindQuery<
     this.population = new PopulationExecutor(db, relations);
     if (softdeleteEnabled) {
       Object.defineProperties(this, {
-        withDeleted: { configurable: false, enumerable: false, value: () => this.includeDeleted() },
-        onlyDeleted: { configurable: false, enumerable: false, value: () => this.filterDeleted() },
+        all: { configurable: false, enumerable: false, value: () => this.includeDeleted() },
+        deleted: { configurable: false, enumerable: false, value: () => this.filterDeleted() },
       });
     }
   }
@@ -62,7 +62,7 @@ export class ModelFindQuery<
   }
 
   private filterDeleted(): this {
-    this.softDelete.onlyDeleted();
+    this.softDelete.deleted();
     return this;
   }
 

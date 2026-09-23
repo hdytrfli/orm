@@ -53,6 +53,6 @@ Deletes all matching documents and returns MongoDB's `DeleteResult`. For a soft-
 
 Restores the first matching soft-deleted document by setting `deletedAt` to `null`.
 
-## `Model.forceDelete(filter)`
+## `Model.purge(filter)`
 
 Permanently deletes all matching documents, including soft-deleted documents.

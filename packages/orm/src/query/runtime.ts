@@ -41,7 +41,7 @@ export class SoftDeleteState<Shape extends SchemaShape> {
     this.mode = 'all';
   }
 
-  onlyDeleted(): void {
+  deleted(): void {
     this.mode = 'deleted';
   }
 
