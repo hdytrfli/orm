@@ -128,7 +128,7 @@ export type PopulatedResult<
 type PopulatedRelation<Relation, Spec> = Spec extends {
   populate: infer Nested extends PopulateSpecs<RelationMapOf<Relation>>;
 }
-  ? RelationDocument<Relation> extends infer Document extends object
-    ? PopulatedResult<Document, RelationMapOf<Relation>, Nested>
+  ? RelationDocument<Relation> extends infer PopulatedDocument extends object
+    ? PopulatedResult<PopulatedDocument, RelationMapOf<Relation>, Nested>
     : never
   : RelationDocument<Relation>;

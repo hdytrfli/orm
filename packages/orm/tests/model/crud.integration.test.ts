@@ -60,10 +60,12 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     expect((await tickets.filter({}))[0]).not.toHaveProperty('secret');
     expect((await tickets.filter({}).show(['secret']))[0]).toHaveProperty('secret');
     expect(await tickets.filter({ status: 'open', owner: owner._id })).toHaveLength(2);
+    expect(await tickets.find({ title: 'Missing ticket' })).toBeNull();
     const populated = await tickets
       .filter({ status: 'open' })
       .populate([{ ref: 'owner', select: ['name'] }]);
     expect(populated[0].owner?.name).toBe('Ada');
+    expect(populated[0].owner).toHaveProperty('_id');
     expect(await tickets.filter()).toEqual(await tickets.filter({}));
     expect(await tickets.filter({ status: 'open' }).count()).toBe(2);
     expect(await tickets.filter().count(true)).toBeGreaterThanOrEqual(3);
@@ -84,6 +86,12 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     expect(secondResults).toHaveLength(1);
     expect(secondPage.next).toBeNull();
     expect(new Set([...firstResults, ...secondResults].map((ticket) => ticket._id)).size).toBe(3);
+    const projectedPage = tickets.filter({}).select(['title']).limit(2).cursor();
+    for await (const ticket of projectedPage) {
+      expect(ticket).toHaveProperty('title');
+      expect(ticket).not.toHaveProperty('secret');
+      expect(ticket).not.toHaveProperty('priority');
+    }
     const sorted = await tickets.filter({ status: 'open' }).sort({ priority: 'desc' });
     expect(sorted.map((ticket) => ticket.priority)).toEqual([2, 1]);
     const skipped = await tickets.filter({ status: 'open' }).sort({ priority: 'desc' }).skip(1);
@@ -98,6 +106,10 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
       .sort({ priority: 'desc' })
       .skip(5) as any;
     expect(() => invalidCursorQuery.cursor()).toThrow('Cursor queries do not support skip');
+    expect(() => tickets.filter({}).cursor()).toThrow('Cursor queries require a positive limit');
+    expect(() => (tickets.filter({}).limit(3).sort({ priority: 'desc' }).cursor as any)()).toThrow(
+      'default _id ascending sort',
+    );
     const selected = await tickets.filter({ status: 'open' }).select(['title', 'priority']);
     expect(selected[0]).toMatchObject({ title: 'Design API', priority: 1 });
     expect(Object.keys(selected[0])).toEqual(expect.arrayContaining(['_id', 'title', 'priority']));

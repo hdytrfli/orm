@@ -56,13 +56,13 @@ await users.filter({}).sort({ name: 'asc' }).skip(1).limit(2);
 await users.filter({ role: 'admin' }).count();
 await users.filter().count(true);
 const firstPage = users.filter().limit(2).cursor();
-for await (const user of firstPage) user.name;
+for await (const firstUser of firstPage) firstUser.name;
 firstPage.next;
 const nextPage = await users
   .filter()
   .limit(2)
   .cursor(firstPage.next ?? undefined);
-for await (const user of nextPage) user.name;
+for await (const nextUser of nextPage) nextUser.name;
 // @ts-expect-error Cursor positions use ObjectId values.
 await users.filter().limit(2).cursor('after');
 // @ts-expect-error Cursor pagination cannot be combined with skip.
