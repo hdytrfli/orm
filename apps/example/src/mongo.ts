@@ -90,12 +90,9 @@ try {
     }),
   );
 
-  const found = await db.users.find({ _id: user._id }).select([
-    // select these fields
-    'name',
-    'group',
-    'profile.location.city',
-  ]);
+  const found = await db.users
+    .find({ _id: user._id })
+    .select(['name', 'group', 'profile.location.city']);
 
   if (!found) throw new Error('User not found');
   console.log(found.profile.location.city);
@@ -103,37 +100,18 @@ try {
   console.log('found:', found);
   console.log(
     'populated:',
-    await db.users.find({ _id: user._id }).populate([
-      {
-        ref: 'group',
-        select: ['name'],
-        populate: [
-          {
-            ref: 'creator',
-          },
-        ],
-      },
-    ]),
+    await db.users
+      .find({ _id: user._id })
+      .populate([{ ref: 'group', populate: [{ ref: 'creator' }] }])
+      .withDeleted(),
   );
   console.log('with detail:', await db.users.find({ _id: user._id }).with('detail'));
   console.log('with hidden field:', await db.users.find({ _id: user._id }).show(['password']));
-
-  console.log(
-    'filtered simple:',
-    await db.users.filter({
-      role: 'admin',
-    }),
-  );
+  console.log('filtered simple:', await db.users.filter({ role: 'admin' }));
 
   const filteredSorted = await db.users
-    .filter({
-      $or: [
-        // one of the following conditions must be true
-        { role: 'admin' },
-        { age: { $gte: 18 } },
-      ],
-    })
-    .select(['name', 'age'])
+    .filter({ $or: [{ role: 'admin' }, { age: { $gte: 18 } }] })
+    .select(['name', 'age', 'deletedAt'])
     .sort({ age: 'asc' })
     .skip(1)
     .limit(3);
@@ -145,28 +123,12 @@ try {
 
   console.log(
     'filtered with or:',
-    await db.users
-      .filter({
-        $or: [
-          // one of the following conditions must be true
-          { role: 'admin' },
-          { age: { $gte: 18 } },
-        ],
-      })
-      .limit(2),
+    await db.users.filter({ $or: [{ role: 'admin' }, { age: { $gte: 18 } }] }).limit(2),
   );
 
   console.log(
     'filtered with and:',
-    await db.users
-      .filter({
-        $and: [
-          // both of the following conditions must be true
-          { role: 'member' },
-          { age: { $gte: 18 } },
-        ],
-      })
-      .limit(2),
+    await db.users.filter({ $and: [{ role: 'member' }, { age: { $gte: 18 } }] }).limit(2),
   );
   console.log('exact count:', await db.users.filter({ role: 'admin' }).count());
   console.log('estimated count:', await db.users.filter().count(true));
@@ -179,14 +141,11 @@ try {
   const first = db.users.filter().limit(3).cursor();
   for await (const item of first) console.log({ count: ++count, item });
 
-  const second = db.users
-    .filter()
-    .limit(3)
-    .cursor(first.next ?? undefined);
-
+  const next = first.next ?? undefined;
+  const second = db.users.filter().limit(3).cursor(next);
   for await (const item of second) console.log({ count: ++count, item });
-  console.log('cursor pages:', { next: second.next });
 
+  console.log('cursor pages:', { next: second.next });
   console.log('updated:', await db.users.update({ _id: user._id }, { role: 'admin', age: 20 }));
   console.log('deleted:', await db.users.delete({ _id: { $in: [user._id, another._id] } }));
 
@@ -200,18 +159,6 @@ try {
     const relatedGroup = await relatedGroupModel.find({ _id: found.group });
     console.log('related group:', relatedGroup);
   }
-
-  await db.companies.delete({
-    // this will delete all companies
-  });
-
-  await db.groups.delete({
-    // this will delete all groups
-  });
-
-  // await db.users.delete({
-  //   // this will delete all users
-  // });
 } finally {
   await db.disconnect();
 }
