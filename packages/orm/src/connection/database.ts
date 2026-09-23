@@ -54,13 +54,7 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
   constructor(private readonly options: DbOptions<Registry>) {
     this.client = new MongoClient(options.uri, options.clientOptions);
     for (const [name, schema] of Object.entries(options.schema ?? {})) {
-      const registeredName = this.schemaCollections.get(schema);
-      if (registeredName && registeredName !== name) {
-        throw new Error(
-          `Schema is already registered with collection "${registeredName}" and cannot also use "${name}"`,
-        );
-      }
-      this.schemaCollections.set(schema, name);
+      this.registerSchema(schema, name);
       let model: Model<SchemaShape, SchemaRelationMap, ScopeDefinitions> | undefined;
       Object.defineProperty(this, name, {
         configurable: false,
@@ -92,6 +86,11 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
     name: string,
     schema: Schema<Shape, Relations, Scopes, Options>,
   ): Model<Shape, Relations, Scopes, Options> {
+    this.registerSchema(schema, name);
+    return new Model(this, name, schema);
+  }
+
+  private registerSchema(schema: SchemaLike, name: string): void {
     const registeredName = this.schemaCollections.get(schema);
     if (registeredName && registeredName !== name) {
       throw new Error(
@@ -99,7 +98,6 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
       );
     }
     this.schemaCollections.set(schema, name);
-    return new Model(this, name, schema);
   }
 
   /** Resolve a registered schema to its MongoDB collection. */
