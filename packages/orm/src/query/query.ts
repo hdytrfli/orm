@@ -150,8 +150,16 @@ export type PopulatedResult<
   Relations extends SchemaRelationMap,
   Specs extends PopulateSpecs<Relations>,
 > = Omit<Result, Extract<Specs[number]['ref'], keyof Result>> & {
-  [Spec in Specs[number] as Spec['ref']]: RelationDocument<Relations[Spec['ref']]> | null;
+  [Spec in Specs[number] as Spec['ref']]: PopulatedRelation<Relations[Spec['ref']], Spec> | null;
 };
+
+type PopulatedRelation<Relation, Spec> = Spec extends {
+  populate: infer Nested extends PopulateSpecs<RelationMapOf<Relation>>;
+}
+  ? RelationDocument<Relation> extends infer Document extends object
+    ? PopulatedResult<Document, RelationMapOf<Relation>, Nested>
+    : never
+  : RelationDocument<Relation>;
 
 /** A lazy async iterable for one cursor-pagination page. */
 export class ModelCursor<
