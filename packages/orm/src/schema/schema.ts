@@ -153,6 +153,9 @@ export class Schema<
 
   /** Declare MongoDB indexes for explicit synchronization with the database. */
   indexes<const Definitions extends readonly SchemaIndex<Shape>[]>(definitions: Definitions): this {
+    if (definitions.some(({ fields }) => Object.keys(fields).length === 0)) {
+      throw new Error('Index definitions must include at least one field');
+    }
     this.indexDefinitions = definitions;
     return this;
   }

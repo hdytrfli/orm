@@ -46,4 +46,10 @@ describe('schema options', () => {
       { fields: { email: 1 }, options: { unique: true, name: 'account_email_unique' } },
     ]);
   });
+
+  it('rejects empty index definitions', () => {
+    expect(() => orm.schema({ email: orm.string() }).indexes([{ fields: {} }])).toThrow(
+      'at least one field',
+    );
+  });
 });
