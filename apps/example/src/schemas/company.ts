@@ -4,7 +4,7 @@ import { COMPANY_PLANS } from '@/libs/constants';
 
 export const companySchema = orm
   .schema({
-    slug: orm.string().regex(/^[a-z0-9-]+$/),
+    slug: orm.string(),
     name: orm.string(),
     domain: orm.email().optional(),
     description: orm.string().optional(),
@@ -24,6 +24,9 @@ export const companySchema = orm
       options: {
         unique: true,
         name: 'company_slug_unique',
+        partialFilterExpression: {
+          deletedAt: null,
+        },
       },
     },
     {

@@ -6,10 +6,7 @@ export const projectSchema = orm
   .schema({
     company: orm.objectId(),
     owner: orm.objectId(),
-    key: orm
-      .string()
-      .toUpperCase()
-      .regex(/^[A-Z][A-Z0-9_]+$/),
+    key: orm.string().toUpperCase(),
     name: orm.string().min(3),
     description: orm.string().optional(),
     status: orm.enum(PROJECT_STATUSES),
@@ -30,6 +27,9 @@ export const projectSchema = orm
       options: {
         unique: true,
         name: 'project_key_per_company',
+        partialFilterExpression: {
+          deletedAt: null,
+        },
       },
     },
     {

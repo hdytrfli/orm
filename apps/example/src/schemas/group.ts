@@ -16,11 +16,15 @@ export const groupSchema = orm
   .indexes([
     {
       fields: {
+        company: 1,
         name: 1,
       },
       options: {
         unique: true,
         name: 'group_name_per_company',
+        partialFilterExpression: {
+          deletedAt: null,
+        },
       },
     },
     {

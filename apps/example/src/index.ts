@@ -24,23 +24,23 @@ log.info({
 });
 
 try {
-  await db.users.delete({
+  await db.tasks.purge({
     //
   });
 
-  await db.tasks.delete({
+  await db.projects.purge({
     //
   });
 
-  await db.groups.delete({
+  await db.users.purge({
     //
   });
 
-  await db.projects.delete({
+  await db.groups.purge({
     //
   });
 
-  await db.companies.delete({
+  await db.companies.purge({
     //
   });
 
@@ -138,6 +138,8 @@ try {
       source: 'manual',
     },
   });
+
+  console.log();
 
   log.debug({
     context: 'project',

@@ -34,9 +34,7 @@ export const userSchema = orm
         unique: true,
         name: 'user_username_per_company',
         partialFilterExpression: {
-          username: {
-            $exists: true,
-          },
+          $and: [{ username: { $exists: true } }, { deletedAt: null }],
         },
       },
     },
