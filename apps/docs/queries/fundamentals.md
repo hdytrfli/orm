@@ -51,6 +51,26 @@ const users = await db.user.find({
 
 The schema constrains field names and values, while MongoDB supplies operators such as `$in`, `$exists`, `$regex`, `$and`, and `$or`.
 
+## Nested Field Filters
+
+Use MongoDB dot notation to filter one field inside a nested object. The path is checked against the schema and remains type-safe:
+
+```ts
+const LondonUsers = await db.user.find({
+  'profile.location.city': { $eq: 'London' },
+});
+```
+
+The same form works with other operators:
+
+```ts
+const usersWithPublicProfiles = await db.user.find({
+  'profile.website': { $exists: true },
+});
+```
+
+Filtering the parent field instead matches the embedded document as a whole, so use dot notation when other nested fields should remain unconstrained.
+
 ## Empty Filters
 
 An omitted or empty filter matches every document:
