@@ -84,6 +84,16 @@ void member;
 declare const db: Db;
 await db.sync({ dropIndexes: true });
 const users = db.model('users', userSchema);
+const managedFieldsSchema = orm
+  .schema({ name: orm.string() })
+  .options({ timestamps: true, softdelete: true, hideManaged: true });
+const managedFieldsModel = db.model('managed-fields', managedFieldsSchema);
+const defaultManagedFields = await managedFieldsModel.find();
+// @ts-expect-error Managed fields are hidden by default.
+defaultManagedFields[0].createdAt;
+const shownManagedFields = await managedFieldsModel.find().show(['createdAt', 'deletedAt']);
+shownManagedFields[0].createdAt;
+shownManagedFields[0].deletedAt;
 const indexedUsers = db.model('indexed-users', indexedUserSchema);
 await indexedUsers.index.drop(['user_name_role']);
 await indexedUsers.index.purge();

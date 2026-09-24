@@ -17,6 +17,14 @@ describe('schema options', () => {
     expect(account.optionsConfig).toEqual({ timestamps: true, softdelete: true });
   });
 
+  it('hides managed fields by default when requested', () => {
+    const account = orm
+      .schema({ name: orm.string() })
+      .options({ timestamps: true, softdelete: true, hideManaged: true });
+
+    expect(account.hiddenFields).toEqual(['createdAt', 'updatedAt', 'deletedAt']);
+  });
+
   it('rejects managed field name collisions', () => {
     expect(() => orm.schema({ createdAt: orm.string() }).options({ timestamps: true })).toThrow(
       'managed by Mongorm',

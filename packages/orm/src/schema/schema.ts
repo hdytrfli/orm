@@ -14,11 +14,14 @@ import type {
 } from '../relations/definitions.js';
 import type { SchemaDefinition, SchemaShape } from './contracts.js';
 import type { InferShape } from './inference.js';
+import { withHidden, type HiddenSchema } from './scalars.js';
 
 /** Built-in persistence behavior applied by a schema. */
 export interface SchemaOptions {
   readonly timestamps?: boolean;
   readonly softdelete?: boolean;
+  /** Hide Mongorm-managed fields from default query results. */
+  readonly hideManaged?: boolean;
 }
 
 type IndexFieldMap<Shape extends SchemaShape> = Record<
@@ -78,19 +81,24 @@ export type SchemaIndexNames<Indexes extends readonly SchemaIndex<any>[]> = Extr
   string
 >;
 
-type TimestampShape = {
-  createdAt: z.ZodDefault<z.ZodDate>;
-  updatedAt: z.ZodDefault<z.ZodDate>;
+type ManagedSchema<
+  T extends z.ZodType,
+  Options extends SchemaOptions,
+> = Options['hideManaged'] extends true ? HiddenSchema<T> : T;
+
+type TimestampShape<Options extends SchemaOptions> = {
+  createdAt: ManagedSchema<z.ZodDefault<z.ZodDate>, Options>;
+  updatedAt: ManagedSchema<z.ZodDefault<z.ZodDate>, Options>;
 };
 
-type SoftDeleteShape = {
-  deletedAt: z.ZodDefault<z.ZodNullable<z.ZodDate>>;
+type SoftDeleteShape<Options extends SchemaOptions> = {
+  deletedAt: ManagedSchema<z.ZodDefault<z.ZodNullable<z.ZodDate>>, Options>;
 };
 
 type ManagedShape<Options extends SchemaOptions> = (Options['timestamps'] extends true
-  ? TimestampShape
+  ? TimestampShape<Options>
   : {}) &
-  (Options['softdelete'] extends true ? SoftDeleteShape : {});
+  (Options['softdelete'] extends true ? SoftDeleteShape<Options> : {});
 
 export type ManagedField<Options extends SchemaOptions> =
   | (Options['timestamps'] extends true ? 'createdAt' | 'updatedAt' : never)
@@ -185,11 +193,19 @@ export class Schema<
     const managedShape = {
       ...(options.timestamps
         ? {
-            createdAt: z.date().default(() => new Date()),
-            updatedAt: z.date().default(() => new Date()),
+            createdAt: this.managedField(
+              z.date().default(() => new Date()),
+              options,
+            ),
+            updatedAt: this.managedField(
+              z.date().default(() => new Date()),
+              options,
+            ),
           }
         : {}),
-      ...(options.softdelete ? { deletedAt: z.date().nullable().default(null) } : {}),
+      ...(options.softdelete
+        ? { deletedAt: this.managedField(z.date().nullable().default(null), options) }
+        : {}),
     } as ManagedShape<Enabled>;
     const next = new Schema(
       { ...this.definition.shape, ...managedShape } as Shape & ManagedShape<Enabled>,
@@ -205,6 +221,10 @@ export class Schema<
       Enabled,
       Indexes
     >;
+  }
+
+  private managedField<T extends z.ZodType>(field: T, options: SchemaOptions): T {
+    return (options.hideManaged ? withHidden(field).hidden() : field) as T;
   }
 
   /** Declare MongoDB indexes for explicit synchronization with the database. */
