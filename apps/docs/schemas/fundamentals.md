@@ -31,6 +31,19 @@ const user = orm
 
 Managed fields are optional in create and update input, but always present in the persisted document type. Mongorm supplies missing values and refreshes lifecycle values when appropriate. Use `deleted('include')` to include deleted documents, `deleted('only')` to inspect the deleted set, `restore()` to recover a document, and `purge()` for permanent removal.
 
+To omit managed timestamps and soft-delete metadata from normal query results, enable `hideManaged`:
+
+```ts
+const user = orm
+  .schema({ email: orm.email() })
+  .options({ timestamps: true, softdelete: true, hideManaged: true });
+
+const users = await db.users.find(); // createdAt, updatedAt, deletedAt are omitted
+const withLifecycle = await db.users.find().show(['createdAt', 'deletedAt']);
+```
+
+`hideManaged` only changes default query projections. `create()`, `update()`, and `restore()` return the full document because they do not have a projection chain.
+
 ## Parsing and Inference
 
 The schema parses input at write boundaries and supplies the source for inferred types.

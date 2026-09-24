@@ -40,11 +40,13 @@ Enables managed persistence behavior once per schema:
 const user = orm.schema({ name: orm.string() }).options({
   timestamps: true,
   softdelete: true,
+  hideManaged: true,
 });
 ```
 
 - `timestamps` manages `createdAt` and `updatedAt`.
 - `softdelete` manages nullable `deletedAt` and filters deleted documents from normal reads.
+- `hideManaged` hides whichever managed fields are enabled from default query results. Use `.show()` to include them explicitly. It affects query projections; mutation methods such as `create()` and `update()` still return the full document.
 
 ## `orm.defineSchemas(registry)`
 

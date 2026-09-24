@@ -4,12 +4,12 @@ order: 1
 
 # Query Fundamentals
 
-Models expose two read builders:
+Models expose one read-query builder:
 
-- `filter()` returns an array of matching documents.
-- `find()` returns the first matching document or `null`.
+- `find(filter?)` accepts an optional MongoDB-style filter and returns an awaitable query resolving to an array of matching documents.
+- Chain `.first()` on that query to resolve to one matching document or `null`.
 
-Both accept MongoDB-style filters constrained by the schema's field types.
+The filter is constrained by the schema's field types.
 
 ```ts
 const activeUsers = await db.user.find({ active: true });
@@ -26,7 +26,7 @@ const allUsers = await db.user.find({}).deleted('include');
 const deletedUsers = await db.user.find({}).deleted('only');
 ```
 
-This applies to both `filter()` and `find()`. Use the explicit methods instead of manually repeating a `deletedAt` predicate so the intent remains clear.
+This applies to `find()` and to `.first()` because it is terminal on the same query. Use the explicit methods instead of manually repeating a `deletedAt` predicate so the intent remains clear.
 
 ## Queries Are Awaitable
 
@@ -84,4 +84,4 @@ Use an explicit safety check before destructive operations. `delete()` intention
 
 ## Single Versus Many
 
-Use `find()` when the application needs at most one result. Use `filter()` when an empty result is a normal list outcome. Neither method invents a missing document; `find()` returns `null`.
+Use `find()` for lists, including when an empty result is normal. Add `.first()` when the application needs at most one result; it returns `null` when no document matches.

@@ -20,7 +20,7 @@ const user = orm.schema({
 const post = orm.schema({
   title: orm.string().min(1),
   body: orm.string(),
-  authorId: orm.objectId(),
+  author: orm.objectId(),
   published: orm.boolean().default(false),
 });
 ```
@@ -47,7 +47,7 @@ const schemas = orm
   });
 ```
 
-The relation name is the local field name. A post's `authorId` points to the `_id` of a user, so `post` gains an `author` population key.
+The relation name is the local field name. A post's `author` field points to the `_id` of a user, so `post` gains an `author` population key.
 
 ## 3. Create the Database Handle
 
@@ -77,7 +77,7 @@ const ada = await db.user.create({
 const post = await db.post.create({
   title: 'A typed document layer',
   body: 'MongoDB and TypeScript can work together.',
-  authorId: ada._id,
+  author: ada._id,
 });
 ```
 
@@ -88,11 +88,11 @@ const post = await db.post.create({
 ```ts
 const result = await db.post
   .find({ published: true })
-  .select(['title', 'author.name']);
-  .with('detail')
+  .select(['title'])
+  .with('detail');
 ```
 
-The result contains `_id`, `title`, and the selected author projection. The scope and selection are reflected in the inferred TypeScript result.
+The result is an array of posts containing `_id`, `title`, and the author projection declared by the `detail` scope. The scope and selection are reflected in the inferred TypeScript result.
 
 ## 6. Close the client connection
 
