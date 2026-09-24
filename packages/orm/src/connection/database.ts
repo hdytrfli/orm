@@ -11,6 +11,7 @@ import { Model } from '../model/model.js';
 import type {
   Schema,
   SchemaOptions,
+  SchemaIndex,
   SchemaLike,
   SchemaShape,
   SchemaRelationMap,
@@ -33,8 +34,14 @@ export interface DbOptions<Registry extends SchemaRegistry = SchemaRegistry> {
 }
 
 type ModelForSchema<SchemaType> =
-  SchemaType extends Schema<infer Shape, infer Relations, infer Scopes, infer Options>
-    ? Model<Shape, Relations, Scopes, Options>
+  SchemaType extends Schema<
+    infer Shape,
+    infer Relations,
+    infer Scopes,
+    infer Options,
+    infer Indexes extends readonly SchemaIndex<any>[]
+  >
+    ? Model<Shape, Relations, Scopes, Options, Indexes>
     : never;
 
 export type DatabaseModels<Registry extends SchemaRegistry> = {
@@ -56,7 +63,9 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
     this.client = new MongoClient(options.uri, options.clientOptions);
     for (const [name, schema] of Object.entries(options.schema ?? {})) {
       this.registerSchema(schema, name);
-      let model: Model<SchemaShape, SchemaRelationMap, ScopeDefinitions> | undefined;
+      let model:
+        | Model<SchemaShape, SchemaRelationMap, ScopeDefinitions, any, readonly SchemaIndex<any>[]>
+        | undefined;
       Object.defineProperty(this, name, {
         configurable: false,
         enumerable: true,
@@ -83,10 +92,11 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
     Relations extends SchemaRelationMap,
     Scopes extends ScopeDefinitions,
     Options extends SchemaOptions,
+    Indexes extends readonly SchemaIndex<any>[],
   >(
     name: string,
-    schema: Schema<Shape, Relations, Scopes, Options>,
-  ): Model<Shape, Relations, Scopes, Options> {
+    schema: Schema<Shape, Relations, Scopes, Options, Indexes>,
+  ): Model<Shape, Relations, Scopes, Options, Indexes> {
     this.registerSchema(schema, name);
     return new Model(this, name, schema);
   }
@@ -109,14 +119,15 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
   }
 
   /** Explicitly create all indexes declared by registered schemas. */
-  async sync(): Promise<Record<string, string[]>> {
+  async sync(options: { dropIndexes?: boolean } = {}): Promise<Record<string, string[]>> {
     const synchronized: Record<string, string[]> = {};
     for (const [schema, name] of this.schemaCollections) {
-      const definitions = schema.indexDefinitions ?? [];
+      const definitions = (schema.indexDefinitions ?? []) as readonly SchemaIndex<any>[];
+      if (options.dropIndexes) await this.collectionFor(schema).dropIndexes();
       synchronized[name] = definitions.length
         ? await this.collectionFor(schema).createIndexes(
-            definitions.map(({ fields, options }) => ({
-              ...options,
+            definitions.map(({ fields, options: indexOptions }) => ({
+              ...(indexOptions as object),
               key: fields,
             })) as IndexDescription[],
           )

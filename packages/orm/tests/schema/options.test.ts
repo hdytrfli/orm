@@ -48,7 +48,7 @@ describe('schema options', () => {
   });
 
   it('rejects empty index definitions', () => {
-    expect(() => orm.schema({ email: orm.string() }).indexes([{ fields: {} }])).toThrow(
+    expect(() => orm.schema({ email: orm.string() }).indexes([{ fields: {} as never }])).toThrow(
       'at least one field',
     );
   });

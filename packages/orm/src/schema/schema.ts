@@ -1,4 +1,4 @@
-import type { IndexDescription, IndexDirection, ObjectId } from 'mongodb';
+import type { Condition, IndexDescription, IndexDirection, ObjectId } from 'mongodb';
 import { z } from 'zod';
 
 import type { PopulateSpecs } from '../query/query.js';
@@ -20,14 +20,51 @@ export interface SchemaOptions {
   readonly softdelete?: boolean;
 }
 
-export type SchemaIndexFields<Shape extends SchemaShape> = Partial<
-  Record<Extract<keyof Shape, string>, IndexDirection>
+type IndexFieldMap<Shape extends SchemaShape> = Record<
+  Extract<keyof Shape, string>,
+  IndexDirection
 >;
+
+/** A non-empty, autocomplete-friendly MongoDB index key definition. */
+export type SchemaIndexFields<Shape extends SchemaShape> = {
+  [Key in keyof IndexFieldMap<Shape>]: Pick<IndexFieldMap<Shape>, Key> &
+    Partial<Omit<IndexFieldMap<Shape>, Key>>;
+}[keyof IndexFieldMap<Shape>];
+
+type SchemaPartialFilterForDocument<DocumentShape extends object> = Partial<{
+  [Key in keyof DocumentShape]: Condition<DocumentShape[Key]>;
+}> & {
+  readonly $and?: SchemaPartialFilterForDocument<DocumentShape>[];
+  readonly $nor?: SchemaPartialFilterForDocument<DocumentShape>[];
+  readonly $or?: SchemaPartialFilterForDocument<DocumentShape>[];
+};
+
+/** A schema-aware MongoDB partial-index filter. */
+export type SchemaPartialFilter<Shape extends SchemaShape> = SchemaPartialFilterForDocument<
+  InferShape<Schema<Shape>>
+>;
+
+export type SchemaIndexOptions<Shape extends SchemaShape> = Omit<
+  IndexDescription,
+  'key' | 'partialFilterExpression'
+> & {
+  /** Restrict indexed documents using schema-aware MongoDB filter operators. */
+  readonly partialFilterExpression?: SchemaPartialFilter<Shape>;
+};
 
 export type SchemaIndex<Shape extends SchemaShape> = {
   readonly fields: SchemaIndexFields<Shape>;
-  readonly options?: Omit<IndexDescription, 'key'>;
+  readonly options?: SchemaIndexOptions<Shape>;
 };
+
+export type SchemaIndexNames<Indexes extends readonly SchemaIndex<any>[]> = Extract<
+  Indexes[number] extends infer Index
+    ? Index extends { readonly options?: { readonly name?: infer Name } }
+      ? Name
+      : never
+    : never,
+  string
+>;
 
 type TimestampShape = {
   createdAt: z.ZodDefault<z.ZodDate>;
@@ -69,6 +106,7 @@ export class Schema<
   Relations extends SchemaRelationMap = {},
   Scopes extends ScopeDefinitions = {},
   Options extends SchemaOptions = {},
+  Indexes extends readonly SchemaIndex<any>[] = [],
 > {
   /** The underlying Zod object for advanced validation use cases. */
   readonly definition: SchemaDefinition<Shape>;
@@ -92,7 +130,7 @@ export class Schema<
   readonly optionsConfig: Options;
 
   /** MongoDB indexes declared for this schema. */
-  indexDefinitions: readonly SchemaIndex<Shape>[];
+  indexDefinitions: readonly SchemaIndex<any>[];
 
   /** Preserve schema options through registry type transformations. */
   declare readonly __options: Options;
@@ -103,7 +141,7 @@ export class Schema<
     relations = {} as Relations,
     scopeMap = {} as Scopes,
     optionsConfig = {} as Options,
-    indexDefinitions = [] as readonly SchemaIndex<Shape>[],
+    indexDefinitions = [] as unknown as Indexes,
   ) {
     this.definition = z.object(shape);
     this.refs = collectRefs(shape);
@@ -118,7 +156,7 @@ export class Schema<
   /** Enable managed timestamps and/or soft deletion for this schema. */
   options<const Enabled extends SchemaOptions>(
     options: Enabled,
-  ): Schema<Shape & ManagedShape<Enabled>, Relations, Scopes, Enabled> {
+  ): Schema<Shape & ManagedShape<Enabled>, Relations, Scopes, Enabled, Indexes> {
     if (this.optionsConfig && Object.keys(this.optionsConfig).length > 0) {
       throw new Error('Schema options can only be configured once');
     }
@@ -146,18 +184,26 @@ export class Schema<
       this.relationMap,
       this.scopeMap,
       options,
-      this.indexDefinitions,
+      this.indexDefinitions as unknown as readonly SchemaIndex<Shape & ManagedShape<Enabled>>[],
     );
-    return next as unknown as Schema<Shape & ManagedShape<Enabled>, Relations, Scopes, Enabled>;
+    return next as unknown as Schema<
+      Shape & ManagedShape<Enabled>,
+      Relations,
+      Scopes,
+      Enabled,
+      Indexes
+    >;
   }
 
   /** Declare MongoDB indexes for explicit synchronization with the database. */
-  indexes<const Definitions extends readonly SchemaIndex<Shape>[]>(definitions: Definitions): this {
+  indexes<const Definitions extends readonly SchemaIndex<Shape>[]>(
+    definitions: Definitions,
+  ): Schema<Shape, Relations, Scopes, Options, Definitions> {
     if (definitions.some(({ fields }) => Object.keys(fields).length === 0)) {
       throw new Error('Index definitions must include at least one field');
     }
-    this.indexDefinitions = definitions;
-    return this;
+    this.indexDefinitions = definitions as unknown as Indexes;
+    return this as unknown as Schema<Shape, Relations, Scopes, Options, Definitions>;
   }
 
   /** Add one or more one-way relations without requiring circular schema declarations. */

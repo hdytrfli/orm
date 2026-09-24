@@ -10,6 +10,31 @@ const userSchema = orm.schema({
   role: orm.enum(['admin', 'member']),
 });
 
+const indexedUserSchema = userSchema.indexes([
+  {
+    fields: { name: 1, role: -1 },
+    options: {
+      unique: true,
+      name: 'user_name_role',
+      partialFilterExpression: { role: { $eq: 'admin' } },
+    },
+  },
+]);
+void indexedUserSchema;
+// @ts-expect-error Index definitions must contain at least one field.
+userSchema.indexes([{ fields: {} }]);
+// @ts-expect-error Index fields must be declared in the schema.
+userSchema.indexes([{ fields: { missing: 1 } }]);
+userSchema.indexes([
+  {
+    fields: { name: 1 },
+    options: {
+      // @ts-expect-error Partial index filters must use declared schema fields.
+      partialFilterExpression: { missing: true },
+    },
+  },
+]);
+
 type User = Infer<typeof userSchema>;
 declare const userId: ObjectId;
 const user: User = { _id: userId, name: 'Ada', role: 'admin' };
@@ -46,7 +71,13 @@ const member: Infer<typeof memberSchema> = {
 void member;
 
 declare const db: Db;
+await db.sync({ dropIndexes: true });
 const users = db.model('users', userSchema);
+const indexedUsers = db.model('indexed-users', indexedUserSchema);
+await indexedUsers.index.drop(['user_name_role']);
+await indexedUsers.index.purge();
+// @ts-expect-error Only explicitly named indexes can be dropped.
+await indexedUsers.index.drop(['unknown_index']);
 await users.create({ name: 'Ada', role: 'member' });
 
 const defaultedSchema = orm.schema({ status: orm.string().default('pending') });

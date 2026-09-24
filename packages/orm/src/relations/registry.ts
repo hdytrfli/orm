@@ -3,7 +3,7 @@ import type { ObjectId } from 'mongodb';
 import type { PopulateSpecs } from '../query/query.js';
 import type { SchemaShape } from '../schema/contracts.js';
 import type { InferShape } from '../schema/inference.js';
-import type { Schema, ScopeDefinitions } from '../schema/schema.js';
+import type { Schema, SchemaIndex, ScopeDefinitions } from '../schema/schema.js';
 import type { SchemaRelation, SchemaRelationMap, SchemaLike } from './definitions.js';
 
 type ObjectIdKeys<Shape extends SchemaShape> = {
@@ -30,7 +30,16 @@ type EnrichedSchema<
         Shape,
         Relations & RelationsFor<Registry, AllDefinitions, NonNullable<AllDefinitions[Name]>>,
         Scopes,
-        Options
+        Options,
+        Registry[Name] extends Schema<
+          any,
+          any,
+          any,
+          any,
+          infer Indexes extends readonly SchemaIndex<any>[]
+        >
+          ? Indexes
+          : []
       >
     : never
   : never;
@@ -59,7 +68,16 @@ type RegistryWithRelations<
         Shape,
         Relations & RelationsFor<Registry, Definitions, NonNullable<Definitions[Name]>>,
         Scopes,
-        Options
+        Options,
+        Registry[Name] extends Schema<
+          any,
+          any,
+          any,
+          any,
+          infer Indexes extends readonly SchemaIndex<any>[]
+        >
+          ? Indexes
+          : []
       >
     : Registry[Name];
 };
@@ -84,7 +102,16 @@ type RegistryWithScopes<
         Shape,
         Relations,
         Scopes & (Definitions[Name] extends ScopeDefinitions ? Definitions[Name] : {}),
-        Options
+        Options,
+        Registry[Name] extends Schema<
+          any,
+          any,
+          any,
+          any,
+          infer Indexes extends readonly SchemaIndex<any>[]
+        >
+          ? Indexes
+          : []
       >
     : Registry[Name];
 };

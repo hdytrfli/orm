@@ -15,6 +15,8 @@ import type {
   Infer,
   InferInput,
   Schema,
+  SchemaIndex,
+  SchemaIndexNames,
   SchemaOptions,
   SoftDeleteEnabled,
   SchemaRelationMap,
@@ -36,13 +38,22 @@ type ModelDocument<
   Scopes extends ScopeDefinitions,
   Options extends SchemaOptions,
 > = Infer<Schema<Shape, Relations, Scopes, Options>>;
+
+type IndexNames<Indexes extends readonly SchemaIndex<any>[]> = SchemaIndexNames<Indexes>;
+
+type IndexManager<Indexes extends readonly SchemaIndex<any>[]> = {
+  readonly drop: (names: readonly IndexNames<Indexes>[]) => Promise<void>;
+  readonly purge: () => Promise<void>;
+};
 /** A MongoDB collection with CRUD operations derived from a schema. */
 export class Model<
   Shape extends SchemaShape,
   Relations extends SchemaRelationMap = {},
   Scopes extends ScopeDefinitions = {},
   Options extends SchemaOptions = {},
+  Indexes extends readonly SchemaIndex<any>[] = [],
 > {
+  declare readonly index: IndexManager<Indexes>;
   declare readonly bulk: {
     create: (
       inputs: readonly CreateInput<Shape, Options>[],
@@ -61,13 +72,21 @@ export class Model<
   constructor(
     private readonly db: Db,
     readonly name: string,
-    private readonly schema: Schema<Shape, Relations, Scopes, Options>,
+    private readonly schema: Schema<Shape, Relations, Scopes, Options, Indexes>,
   ) {
     Object.defineProperty(this, 'bulk', {
       configurable: false,
       enumerable: false,
       value: {
         create: (inputs: readonly CreateInput<Shape, Options>[]) => this.bulkCreate(inputs),
+      },
+    });
+    Object.defineProperty(this, 'index', {
+      configurable: false,
+      enumerable: false,
+      value: {
+        drop: (names: readonly IndexNames<Indexes>[]) => this.dropIndexes(names),
+        purge: () => this.collection.dropIndexes(),
       },
     });
     if (hasSoftDelete(schema.optionsConfig)) {
@@ -88,6 +107,10 @@ export class Model<
 
   private get collection(): Collection<StoredDocument<Shape>> {
     return this.db.native.collection<StoredDocument<Shape>>(this.name);
+  }
+
+  private async dropIndexes(names: readonly IndexNames<Indexes>[]): Promise<void> {
+    await Promise.all(names.map((name) => this.collection.dropIndex(name)));
   }
 
   private activeFilter(filter: ModelFilter<Shape>): ModelFilter<Shape> {
