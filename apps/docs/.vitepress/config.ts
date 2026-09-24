@@ -25,7 +25,7 @@ export default defineConfig({
     socialLinks: [],
     search: { provider: 'local' },
     footer: {
-      message: 'Released under the MIT License.',
+      message: 'Released under the GNU General Public License v3.0.',
     },
   },
   head: [

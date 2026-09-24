@@ -142,4 +142,4 @@ Mongorm keeps the MongoDB driver close at hand, so it simplifies everyday work w
 
 ## License
 
-MIT
+GNU General Public License v3.0

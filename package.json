@@ -12,7 +12,7 @@
   "bugs": {
     "url": "https://github.com/hdytrfli/orm/issues"
   },
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "author": "hdytrfli",
   "repository": {
     "type": "git",
