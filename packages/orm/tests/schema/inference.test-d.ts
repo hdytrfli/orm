@@ -237,6 +237,27 @@ const scopedUserSchema = relationUserSchema
 const scopedUsers = db.model('scoped-users', scopedUserSchema);
 const detailedUsers = await scopedUsers.find().with('detail');
 detailedUsers[0].groupId?.name;
+const ownerSchema = orm.schema({ username: orm.string() });
+const projectSchema = orm.schema({ owner: orm.objectId() });
+const taskSchema = orm.schema({ project: orm.objectId() });
+const nestedRegistry = orm
+  .defineSchemas({ tasks: taskSchema, projects: projectSchema, owners: ownerSchema })
+  .defineRelations({
+    tasks: { project: 'projects' },
+    projects: { owner: 'owners' },
+  })
+  .defineScopes({
+    tasks: { check: [{ ref: 'project', populate: [{ ref: 'owner' }] }] },
+  });
+const nestedDb = createDatabase({
+  uri: 'mongodb://127.0.0.1:27017',
+  database: 'mongorm_nested_registry_test',
+  schemas: nestedRegistry,
+});
+const nestedTask = await nestedDb.tasks.find().with('check').first();
+nestedTask?.project?.owner?.username;
+// @ts-expect-error Nested population still exposes only fields on the related schema.
+nestedTask?.project?.owner?.missing;
 // @ts-expect-error Scope names are inferred from Schema.scopes().
 scopedUsers.find().with('summary');
 // @ts-expect-error A query cannot combine a named scope with explicit population.

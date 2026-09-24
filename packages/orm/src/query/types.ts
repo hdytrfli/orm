@@ -1,10 +1,10 @@
 import { ObjectId, type Condition, type Document, type RootFilterOperators } from 'mongodb';
 
-import type { SchemaShape } from '../schema/contracts.js';
+import type { SchemaDefinition, SchemaShape } from '../schema/contracts.js';
 import type { Infer, Schema, SchemaRelationMap } from '../schema/index.js';
 import type { ModelCursor } from './cursor.js';
 
-export type StoredDocument<Shape extends SchemaShape> = Infer<Schema<Shape>> & Document;
+export type StoredDocument<Shape extends SchemaShape> = ModelDocument<Shape> & Document;
 
 type ModelFilterForDocument<
   DocumentShape extends Document,
@@ -46,15 +46,17 @@ type NestedFilterValue<Value, Path extends string> = Path extends `${infer Head}
 
 export type ModelFilter<Shape extends SchemaShape> = ModelFilterForDocument<
   StoredDocument<Shape>,
-  Infer<Schema<Shape>>
+  ModelDocument<Shape>
 >;
 
 type SortDirection = 'asc' | 'desc';
 export type ModelSort<Shape extends SchemaShape> = Partial<
-  Record<Extract<keyof Infer<Schema<Shape>>, string>, SortDirection>
+  Record<Extract<keyof ModelDocument<Shape>, string>, SortDirection>
 >;
 
-export type ModelDocument<Shape extends SchemaShape> = Infer<Schema<Shape>>;
+export type ModelDocument<Shape extends SchemaShape> = import('zod').output<
+  SchemaDefinition<Shape>
+> & { _id: ObjectId };
 export type HiddenKey<Shape extends SchemaShape> = {
   [Key in keyof Shape]: Shape[Key] extends { readonly __hidden: true } ? Key : never;
 }[keyof Shape];
@@ -113,12 +115,12 @@ export type SelectedDocument<Shape extends SchemaShape, Key extends SelectableKe
         UnionToIntersection<PathSelection<ModelDocument<Shape>, Extract<Key, string>>>
     >;
 type RelationTarget<Relation> = Relation extends { resolve: () => infer Target } ? Target : never;
-type RelationDocument<Relation> =
-  RelationTarget<Relation> extends Schema<infer TargetShape, any>
-    ? Infer<Schema<TargetShape>>
-    : never;
-type RelationMapOf<Relation> =
-  RelationTarget<Relation> extends { readonly relationMap: infer TargetRelations }
+type RelationDocument<Relation> = Infer<RelationTarget<Relation>>;
+type RelationMapOf<Relation> = Relation extends { readonly __targetRelations?: infer Relations }
+  ? NonNullable<Relations> extends SchemaRelationMap
+    ? NonNullable<Relations>
+    : {}
+  : RelationTarget<Relation> extends { readonly relationMap: infer TargetRelations }
     ? TargetRelations extends SchemaRelationMap
       ? TargetRelations
       : {}
@@ -142,9 +144,11 @@ export type PopulatedResult<
   Result extends object,
   Relations extends SchemaRelationMap,
   Specs extends PopulateSpecs<Relations>,
-> = Omit<Result, Extract<Specs[number]['ref'], keyof Result>> & {
-  [Spec in Specs[number] as Spec['ref']]: PopulatedRelation<Relations[Spec['ref']], Spec> | null;
-};
+> = Simplify<
+  Omit<Result, Extract<Specs[number]['ref'], keyof Result>> & {
+    [Spec in Specs[number] as Spec['ref']]: PopulatedRelation<Relations[Spec['ref']], Spec> | null;
+  }
+>;
 
 type PopulatedRelation<Relation, Spec> = Spec extends {
   populate: infer Nested extends PopulateSpecs<RelationMapOf<Relation>>;

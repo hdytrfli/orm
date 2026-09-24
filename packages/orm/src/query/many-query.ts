@@ -25,6 +25,14 @@ import type {
   StoredDocument,
   VisibleDocument,
 } from './types.js';
+
+type ScopeResult<
+  Result extends object,
+  Relations extends SchemaRelationMap,
+  Scopes extends ScopeDefinitions,
+  Name extends ScopeName<Scopes>,
+> = PopulatedResult<Result, Relations, Extract<Scopes[Name], PopulateSpecs<Relations>>>;
+
 export type {
   ModelFilter,
   ModelSort,
@@ -213,7 +221,7 @@ export class ModelQuery<
     name: Name,
   ): ModelQuery<
     Shape,
-    PopulatedResult<Result, Relations, Scopes[Name] & PopulateSpecs<Relations>>,
+    ScopeResult<Result, Relations, Scopes, Name>,
     CursorReady,
     Relations,
     Scopes,
@@ -229,7 +237,7 @@ export class ModelQuery<
     this.populateSpecs = this.scopes[name] as PopulateSpecs<Relations>;
     return this as unknown as ModelQuery<
       Shape,
-      PopulatedResult<Result, Relations, Scopes[Name] & PopulateSpecs<Relations>>,
+      ScopeResult<Result, Relations, Scopes, Name>,
       CursorReady,
       Relations,
       Scopes,
