@@ -12,7 +12,7 @@ This example builds a small blog with users, posts, a relation, a hidden credent
 import { orm } from '@mongorm/orm';
 
 const user = orm.schema({
-  email: orm.string().email(),
+  email: orm.email(),
   name: orm.string().min(1),
   passwordHash: orm.string().hidden(),
 });

@@ -19,7 +19,7 @@ Schemas are the source of truth for document validation, field inference, hidden
 
 ```ts
 const account = orm.schema({
-  email: orm.string().email(),
+  email: orm.email(),
   displayName: orm.string().min(1),
   passwordHash: orm.string().hidden(),
   preferences: orm.object({

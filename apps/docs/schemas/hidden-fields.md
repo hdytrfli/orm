@@ -8,7 +8,7 @@ Mark a field with `.hidden()` when it should be stored and validated but exclude
 
 ```ts
 const user = orm.schema({
-  email: orm.string().email(),
+  email: orm.email(),
   passwordHash: orm.string().hidden(),
   recoveryToken: orm.string().optional().hidden(),
 });

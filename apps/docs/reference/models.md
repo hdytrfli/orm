@@ -53,7 +53,22 @@ await db.connect();
 await db.sync();
 ```
 
-Index creation is explicit and is not triggered by model access.
+Index creation is explicit and is not triggered by model access. To remove all existing
+non-`_id` indexes before recreating declared indexes, opt in explicitly:
+
+```ts
+await db.sync({ dropIndexes: true });
+```
+
+Indexes with an explicit `options.name` can also be managed for one collection:
+
+```ts
+await db.users.index.drop(['user_email_unique']);
+await db.users.index.purge();
+```
+
+`index.drop()` is type-safe and only accepts names declared on the schema. `index.purge()`
+drops all non-`_id` indexes for that collection.
 
 ## `Model.find(filter?)`
 

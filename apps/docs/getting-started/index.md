@@ -28,7 +28,7 @@ import { createDatabase, orm } from '@mongorm/orm';
 
 const schemas = orm.defineSchemas({
   user: orm.schema({
-    email: orm.string().email(),
+    email: orm.email(),
   }),
 });
 

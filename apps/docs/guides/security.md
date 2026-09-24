@@ -10,7 +10,7 @@ Treat every query result as an output contract. The safest default is to return 
 
 ```ts
 const user = orm.schema({
-  email: orm.string().email(),
+  email: orm.email(),
   passwordHash: orm.string().hidden(),
   mfaSecret: orm.string().hidden(),
 });

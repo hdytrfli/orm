@@ -8,7 +8,7 @@ The primary schema constructor is `orm.schema(shape)`. The shape is a record of 
 
 ```ts
 const user = orm.schema({
-  email: orm.string().email(),
+  email: orm.email(),
   displayName: orm.string(),
   active: orm.boolean().default(true),
 });
@@ -21,7 +21,7 @@ Add built-in lifecycle fields after defining the document shape:
 ```ts
 const user = orm
   .schema({
-    email: orm.string().email(),
+    email: orm.email(),
     name: orm.string(),
   })
   .options({ timestamps: true, softdelete: true });

@@ -42,7 +42,7 @@ Mongorm has four layers:
 import { createDatabase, orm } from '@mongorm/orm';
 
 const user = orm.schema({
-  email: orm.string().email(),
+  email: orm.email(),
   name: orm.string(),
   passwordHash: orm.string().hidden(),
 });
