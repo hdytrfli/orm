@@ -12,13 +12,13 @@ export type {
 } from './schema/index.js';
 export { hasSoftDelete } from './schema/index.js';
 export type { SoftDeleteEnabled } from './schema/index.js';
+export type { RelationMap, SchemaLike, SchemaRelation, SchemaRelationMap } from './schema/index.js';
 export type {
+  NullableRefField,
+  NullishRefField,
+  OptionalRefField,
   RefDefinition,
   RefField,
-  RelationMap,
-  SchemaLike,
-  SchemaRelation,
-  SchemaRelationMap,
 } from './schema/index.js';
 export { createDatabase, Db } from './connection/database.js';
 export type {
@@ -36,7 +36,7 @@ export {
 } from './validation/errors.js';
 export type { OrmErrorCode } from './validation/errors.js';
 export { Model } from './model/model.js';
-export { ModelCursor, ModelQuery } from './query/query.js';
+export { ModelCursor, ModelQuery } from './query/index.js';
 export type {
   HiddenDocumentKey,
   ModelFilter,
@@ -48,5 +48,5 @@ export type {
   SelectableKey,
   StoredDocument,
   VisibleDocument,
-} from './query/query.js';
+} from './query/index.js';
 export type { DatabaseModels, DbOptions, SchemaRegistry } from './connection/database.js';

@@ -8,15 +8,12 @@ import {
 } from 'mongodb';
 
 import type { Db } from '../connection/database.js';
-import { ModelQuery } from '../query/query.js';
-import type { ModelFilter, StoredDocument, VisibleDocument } from '../query/query.js';
+import { ModelQuery } from '../query/index.js';
+import type { ModelFilter, StoredDocument, VisibleDocument } from '../query/index.js';
 import { hasSoftDelete } from '../schema/index.js';
 import type {
-  Infer,
-  InferInput,
   Schema,
   SchemaIndex,
-  SchemaIndexNames,
   SchemaOptions,
   SoftDeleteEnabled,
   SchemaRelationMap,
@@ -24,27 +21,7 @@ import type {
   ScopeDefinitions,
 } from '../schema/index.js';
 import { applySoftDeleteFilter } from './soft-delete.js';
-
-type CreateInput<Shape extends SchemaShape, Options extends SchemaOptions> = Omit<
-  InferInput<Schema<Shape, {}, {}, Options>>,
-  '_id'
->;
-type UpdateInput<Shape extends SchemaShape, Options extends SchemaOptions> = Partial<
-  Omit<InferInput<Schema<Shape, {}, {}, Options>>, '_id'>
->;
-type ModelDocument<
-  Shape extends SchemaShape,
-  Relations extends SchemaRelationMap,
-  Scopes extends ScopeDefinitions,
-  Options extends SchemaOptions,
-> = Infer<Schema<Shape, Relations, Scopes, Options>>;
-
-type IndexNames<Indexes extends readonly SchemaIndex<any>[]> = SchemaIndexNames<Indexes>;
-
-type IndexManager<Indexes extends readonly SchemaIndex<any>[]> = {
-  readonly drop: (names: readonly IndexNames<Indexes>[]) => Promise<void>;
-  readonly purge: () => Promise<void>;
-};
+import type { CreateInput, IndexManager, IndexNames, ModelResult, UpdateInput } from './types.js';
 /** A MongoDB collection with CRUD operations derived from a schema. */
 export class Model<
   Shape extends SchemaShape,
@@ -57,12 +34,10 @@ export class Model<
   declare readonly bulk: {
     create: (
       inputs: readonly CreateInput<Shape, Options>[],
-    ) => Promise<ModelDocument<Shape, Relations, Scopes, Options>[]>;
+    ) => Promise<ModelResult<Shape, Relations, Scopes, Options>[]>;
   };
   declare readonly restore: SoftDeleteEnabled<Options> extends true
-    ? (
-        filter: ModelFilter<Shape>,
-      ) => Promise<Infer<Schema<Shape, Relations, Scopes, Options>> | null>
+    ? (filter: ModelFilter<Shape>) => Promise<ModelResult<Shape, Relations, Scopes, Options> | null>
     : never;
   declare readonly purge: SoftDeleteEnabled<Options> extends true
     ? (filter: ModelFilter<Shape>) => Promise<DeleteResult>
@@ -122,12 +97,12 @@ export class Model<
   /** Validate and insert one document, generating its ObjectId. */
   async create(
     input: CreateInput<Shape, Options>,
-  ): Promise<ModelDocument<Shape, Relations, Scopes, Options>> {
+  ): Promise<ModelResult<Shape, Relations, Scopes, Options>> {
     const document = this.prepareDocument(input);
     await this.collection.insertOne(
       document as unknown as OptionalUnlessRequiredId<StoredDocument<Shape>>,
     );
-    return document as ModelDocument<Shape, Relations, Scopes, Options>;
+    return document as ModelResult<Shape, Relations, Scopes, Options>;
   }
 
   private prepareDocument(input: CreateInput<Shape, Options>): Record<string, unknown> {
@@ -146,13 +121,13 @@ export class Model<
 
   private async bulkCreate(
     inputs: readonly CreateInput<Shape, Options>[],
-  ): Promise<ModelDocument<Shape, Relations, Scopes, Options>[]> {
+  ): Promise<ModelResult<Shape, Relations, Scopes, Options>[]> {
     if (inputs.length === 0) return [];
     const documents = inputs.map((input) => this.prepareDocument(input));
     await this.collection.insertMany(
       documents as unknown as OptionalUnlessRequiredId<StoredDocument<Shape>>[],
     );
-    return documents as ModelDocument<Shape, Relations, Scopes, Options>[];
+    return documents as ModelResult<Shape, Relations, Scopes, Options>[];
   }
 
   /** Build a query for all documents matching a MongoDB filter. */
@@ -183,7 +158,7 @@ export class Model<
   async update(
     filter: ModelFilter<Shape>,
     patch: UpdateInput<Shape, Options>,
-  ): Promise<Infer<Schema<Shape, Relations, Scopes, Options>> | null> {
+  ): Promise<ModelResult<Shape, Relations, Scopes, Options> | null> {
     const parsedPatch = this.schema.parsePartial(patch) as Record<string, unknown>;
     const managedFields = new Set(['createdAt', 'updatedAt', 'deletedAt']);
     managedFields.forEach((field) => delete parsedPatch[field]);
@@ -192,13 +167,13 @@ export class Model<
       this.activeFilter(filter) as MongoFilter<StoredDocument<Shape>>,
       { $set: parsedPatch } as unknown as UpdateFilter<StoredDocument<Shape>>,
       { returnDocument: 'after' },
-    )) as unknown as Infer<Schema<Shape, Relations, Scopes, Options>> | null;
+    )) as unknown as ModelResult<Shape, Relations, Scopes, Options> | null;
   }
 
   /** Restore matching soft-deleted documents. */
   private async restoreDocument(
     filter: ModelFilter<Shape>,
-  ): Promise<Infer<Schema<Shape, Relations, Scopes, Options>> | null> {
+  ): Promise<ModelResult<Shape, Relations, Scopes, Options> | null> {
     if (!hasSoftDelete(this.schema.optionsConfig)) {
       throw new Error('Restore requires softdelete schema options');
     }
@@ -208,7 +183,7 @@ export class Model<
       applySoftDeleteFilter(filter, 'deleted') as MongoFilter<StoredDocument<Shape>>,
       { $set: patch } as UpdateFilter<StoredDocument<Shape>>,
       { returnDocument: 'after' },
-    )) as unknown as Infer<Schema<Shape, Relations, Scopes, Options>> | null;
+    )) as unknown as ModelResult<Shape, Relations, Scopes, Options> | null;
   }
 
   /** Delete every document matching a MongoDB filter. */

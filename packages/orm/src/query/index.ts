@@ -1,5 +1,5 @@
-export { ModelQuery } from './many-query.js';
-export { ModelCursor } from './cursor.js';
+export { ModelQuery } from './builder/find-query.js';
+export { ModelCursor } from './cursor/cursor.js';
 export type {
   HiddenDocumentKey,
   ModelFilter,

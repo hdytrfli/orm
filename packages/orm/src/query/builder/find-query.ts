@@ -1,15 +1,11 @@
-import { ObjectId, type Collection, type Filter as MongoFilter, type Sort } from 'mongodb';
+import { ObjectId, type Collection } from 'mongodb';
 
-import type { Db } from '../connection/database.js';
-import type { SchemaRelationMap, SchemaShape, ScopeDefinitions } from '../schema/index.js';
-import { CursorQueryError, EstimatedCountError, InvalidQueryError } from '../validation/errors.js';
-import { ModelCursor } from './cursor.js';
-import {
-  createCursorFilter,
-  PopulationExecutor,
-  projectionFor,
-  SoftDeleteState,
-} from './runtime.js';
+import type { Db } from '../../connection/database.js';
+import type { SchemaRelationMap, SchemaShape, ScopeDefinitions } from '../../schema/index.js';
+import { InvalidQueryError } from '../../validation/errors.js';
+import type { ModelCursor } from '../cursor/cursor.js';
+import { PopulationExecutor } from '../population/executor.js';
+import { SoftDeleteState } from '../soft-delete/state.js';
 import type {
   CursorMethod,
   HiddenDocumentKey,
@@ -24,7 +20,14 @@ import type {
   SelectableKey,
   StoredDocument,
   VisibleDocument,
-} from './types.js';
+} from '../types.js';
+import {
+  countQuery,
+  createCursorPage,
+  executeFirst,
+  executeQuery,
+  type QueryExecutionContext,
+} from './executor.js';
 
 type ScopeResult<
   Result extends object,
@@ -43,9 +46,9 @@ export type {
   SelectableKey,
   StoredDocument,
   VisibleDocument,
-} from './types.js';
+} from '../types.js';
 
-export { ModelCursor } from './cursor.js';
+export { ModelCursor } from '../cursor/cursor.js';
 
 /** A typed, awaitable MongoDB find query. */
 export class ModelQuery<
@@ -104,6 +107,35 @@ export class ModelQuery<
 
   private effectiveFilter(): ModelFilter<Shape> {
     return this.softDelete.effectiveFilter(this.filterSpec);
+  }
+
+  private executionContext(): QueryExecutionContext<Shape, Relations> {
+    const context = {
+      collection: this.collection,
+      filter: this.filterSpec,
+      effectiveFilter: this.effectiveFilter(),
+      fields: this.fields,
+      hiddenFields: this.hiddenFields,
+      selectedFields: this.selectedFields,
+      shownFields: this.shownFields,
+      sortSpec: this.sortSpec,
+      skipCount: this.skipCount,
+      limitCount: this.limitCount,
+      softDelete: this.softDelete,
+      population: this.population,
+      populateSpecs: this.populateSpecs,
+    };
+    Object.defineProperties(context, {
+      effectiveFilter: { get: () => this.effectiveFilter() },
+      selectedFields: { get: () => this.selectedFields },
+      shownFields: { get: () => this.shownFields },
+      sortSpec: { get: () => this.sortSpec },
+      skipCount: { get: () => this.skipCount },
+      limitCount: { get: () => this.limitCount },
+      softDelete: { get: () => this.softDelete },
+      populateSpecs: { get: () => this.populateSpecs },
+    });
+    return context;
   }
 
   /** Sort results by one or more schema fields. */
@@ -247,94 +279,21 @@ export class ModelQuery<
   }
 
   /** Count matching documents, optionally using MongoDB's collection estimate. */
-  async count(estimate = false): Promise<number> {
-    if (estimate) {
-      if (Object.keys(this.filterSpec).length > 0 || this.softDelete.isFiltered()) {
-        throw new EstimatedCountError();
-      }
-      return this.collection.estimatedDocumentCount();
-    }
-    return this.collection.countDocuments(
-      this.effectiveFilter() as MongoFilter<StoredDocument<Shape>>,
-    );
+  count(estimate = false): Promise<number> {
+    return countQuery(this.executionContext(), estimate);
   }
 
-  /** Return one `_id`-ordered page and the cursor for the next page. */
+  /** Return one bounded `_id`-ordered page and its continuation cursor. */
   private createCursor(after?: ObjectId): ModelCursor<Shape, Result> {
-    if (this.limitCount === undefined || this.limitCount === 0) {
-      throw new CursorQueryError('Cursor queries require a positive limit');
-    }
-    if (this.skipCount !== undefined) {
-      throw new CursorQueryError('Cursor queries do not support skip');
-    }
-    if (this.sortSpec) {
-      const keys = Object.keys(this.sortSpec);
-      if (keys.length !== 1 || this.sortSpec._id !== 'asc') {
-        throw new CursorQueryError('Cursor queries require the default _id ascending sort');
-      }
-    }
-
-    const filter = createCursorFilter(this.effectiveFilter(), after);
-    return new ModelCursor<Shape, Result>(
-      () => {
-        let cursor = this.collection
-          .find(filter as MongoFilter<StoredDocument<Shape>>)
-          .sort({ _id: 1 })
-          .limit((this.limitCount as number) + 1);
-        const projection = projectionFor(
-          this.fields,
-          this.hiddenFields,
-          this.selectedFields,
-          this.shownFields,
-        );
-        if (projection) {
-          cursor = cursor.project(projection);
-        }
-        return cursor;
-      },
-      this.limitCount,
-      (documents) => this.population.apply(documents, this.populateSpecs),
-    );
+    return createCursorPage(this.executionContext(), after);
   }
 
   private execute(): Promise<Result[]> {
-    return this.createQueryCursor()
-      .toArray()
-      .then((documents) =>
-        this.population.apply(documents as unknown as Result[], this.populateSpecs),
-      );
+    return executeQuery(this.executionContext());
   }
 
-  async first(): Promise<Result | null> {
-    const documents = await this.createQueryCursor().limit(1).toArray();
-    const populated = await this.population.apply(
-      documents as unknown as Result[],
-      this.populateSpecs,
-    );
-    return populated[0] ?? null;
-  }
-
-  private createQueryCursor() {
-    let cursor = this.collection.find(this.effectiveFilter() as MongoFilter<StoredDocument<Shape>>);
-    if (this.sortSpec) {
-      cursor = cursor.sort(this.sortSpec as Sort);
-    }
-    if (this.skipCount !== undefined) {
-      cursor = cursor.skip(this.skipCount);
-    }
-    if (this.limitCount !== undefined) {
-      cursor = cursor.limit(this.limitCount);
-    }
-    const projection = projectionFor(
-      this.fields,
-      this.hiddenFields,
-      this.selectedFields,
-      this.shownFields,
-    );
-    if (projection) {
-      cursor = cursor.project(projection);
-    }
-    return cursor;
+  first(): Promise<Result | null> {
+    return executeFirst(this.executionContext());
   }
 
   then<TResult1 = Result[], TResult2 = never>(

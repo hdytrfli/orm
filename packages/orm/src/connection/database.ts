@@ -3,7 +3,6 @@ import {
   type Collection,
   type Document,
   type IndexDescription,
-  type MongoClientOptions,
   type Db as MongoDatabase,
 } from 'mongodb';
 
@@ -18,39 +17,9 @@ import type {
   ScopeDefinitions,
 } from '../schema/index.js';
 import { DatabaseNotConnectedError } from '../validation/errors.js';
+import type { DatabaseModels, DbOptions, RegistryOfBuilder, SchemaRegistry } from './types.js';
 
-export type SchemaRegistry = Record<string, SchemaLike>;
-
-/** Configuration for a MongoDB connection. */
-export interface DbOptions<Registry extends SchemaRegistry = SchemaRegistry> {
-  /** MongoDB connection string. */
-  uri: string;
-  /** Logical database name. */
-  database: string;
-  /** Optional native MongoDB client options. */
-  clientOptions?: MongoClientOptions;
-  /** Schemas registered as plural database model properties. */
-  schemas?: Registry;
-}
-
-type ModelForSchema<SchemaType> =
-  SchemaType extends Schema<
-    infer Shape,
-    infer Relations,
-    infer Scopes,
-    infer Options,
-    infer Indexes extends readonly SchemaIndex<any>[]
-  >
-    ? Model<Shape, Relations, Scopes, Options, Indexes>
-    : never;
-
-export type DatabaseModels<Registry extends SchemaRegistry> = {
-  readonly [Name in keyof Registry]: ModelForSchema<Registry[Name]>;
-};
-
-type RegistryOfBuilder<Builder extends { readonly __registry?: SchemaRegistry }> = NonNullable<
-  Builder['__registry']
->;
+export type { DatabaseModels, DbOptions, SchemaRegistry } from './types.js';
 
 /** Owns a MongoDB client and creates schema-bound models. */
 export class Db<Registry extends SchemaRegistry = SchemaRegistry> {

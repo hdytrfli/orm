@@ -1,7 +1,7 @@
 import { ObjectId, type FindCursor, type WithId } from 'mongodb';
 
-import type { SchemaShape } from '../schema/contracts.js';
-import type { StoredDocument } from './types.js';
+import type { SchemaShape } from '../../schema/contracts.js';
+import type { StoredDocument } from '../types.js';
 
 /** A lazy async iterable for one cursor-pagination page. */
 export class ModelCursor<

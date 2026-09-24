@@ -143,12 +143,11 @@ try {
     },
   });
 
-  console.log();
-
   log.debug({
     context: 'project',
     value: await db.projects.find({ _id: project._id }).with('detail').first(),
   });
+
   log.debug({
     context: 'task',
     value: await db.tasks.find({ _id: task._id }).with('detail').first(),

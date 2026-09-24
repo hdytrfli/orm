@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { ObjectId, orm } from '../../src/index.js';
-import { createCursorFilter, projectionFor, SoftDeleteState } from '../../src/query/runtime.js';
+import { createCursorFilter } from '../../src/query/cursor/filter.js';
+import { projectionFor } from '../../src/query/projection/runtime.js';
+import { SoftDeleteState } from '../../src/query/soft-delete/state.js';
 import type { ModelFilter } from '../../src/query/types.js';
 
 const fields = {
