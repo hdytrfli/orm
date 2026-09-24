@@ -23,6 +23,7 @@ export const userSchema = orm
   .options({
     timestamps: true,
     softdelete: true,
+    hideManaged: true,
   })
   .indexes([
     {

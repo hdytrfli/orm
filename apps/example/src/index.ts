@@ -57,7 +57,11 @@ try {
     company: company._id,
     name: 'Language',
     description: 'Language and compiler research',
-    permissions: { canInvite: true, canManageBilling: false, canExportData: true },
+    permissions: {
+      canInvite: true,
+      canManageBilling: false,
+      canExportData: true,
+    },
   });
 
   const userData = {
@@ -210,9 +214,17 @@ try {
     value: await db.users.find({ role: 'admin' }),
   });
 
+  log.debug({
+    context: 'filtered nested city',
+    value: await db.users
+      .find({ 'profile.location.city': 'London' })
+      .select(['name', 'profile.location.city']),
+  });
+
   const filteredSorted = await db.users
     .find({ $or: [{ role: 'admin' }, { age: { $gte: 18 } }] })
-    .select(['name', 'age', 'deletedAt'])
+    .select(['name', 'age'])
+    .show(['deletedAt'])
     .sort({ age: 'asc' })
     .skip(1)
     .limit(3);
