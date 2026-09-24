@@ -34,7 +34,7 @@ const schemas = orm.defineSchemas({
 const db = createDatabase({
   uri: process.env.MONGODB_URI!,
   database: 'app',
-  schema: schemas,
+  schemas,
 });
 await db.connect();
 const user = await db.user.create({ email: 'ada@example.com' });

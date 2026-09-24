@@ -2,8 +2,8 @@
 layout: home
 hero:
   name: Mongorm
-  text: TypeScript-first MongoDB ORM
-  tagline: A schema-first TypeScript ORM for teams that want MongoDB flexibility without giving up reliable contracts.
+  text: Type-safe MongoDB. Explicit writes.
+  tagline: Define your data once, query it with inferred types, and persist changes through clear operations—not hidden document mutation or save hooks.
   image:
     src: /logo.svg
     alt: Mongorm
@@ -15,19 +15,30 @@ hero:
       text: Explore the schemas
       link: /schemas/
 features:
-  - title: Native Zod schemas
-    details: Use familiar Zod constructors directly through orm, with validation and inference in one definition.
-  - title: Safe by default
-    details: Hidden fields, typed filters, typed projections, and explicit population keep accidental data exposure difficult.
-  - title: MongoDB underneath
-    details: Keep MongoDB's document model and query capabilities while gaining a small, composable application API.
-  - title: Relations without magic
-    details: Declare relation graphs centrally, then opt into explicit or named population with nested type inference.
-  - title: Practical CRUD
-    details: Create, find, update, delete, count, paginate, select, and populate through one consistent model surface.
-  - title: TypeScript first
-    details: Query result types change as you select fields, show hidden fields, or populate related documents.
+  - title: Schema-derived type safety
+    details: Define validation once with Zod, then infer document, input, and query result types from the schema.
+  - title: Explicit persistence operations
+    details: Query results are ordinary values. Persist changes through validated model operations, with no implicit save behavior.
+  - title: Native MongoDB semantics
+    details: Work with MongoDB documents, filters, ObjectIds, and indexes without replacing them with a relational abstraction.
+  - title: Controlled query results
+    details: Use typed projections, hidden fields, relations, and population scopes to make loaded data explicit.
 ---
+
+## Writes Are Explicit
+
+Mongorm does not use a mutable document plus `.save()` workflow. A returned object is an ordinary query result, not a persistence handle; changing it locally does not update MongoDB. Persist a change with a model operation that makes the target and patch visible:
+
+```ts
+const user = await db.user.find({ _id: userId }).first();
+
+if (user) {
+  user.name = 'Ada Byron Lovelace'; // local JavaScript change only
+  await db.user.update({ _id: user._id }, { name: user.name });
+}
+```
+
+The database write is explicit, validated against the schema, and easy to locate during review. Mongorm does not track dirty fields or persist arbitrary object mutations behind a `.save()` call.
 
 ## The Mongorm Mental Model
 
@@ -51,7 +62,7 @@ const schemas = orm.defineSchemas({ user });
 const db = createDatabase({
   uri: process.env.MONGODB_URI!,
   database: 'app',
-  schema: schemas,
+  schemas,
 });
 await db.connect();
 
@@ -65,6 +76,6 @@ const admins = await db.user.find({ email: { $regex: '@example.com$' } }).select
 - **Reading and writing documents?** Follow [Queries](/queries/) and [TypeScript](/typescript/) for result inference.
 - **Looking for a method?** Use the [API Reference](/reference/).
 
-## What Mongorm Does Not Hide
+## Keep Data Access Explicit
 
-Mongorm does not pretend MongoDB is relational SQL. Documents remain documents, filters remain MongoDB filters, and collection behavior remains visible. The library focuses on the boundaries where application bugs tend to appear: validation, accidental field exposure, inconsistent relation loading, and drifting TypeScript types.
+Mongorm keeps MongoDB's document and filter semantics while adding schema validation and inferred types. Query results are ordinary values, and changes are persisted through explicit model operations rather than implicit document state.

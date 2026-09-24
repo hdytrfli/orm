@@ -7,5 +7,5 @@ import { schema } from '@/schemas';
 export const db = createDatabase({
   uri: env.MONGODB_URI,
   database: env.MONGODB_DATABASE,
-  schema,
+  schemas: schema,
 });

@@ -80,7 +80,7 @@ The registry keys become model properties. Connect before using a model, then sy
 const db = createDatabase({
   uri: process.env.MONGODB_URI!,
   database: 'mongorm_tutorial',
-  schema: schemas,
+  schemas,
 });
 
 await db.connect();

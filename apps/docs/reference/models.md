@@ -12,7 +12,7 @@ Creates a disconnected database handle and exposes registered schemas as model p
 const db = createDatabase({
   uri: process.env.MONGODB_URI!,
   database: 'application',
-  schema: schemas,
+  schemas,
 });
 await db.connect();
 ```

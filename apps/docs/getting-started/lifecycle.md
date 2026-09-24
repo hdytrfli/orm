@@ -12,7 +12,7 @@ MongoDB connections are process resources. `createDatabase()` owns the underlyin
 const db = createDatabase({
   uri,
   database: name,
-  schema: schemas,
+  schemas,
 });
 
 await db.connect();

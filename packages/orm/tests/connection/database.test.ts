@@ -8,7 +8,7 @@ describe('database connection', () => {
     const db = createDatabase({
       uri: 'mongodb://127.0.0.1:27017',
       database: 'mongorm_registry_test',
-      schema: { users },
+      schemas: { users },
     });
 
     expect(db.users.name).toBe('users');
@@ -20,7 +20,7 @@ describe('database connection', () => {
     const db = createDatabase({
       uri: 'mongodb://127.0.0.1:27017',
       database: 'mongorm_registry_test',
-      schema: { users },
+      schemas: { users },
     });
 
     expect(() => db.model('accounts', users)).toThrow('already registered with collection "users"');

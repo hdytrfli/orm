@@ -30,7 +30,7 @@ export interface DbOptions<Registry extends SchemaRegistry = SchemaRegistry> {
   /** Optional native MongoDB client options. */
   clientOptions?: MongoClientOptions;
   /** Schemas registered as plural database model properties. */
-  schema?: Registry;
+  schemas?: Registry;
 }
 
 type ModelForSchema<SchemaType> =
@@ -61,7 +61,7 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
   /** Create a disconnected database handle. */
   constructor(private readonly options: DbOptions<Registry>) {
     this.client = new MongoClient(options.uri, options.clientOptions);
-    for (const [name, schema] of Object.entries(options.schema ?? {})) {
+    for (const [name, schema] of Object.entries(options.schemas ?? {})) {
       this.registerSchema(schema, name);
       let model:
         | Model<SchemaShape, SchemaRelationMap, ScopeDefinitions, any, readonly SchemaIndex<any>[]>
@@ -145,10 +145,10 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
 
 /** Create a disconnected MongoDB database handle. */
 export function createDatabase<const Registry extends SchemaRegistry>(
-  options: DbOptions<Registry> & { schema: Registry },
+  options: DbOptions<Registry> & { schemas: Registry },
 ): Db<Registry> & DatabaseModels<Registry>;
 export function createDatabase<const Builder extends { readonly __registry?: SchemaRegistry }>(
-  options: Omit<DbOptions<RegistryOfBuilder<Builder>>, 'schema'> & { schema: Builder },
+  options: Omit<DbOptions<RegistryOfBuilder<Builder>>, 'schemas'> & { schemas: Builder },
 ): Db<RegistryOfBuilder<Builder>> & DatabaseModels<RegistryOfBuilder<Builder>>;
 export function createDatabase(options: DbOptions): Db;
 export function createDatabase(options: DbOptions): Db {

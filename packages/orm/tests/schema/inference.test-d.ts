@@ -224,7 +224,7 @@ const schema = orm
 const registeredDb = createDatabase({
   uri: 'mongodb://127.0.0.1:27017',
   database: 'mongorm_registry_test',
-  schema,
+  schemas: schema,
 });
 await registeredDb.users.find({});
 await registeredDb.groups.find({});
