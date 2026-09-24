@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "db": "pnpm --filter @mongorm/orm run build && tsx src/scripts/mongo.ts",
+    "db": "pnpm --filter @mongorm/orm run build && tsx src/index.ts",
     "dev": "tsx src/index.ts",
     "typecheck": "tsc --noEmit"
   },
