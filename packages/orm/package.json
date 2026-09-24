@@ -1,6 +1,6 @@
 {
   "name": "@mongorm/orm",
-  "version": "0.1.1-beta.3",
+  "version": "0.1.1-beta.4",
   "description": "A TypeScript-first MongoDB ORM for applications that want strong types without hiding MongoDB",
   "keywords": [
     "mongodb",
