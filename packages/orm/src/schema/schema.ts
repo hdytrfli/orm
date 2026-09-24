@@ -1,7 +1,8 @@
-import type { Condition, IndexDescription, IndexDirection, ObjectId } from 'mongodb';
+import type { IndexDescription, IndexDirection, ObjectId } from 'mongodb';
 import { z } from 'zod';
 
 import type { PopulateSpecs } from '../query/query.js';
+import type { ModelFilter } from '../query/types.js';
 import { collectRefs } from '../relations/definitions.js';
 import type {
   RelationInput,
@@ -31,18 +32,8 @@ export type SchemaIndexFields<Shape extends SchemaShape> = {
     Partial<Omit<IndexFieldMap<Shape>, Key>>;
 }[keyof IndexFieldMap<Shape>];
 
-type SchemaPartialFilterForDocument<DocumentShape extends object> = Partial<{
-  [Key in keyof DocumentShape]: Condition<DocumentShape[Key]>;
-}> & {
-  readonly $and?: SchemaPartialFilterForDocument<DocumentShape>[];
-  readonly $nor?: SchemaPartialFilterForDocument<DocumentShape>[];
-  readonly $or?: SchemaPartialFilterForDocument<DocumentShape>[];
-};
-
 /** A schema-aware MongoDB partial-index filter. */
-export type SchemaPartialFilter<Shape extends SchemaShape> = SchemaPartialFilterForDocument<
-  InferShape<Schema<Shape>>
->;
+export type SchemaPartialFilter<Shape extends SchemaShape> = ModelFilter<Shape>;
 
 export type SchemaIndexOptions<Shape extends SchemaShape> = Omit<
   IndexDescription,
@@ -55,6 +46,27 @@ export type SchemaIndexOptions<Shape extends SchemaShape> = Omit<
 export type SchemaIndex<Shape extends SchemaShape> = {
   readonly fields: SchemaIndexFields<Shape>;
   readonly options?: SchemaIndexOptions<Shape>;
+};
+
+type ExactPartialFilter<Shape extends SchemaShape, Filter> = Filter &
+  Record<Exclude<keyof Filter, keyof SchemaPartialFilter<Shape>>, never>;
+
+type ValidateIndexDefinition<Shape extends SchemaShape, Definition> = Definition extends {
+  readonly options?: infer Options;
+}
+  ? Definition & {
+      readonly options?: Options extends {
+        readonly partialFilterExpression?: infer Filter;
+      }
+        ? Options & {
+            readonly partialFilterExpression?: ExactPartialFilter<Shape, Filter>;
+          }
+        : Options;
+    }
+  : Definition;
+
+type ValidateIndexDefinitions<Shape extends SchemaShape, Definitions extends readonly unknown[]> = {
+  [Key in keyof Definitions]: ValidateIndexDefinition<Shape, Definitions[Key]>;
 };
 
 export type SchemaIndexNames<Indexes extends readonly SchemaIndex<any>[]> = Extract<
@@ -197,7 +209,7 @@ export class Schema<
 
   /** Declare MongoDB indexes for explicit synchronization with the database. */
   indexes<const Definitions extends readonly SchemaIndex<Shape>[]>(
-    definitions: Definitions,
+    definitions: readonly SchemaIndex<Shape>[] & ValidateIndexDefinitions<Shape, Definitions>,
   ): Schema<Shape, Relations, Scopes, Options, Definitions> {
     if (definitions.some(({ fields }) => Object.keys(fields).length === 0)) {
       throw new Error('Index definitions must include at least one field');

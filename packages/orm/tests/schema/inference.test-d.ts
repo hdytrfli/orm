@@ -34,6 +34,17 @@ userSchema.indexes([
     },
   },
 ]);
+userSchema.indexes([
+  {
+    fields: { name: 1 },
+    options: {
+      partialFilterExpression: {
+        // @ts-expect-error Unknown partial-filter fields are rejected even with null values.
+        test: null,
+      },
+    },
+  },
+]);
 
 type User = Infer<typeof userSchema>;
 declare const userId: ObjectId;
