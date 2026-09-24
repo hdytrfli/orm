@@ -4,7 +4,7 @@ order: 5
 
 # Mutations
 
-Mongorm exposes `create`, `update`, and `delete` on models.
+Mongorm exposes `create`, `update`, and `delete` on models. `restore()` and `purge()` are also available on schemas configured with `softdelete: true`.
 
 ## Create
 
@@ -41,8 +41,4 @@ await db.user.delete({ _id: userId });
 await db.user.restore({ _id: userId });
 ```
 
-Use `purge()` to permanently remove matching documents, including documents already soft-deleted. Always use a precise filter for production data and consider requiring an explicit confirmation for broad administrative operations.
-
-## Mutation Transactions
-
-Mongorm's model methods target individual collection operations. If a business operation must update multiple documents atomically, use the MongoDB driver's session and transaction APIs at the application boundary and keep the invariants in the service layer.
+On schemas configured with soft deletes, `purge(filter)` permanently removes matching documents, including already soft-deleted documents. Unlike `delete()`, it does not preserve them for restoration. Use a precise filter.

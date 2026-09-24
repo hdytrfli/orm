@@ -2,7 +2,7 @@
 layout: home
 hero:
   name: Mongorm
-  text: Typescript first MongoDB Client
+  text: TypeScript-first MongoDB ORM
   tagline: A schema-first TypeScript ORM for teams that want MongoDB flexibility without giving up reliable contracts.
   image:
     src: /logo.svg
@@ -24,7 +24,7 @@ features:
   - title: Relations without magic
     details: Declare relation graphs centrally, then opt into explicit or named population with nested type inference.
   - title: Practical CRUD
-    details: Create, filter, find, update, delete, count, paginate, select, and populate through one consistent model surface.
+    details: Create, find, update, delete, count, paginate, select, and populate through one consistent model surface.
   - title: TypeScript first
     details: Query result types change as you select fields, show hidden fields, or populate related documents.
 ---
@@ -58,11 +58,11 @@ await db.connect();
 const admins = await db.user.find({ email: { $regex: '@example.com$' } }).select(['email', 'name']);
 ```
 
-## Follow The Documentation
+## Follow the Documentation
 
 - **New to Mongorm?** Start with [Getting Started](/getting-started/), then complete the [Quick Start](/getting-started/quick-start).
-- **Designing a data layer?** Read [Schemas](/schemas/) before [Relations and Registries](/schemas/relations).
-- **Writing endpoints?** Go to [Queries](/queries/) and then [TypeScript](/typescript/) for result inference patterns.
+- **Defining collections?** Read [Schemas](/schemas/), then [Relations and Registries](/schemas/relations) and [Schema Indexes](/schemas/indexes).
+- **Reading and writing documents?** Follow [Queries](/queries/) and [TypeScript](/typescript/) for result inference.
 - **Looking for a method?** Use the [API Reference](/reference/).
 
 ## What Mongorm Does Not Hide

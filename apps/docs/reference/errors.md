@@ -22,23 +22,12 @@ Thrown when cursor pagination is requested without a positive limit, with `skip(
 
 ## `EstimatedCountError` (`ESTIMATED_COUNT_FILTER_UNSUPPORTED`)
 
-Thrown when `count(true)` is used with a non-empty filter. Estimated counts are collection-wide and cannot represent a filtered total.
+Thrown when `count(true)` is used with a query filter or the default soft-delete filter. Estimated counts are collection-wide and cannot represent a filtered total; use `.deleted('include')` when requesting an estimate on a soft-delete schema.
 
 ## Validation Errors
 
 Zod validation errors are raised when schema parsing rejects an input. They contain field-level issue information suitable for conversion into an API validation response.
 
-## Handling Errors
+## Error Boundaries
 
-Translate expected errors at the application boundary and preserve unexpected errors for logging and monitoring:
-
-```ts
-try {
-  return await db.user.create(input);
-} catch (error) {
-  if (error instanceof ZodError) {
-    return badRequest(error.issues);
-  }
-  throw error;
-}
-```
+Mongorm throws its exported ORM errors for its own invalid states, Zod errors for rejected schema input, and MongoDB driver errors for server or index failures. Catch and translate these at the boundary of your application; Mongorm does not define HTTP response helpers or transport-specific error formats.

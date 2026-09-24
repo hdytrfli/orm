@@ -8,7 +8,7 @@ Mongorm queries are lazy, typed builders. A query is assembled synchronously and
 
 ## Pages
 
-- [Query Fundamentals](/queries/fundamentals): `filter()`, `find()`, awaitability, and MongoDB filters.
+- [Query Fundamentals](/queries/fundamentals): `find()`, `.first()`, awaitability, and MongoDB filters.
 - [Selection and Projection](/queries/selection): safe field selection, nested paths, and hidden fields.
 - [Sorting, Limits, and Pagination](/queries/pagination): offset pagination and cursor pagination.
 - [Population](/queries/population): explicit and nested relation loading.

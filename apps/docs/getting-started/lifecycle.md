@@ -18,7 +18,7 @@ const db = createDatabase({
 await db.connect();
 ```
 
-Construct the database handle only after the database is connected when your application needs startup connectivity checks.
+Construct the database handle first, then call `connect()` before any model operation. Keep and reuse this handle for the lifetime of the process.
 
 ## Requests
 

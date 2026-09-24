@@ -56,16 +56,18 @@ const schemas = orm.defineSchemas({
 });
 
 const db = createDatabase({
-  uri: process.env.MONGODB_URI,
-  database: process.env.MONGODB_DATABASE,
+  uri: process.env.MONGODB_URI!,
+  database: process.env.MONGODB_DATABASE!,
   schema: schemas,
 });
 
 await db.connect();
 
-console.log(db.healthCheck.name);
+await db.healthCheck.create({ value: 'connected' });
+console.log(await db.healthCheck.find());
+await db.healthCheck.delete({ value: 'connected' });
 
 await db.disconnect();
 ```
 
-If this runs, package resolution and database construction are working. It does not yet perform a database operation.
+This checks package resolution, connection, and a basic create/read/delete round trip.

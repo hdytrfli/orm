@@ -9,7 +9,7 @@ A scope is a named population specification. It packages a relationship-loading 
 ```ts
 const schemas = orm
   .defineSchemas({ user, post })
-  .defineRelations({ post: { authorId: 'user' } })
+  .defineRelations({ post: { author: 'user' } })
   .defineScopes({
     post: {
       list: [{ ref: 'author', select: ['name'] }],

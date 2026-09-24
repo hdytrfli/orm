@@ -18,7 +18,13 @@ The default is an exact `countDocuments()` operation and respects the query filt
 const approximateTotal = await db.user.find().count(true);
 ```
 
-Passing `true` uses MongoDB's estimated collection count. It is fast and useful for approximate dashboard totals, but it cannot be combined with a filter. Mongorm rejects a filtered estimated count instead of silently returning a misleading number.
+Passing `true` uses MongoDB's estimated collection count. It is fast and useful for approximate collection totals, but it cannot be combined with a filter. On a soft-delete schema, the default active-only mode is also a filter, so opt into all documents when the estimate should cover the whole collection:
+
+```ts
+const approximateTotal = await db.user.find().deleted('include').count(true);
+```
+
+Mongorm rejects filtered estimated counts instead of silently returning a misleading number.
 
 ## Choosing a Count
 

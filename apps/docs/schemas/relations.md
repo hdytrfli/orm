@@ -22,12 +22,12 @@ The registry preserves the literal names and returns typed builder methods.
 
 ```ts
 const connected = schemas.defineRelations({
-  post: { authorId: 'user' },
-  comment: { authorId: 'user', postId: 'post' },
+  post: { author: 'user' },
+  comment: { author: 'user', post: 'post' },
 });
 ```
 
-For each definition, the local field is the foreign key stored on the source document and the target model is looked up by registry name. The built-in target key is `_id`.
+Each relation's public `ref` name is the local foreign-key field name itself. The value is the target schema's registry key, and the built-in target key is `_id`. A field named `authorId` therefore creates a relation named `authorId`, not `author`.
 
 ## Relation Requirements
 
@@ -35,10 +35,10 @@ The relation field must exist on the source schema and use an ObjectId-compatibl
 
 ```ts
 const post = orm.schema({
-  authorId: orm.objectId(),
+  author: orm.objectId(),
 });
 
-const schemas = orm.defineSchemas({ user, post }).defineRelations({ post: { authorId: 'user' } });
+const schemas = orm.defineSchemas({ user, post }).defineRelations({ post: { author: 'user' } });
 ```
 
 ## Relations Are Opt-In

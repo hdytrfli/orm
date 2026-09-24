@@ -4,21 +4,20 @@ order: 1
 
 # Getting Started
 
-This section takes you from an empty TypeScript project to a working Mongorm data layer. It explains installation, client ownership, the smallest useful schema, and the conventions used throughout the rest of the documentation.
+Follow these steps in order to connect Mongorm to MongoDB, declare a schema, write a document, and query it. The walkthrough uses the MongoDB Node.js driver through Mongorm; it does not require a web framework.
 
 ## Recommended Path
 
-1. Install `@mongorm/orm`.
-2. Create a schema with `orm.schema()`.
-3. Register the schemas with `orm.defineSchemas()`.
-4. Create and connect a database handle with `createDatabase()`.
-5. Query through the generated model.
+1. Install `@mongorm/orm` and configure a MongoDB URI.
+2. Define and register schemas.
+3. Create the database handle and connect once.
+4. Create a document and read it with a typed query.
+5. Disconnect when the process shuts down.
 
 ## Pages
 
 - [Installation](/getting-started/installation): packages, runtime requirements, and environment variables.
 - [Quick Start](/getting-started/quick-start): a complete users-and-posts example.
-- [Project Structure](/getting-started/project-structure): where schemas, client code, and model access belong.
 - [Runtime Lifecycle](/getting-started/lifecycle): connect, reuse, and close MongoDB resources safely.
 
 ## The Smallest Complete Example

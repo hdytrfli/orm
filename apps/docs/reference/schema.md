@@ -61,7 +61,7 @@ const schemas = orm.defineSchemas({ user, post });
 Adds relation metadata to a registry. Each source field maps to a target registry key:
 
 ```ts
-schemas.defineRelations({ post: { authorId: 'user' } });
+schemas.defineRelations({ post: { author: 'user' } });
 ```
 
 ## `.defineScopes(definitions)`
@@ -76,4 +76,4 @@ schemas.defineScopes({
 
 ## `orm.ref(resolve)`
 
-Creates a lazily resolved string reference for schema-level relation definitions where a direct target would create an import cycle. Registry-based relations are usually easier to maintain for application graphs.
+Creates a lazily resolved `ObjectId` field linked to another schema. Use it when a direct field declaration would create an import cycle; registry-based relations are usually easier to maintain for application graphs.

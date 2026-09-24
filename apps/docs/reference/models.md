@@ -39,6 +39,8 @@ Validates and inserts multiple documents with one MongoDB `insertMany` operation
 
 ## `Schema.indexes(definitions)` and `Db.sync()`
 
+See [Schema Indexes](/schemas/indexes) for field directions, MongoDB options, optional-field and soft-delete index patterns, and index reset behavior.
+
 Declare typed MongoDB indexes on a schema, then explicitly create them after connecting:
 
 ```ts

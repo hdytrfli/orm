@@ -53,7 +53,7 @@ The schema constrains field names and values, while MongoDB supplies operators s
 
 ## Nested Field Filters
 
-Use MongoDB dot notation to filter one field inside a nested object. The path is checked against the schema and remains type-safe:
+When the schema contains these nested fields, use MongoDB dot notation to filter one field inside the object. The path is checked against the schema and remains type-safe:
 
 ```ts
 const LondonUsers = await db.user.find({

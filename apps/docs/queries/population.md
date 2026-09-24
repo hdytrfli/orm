@@ -23,7 +23,7 @@ The populated relation is either the related document or `null` when the local k
 const posts = await db.post.find({}).populate([
   {
     ref: 'author',
-    select: ['name', 'teamId'],
+    select: ['name', 'team'],
     populate: [
       {
         ref: 'team',

@@ -10,7 +10,6 @@ Mongorm uses TypeScript to make schema and query behavior visible at compile tim
 
 - [Inference Fundamentals](/typescript/inference): infer document, input, and visible-result types.
 - [Typed Query Composition](/typescript/query-types): how filters, selection, and population change result types.
-- [Reusable Application Types](/typescript/application-types): route DTOs, service boundaries, and type aliases.
 - [Compiler and Runtime Boundaries](/typescript/boundaries): what TypeScript catches and what runtime validation catches.
 
 ## The Core Principle
