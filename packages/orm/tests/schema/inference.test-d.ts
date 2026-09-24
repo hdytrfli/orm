@@ -159,6 +159,9 @@ const profileSchema = orm.schema({
   }),
 });
 const profiles = db.model('profiles', profileSchema);
+await profiles.find({ 'profile.location.city': 'London' });
+// @ts-expect-error Nested filter paths must refer to declared object fields.
+await profiles.find({ 'profile.location.country.code': 'GB' });
 await profiles.find({}).select(['profile.website', 'profile.location.city']);
 // @ts-expect-error Nested select paths must refer to declared object fields.
 await profiles.find({}).select(['profile.location.country']);

@@ -12,6 +12,9 @@ type ModelFilterForDocument<
 > = Partial<{
   [Key in keyof FieldShape]: Condition<FieldShape[Key]>;
 }> &
+  Partial<{
+    [Path in NestedFilterKey<FieldShape>]: Condition<NestedFilterValue<FieldShape, Path>>;
+  }> &
   Partial<
     Pick<
       RootFilterOperators<DocumentShape>,
@@ -22,6 +25,24 @@ type ModelFilterForDocument<
     $nor?: ModelFilterForDocument<DocumentShape, FieldShape>[];
     $or?: ModelFilterForDocument<DocumentShape, FieldShape>[];
   };
+
+type NestedFilterKey<Value, Prefix extends string = ''> = Value extends object
+  ? Value extends ObjectId | Date | readonly unknown[]
+    ? never
+    : {
+        [Key in Extract<keyof Value, string>]: NonNullable<Value[Key]> extends object
+          ? `${Prefix}${Key}` | `${Prefix}${Key}.${NestedFilterKey<NonNullable<Value[Key]>>}`
+          : `${Prefix}${Key}`;
+      }[Extract<keyof Value, string>]
+  : never;
+
+type NestedFilterValue<Value, Path extends string> = Path extends `${infer Head}.${infer Tail}`
+  ? Head extends keyof Value
+    ? NestedFilterValue<NonNullable<Value[Head]>, Tail>
+    : never
+  : Path extends keyof Value
+    ? Value[Path]
+    : never;
 
 export type ModelFilter<Shape extends SchemaShape> = ModelFilterForDocument<
   StoredDocument<Shape>,
