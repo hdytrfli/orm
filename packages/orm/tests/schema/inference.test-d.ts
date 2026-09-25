@@ -65,14 +65,11 @@ const parsedUser: InferShape<typeof userSchema> = userSchema.parse({
 });
 void parsedUser;
 
-const groupSchema = orm.schema({ name: orm.string() });
 const memberSchema = orm.schema({
-  group: orm.ref(() => groupSchema).optional(),
-  nullableGroup: orm.ref(() => groupSchema).nullable(),
-  nullishGroup: orm.ref(() => groupSchema).nullish(),
+  group: orm.objectId().optional(),
+  nullableGroup: orm.objectId().nullable(),
+  nullishGroup: orm.objectId().nullish(),
 });
-const targetGroup: typeof groupSchema = memberSchema.refs.group.resolve();
-void targetGroup;
 const member: Infer<typeof memberSchema> = {
   _id: userId,
   group: null as unknown as ObjectId,

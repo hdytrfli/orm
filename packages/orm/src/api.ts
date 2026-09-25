@@ -1,8 +1,6 @@
 import { z } from 'zod';
 
 import type { SchemaLike } from './relations/definitions.js';
-import { createRef } from './relations/ref-fields.js';
-import type { RefField } from './relations/ref-fields.js';
 import { createSchemaRegistry } from './relations/registry.js';
 import type { SchemaShape } from './schema/contracts.js';
 import { objectId, withZodNamespace } from './schema/scalars.js';
@@ -29,8 +27,6 @@ export type OrmApi = ZodConstructors & {
   ): ReturnType<typeof createSchemaRegistry<Registry>>;
   /** Create a MongoDB ObjectId field. */
   objectId: typeof objectId;
-  /** Create a string ID field linked to another schema. */
-  ref<Target extends SchemaLike>(resolve: () => Target): RefField<Target>;
 };
 
 /** The ORM schema API with the complete native Zod namespace. */
@@ -44,5 +40,4 @@ export const orm: OrmApi = Object.assign({}, withZodNamespace(zodConstructors), 
   schema: <Shape extends SchemaShape>(shape: Shape) => new Schema(shape),
   defineSchemas: createSchemaRegistry,
   objectId,
-  ref: createRef,
 });

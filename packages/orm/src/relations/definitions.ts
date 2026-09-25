@@ -3,11 +3,6 @@ import type { Schema } from '../schema/schema.js';
 /** Schema object accepted as a lazy relation target or registry entry. */
 export type SchemaLike = Schema<any, any, any, any, any>;
 
-/** Metadata for a schema target resolved lazily to support circular imports. */
-export interface RefDefinition<Target extends SchemaLike = SchemaLike> {
-  resolve: () => Target;
-}
-
 /** Metadata for a one-way relation between two registered schemas. */
 export interface SchemaRelation<
   Target extends SchemaLike = SchemaLike,

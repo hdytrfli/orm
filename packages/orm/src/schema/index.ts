@@ -11,17 +11,9 @@ export type {
 export type { Infer, InferInput, InferShape } from './inference.js';
 export type { SchemaDefinition, SchemaShape, ScopeDefinitions } from './contracts.js';
 export type {
-  RefDefinition,
   RelationInput,
   RelationInputTarget,
   SchemaLike,
   SchemaRelation,
   SchemaRelationMap,
 } from '../relations/definitions.js';
-export type {
-  NullableRefField,
-  NullishRefField,
-  OptionalRefField,
-  RefField,
-  RelationMap,
-} from '../relations/ref-fields.js';

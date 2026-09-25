@@ -73,7 +73,3 @@ schemas.defineScopes({
   post: { detail: [{ ref: 'author', select: ['name'] }] },
 });
 ```
-
-## `orm.ref(resolve)`
-
-Creates a lazily resolved `ObjectId` field linked to another schema. Use it when a direct field declaration would create an import cycle; registry-based relations are usually easier to maintain for application graphs.

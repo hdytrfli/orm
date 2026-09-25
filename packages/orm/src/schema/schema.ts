@@ -9,8 +9,6 @@ import type {
   SchemaRelationMap,
   SchemaLike,
 } from '../relations/definitions.js';
-import { collectRefs } from '../relations/ref-fields.js';
-import type { RelationMap } from '../relations/ref-fields.js';
 import type { SchemaDefinition, SchemaShape, ScopeDefinitions } from './contracts.js';
 import type { SchemaIndex, ValidateIndexDefinitions } from './indexes.js';
 import type { InferShape } from './inference.js';
@@ -35,9 +33,6 @@ export class Schema<
 > {
   /** The underlying Zod object for advanced validation use cases. */
   readonly definition: SchemaDefinition<Shape>;
-
-  /** The lazily resolved relation metadata declared by this schema. */
-  readonly refs: RelationMap<Shape>;
 
   /** One-way relation metadata declared for this schema. */
   readonly relationMap: Relations;
@@ -69,7 +64,6 @@ export class Schema<
     indexDefinitions = [] as unknown as Indexes,
   ) {
     this.definition = z.object(shape);
-    this.refs = collectRefs(shape);
     this.relationMap = relations;
     this.scopeMap = scopeMap;
     this.fields = Object.keys(shape) as (keyof Shape & string)[];
