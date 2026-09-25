@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { withHidden, type HiddenSchema } from './scalars.js';
+import { withHidden, type HiddenSchema } from './hidden.js';
 
 /** Built-in persistence behavior applied by a schema. */
 export interface SchemaOptions {

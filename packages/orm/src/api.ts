@@ -3,8 +3,9 @@ import { z } from 'zod';
 import type { SchemaLike } from './relations/definitions.js';
 import { createSchemaRegistry } from './relations/registry.js';
 import type { SchemaShape } from './schema/contracts.js';
-import { objectId, withZodNamespace } from './schema/scalars.js';
+import { objectId } from './schema/scalars.js';
 import { Schema } from './schema/schema.js';
+import { withZodNamespace } from './schema/zod-namespace.js';
 
 type ZodConstructorKey = {
   [Key in keyof typeof z]: Key extends string

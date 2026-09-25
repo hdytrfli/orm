@@ -23,6 +23,16 @@ type ObjectIdFieldKeys<Shape extends SchemaShape> = {
     : never;
 }[keyof InferShape<Schema<Shape>>];
 
+type RelationsFromDefinitions<Definitions extends Partial<Record<string, RelationInput>>> = {
+  [Name in keyof Definitions]: SchemaRelation<
+    RelationInputTarget<NonNullable<Definitions[Name]>>,
+    Extract<Name, string>,
+    NonNullable<Definitions[Name]> extends { foreignField: infer Foreign extends string }
+      ? Foreign
+      : '_id'
+  >;
+};
+
 /** A typed, runtime-validated schema definition. */
 export class Schema<
   Shape extends SchemaShape,
@@ -141,20 +151,7 @@ export class Schema<
   >(
     definitions: Definitions &
       Record<Exclude<keyof Definitions, Extract<ObjectIdFieldKeys<Shape>, string>>, never>,
-  ): Schema<
-    Shape,
-    Relations & {
-      [Name in keyof Definitions]: SchemaRelation<
-        RelationInputTarget<NonNullable<Definitions[Name]>>,
-        Extract<Name, string>,
-        NonNullable<Definitions[Name]> extends { foreignField: infer Foreign extends string }
-          ? Foreign
-          : '_id'
-      >;
-    },
-    Scopes,
-    Options
-  > {
+  ): Schema<Shape, Relations & RelationsFromDefinitions<Definitions>, Scopes, Options> {
     for (const [name, input] of Object.entries(definitions)) {
       const definition = (typeof input === 'function' ? { target: input } : input) as {
         target: () => SchemaLike;
@@ -168,15 +165,7 @@ export class Schema<
     }
     return this as unknown as Schema<
       Shape,
-      Relations & {
-        [Name in keyof Definitions]: SchemaRelation<
-          RelationInputTarget<NonNullable<Definitions[Name]>>,
-          Extract<Name, string>,
-          NonNullable<Definitions[Name]> extends { foreignField: infer Foreign extends string }
-            ? Foreign
-            : '_id'
-        >;
-      },
+      Relations & RelationsFromDefinitions<Definitions>,
       Scopes,
       Options
     >;

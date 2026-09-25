@@ -1,5 +1,4 @@
 import {
-  ObjectId,
   type Collection,
   type DeleteResult,
   type Filter as MongoFilter,
@@ -20,6 +19,7 @@ import type {
   SchemaShape,
   ScopeDefinitions,
 } from '../schema/index.js';
+import { prepareDocument } from './document.js';
 import { applySoftDeleteFilter } from './soft-delete.js';
 import type {
   CreateInput,
@@ -106,35 +106,18 @@ export class Model<
   async create(
     input: CreateInput<Shape, Options>,
   ): Promise<ModelResult<Shape, Relations, Scopes, Options>> {
-    const document = this.prepareDocument(input);
+    const document = prepareDocument(this.schema, input);
     await this.collection.insertOne(
       document as unknown as OptionalUnlessRequiredId<StoredDocument<Shape>>,
     );
     return document as ModelResult<Shape, Relations, Scopes, Options>;
   }
 
-  private prepareDocument(
-    input: CreateInput<Shape, Options>,
-    generateId = true,
-  ): Record<string, unknown> {
-    const now = new Date();
-    const document: Record<string, unknown> = {
-      ...(generateId ? { _id: new ObjectId() } : {}),
-      ...this.schema.parse(input),
-    };
-    if (this.schema.optionsConfig.timestamps) {
-      document.createdAt = now;
-      document.updatedAt = now;
-    }
-    if (hasSoftDelete(this.schema.optionsConfig)) document.deletedAt = null;
-    return document;
-  }
-
   private async bulkCreate(
     inputs: readonly CreateInput<Shape, Options>[],
   ): Promise<ModelResult<Shape, Relations, Scopes, Options>[]> {
     if (inputs.length === 0) return [];
-    const documents = inputs.map((input) => this.prepareDocument(input));
+    const documents = inputs.map((input) => prepareDocument(this.schema, input));
     await this.collection.insertMany(
       documents as unknown as OptionalUnlessRequiredId<StoredDocument<Shape>>[],
     );
@@ -186,7 +169,8 @@ export class Model<
     filter: Filter & Record<Exclude<keyof Filter, keyof UpsertFilter<Shape, Options>>, never>,
     data: UpsertData<Shape, Options, Filter>,
   ): Promise<ModelResult<Shape, Relations, Scopes, Options>> {
-    const document = this.prepareDocument(
+    const document = prepareDocument(
+      this.schema,
       { ...filter, ...data } as CreateInput<Shape, Options>,
       false,
     );
