@@ -1,5 +1,5 @@
 {
-  "name": "@mongorm/test",
+  "name": "@mongorm/integration",
   "private": true,
   "type": "module",
   "scripts": {

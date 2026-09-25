@@ -41,7 +41,7 @@ describe('cursor integration scenarios', () => {
         group: group._id,
         company: company._id,
         profile: {
-          email: `${name.toLowerCase()}@example.test`,
+          email: name.toLowerCase() + '@example.test',
           website: 'https://example.test',
           location: {
             city: 'London',
@@ -93,7 +93,7 @@ describe('cursor integration scenarios', () => {
         group: group._id,
         company: company._id,
         profile: {
-          email: `${name.toLowerCase()}@example.test`,
+          email: name.toLowerCase() + '@example.test',
           website: 'https://example.test',
           location: {
             city: 'London',

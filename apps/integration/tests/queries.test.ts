@@ -252,7 +252,7 @@ describe('query integration scenarios', () => {
         group: user.groupId,
         company: user.companyId,
         profile: {
-          email: `${user.name.toLowerCase().replaceAll(' ', '.')}@example.test`,
+          email: user.name.toLowerCase().replaceAll(' ', '.') + '@example.test',
           website: 'https://example.test',
           location: {
             city: 'Seattle',
@@ -309,7 +309,7 @@ describe('query integration scenarios', () => {
         group: group._id,
         company: company._id,
         profile: {
-          email: `${profile.name.toLowerCase().replaceAll(' ', '.')}@example.test`,
+          email: profile.name.toLowerCase().replaceAll(' ', '.') + '@example.test',
           website: 'https://example.test',
           location: {
             city: profile.city,

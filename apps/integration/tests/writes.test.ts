@@ -151,7 +151,7 @@ describe('write integration scenarios', () => {
       group: group._id,
       company: company._id,
       profile: {
-        email: `${name.toLowerCase().replaceAll(' ', '.')}@example.test`,
+        email: name.toLowerCase().replaceAll(' ', '.') + '@example.test',
         website: 'https://example.test',
         location: {
           city: 'Denver',

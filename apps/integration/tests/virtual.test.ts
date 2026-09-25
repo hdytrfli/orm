@@ -80,14 +80,14 @@ const companies = database.companies;
 
 const createDepartment = async (name: string) => {
   const company = await companies.create({
-    slug: `virtual-${name.toLowerCase()}-${new ObjectId().toHexString()}`,
-    name: `${name} Company`,
-    description: `Company supporting ${name}`,
+    slug: 'virtual-' + name.toLowerCase() + '-' + new ObjectId().toHexString(),
+    name: name + ' Company',
+    description: 'Company supporting ' + name,
   });
 
   return departments.create({
     name,
-    description: `${name} department`,
+    description: name + ' department',
     company: company._id,
   });
 };
@@ -95,7 +95,7 @@ const createDepartment = async (name: string) => {
 const createPerson = async (name: string, departmentId: ObjectId) =>
   people.create({
     name,
-    email: `${name.toLowerCase().replaceAll(' ', '.')}@example.test`,
+    email: name.toLowerCase().replaceAll(' ', '.') + '@example.test',
     profile: { department: departmentId },
   });
 

@@ -55,7 +55,7 @@ describe('aggregation integration scenarios', () => {
         group: group._id,
         company: company._id,
         profile: {
-          email: `${user.name.toLowerCase().replaceAll(' ', '.')}@example.test`,
+          email: user.name.toLowerCase().replaceAll(' ', '.') + '@example.test',
           website: 'https://example.test',
           location: {
             city: 'Toronto',
