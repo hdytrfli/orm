@@ -42,6 +42,7 @@ export class Schema<
   Scopes extends ScopeDefinitions = {},
   Options extends SchemaOptions = {},
   Indexes extends readonly SchemaIndex<any>[] = [],
+  Virtuals extends SchemaVirtualMap = {},
 > {
   /** The underlying Zod object for advanced validation use cases. */
   readonly definition: SchemaDefinition<Shape>;
@@ -50,7 +51,7 @@ export class Schema<
   readonly relationMap: Relations;
 
   /** Reverse/virtual relation metadata declared for this schema. */
-  readonly virtualMap: SchemaVirtualMap;
+  readonly virtualMap: Virtuals;
 
   /** Named population scopes declared for this schema. */
   scopeMap: Scopes;
@@ -77,7 +78,7 @@ export class Schema<
     scopeMap = {} as Scopes,
     optionsConfig = {} as Options,
     indexDefinitions = [] as unknown as Indexes,
-    virtualMap = {} as SchemaVirtualMap,
+    virtualMap = {} as Virtuals,
   ) {
     this.definition = z.object(shape);
     this.relationMap = relations;
@@ -97,7 +98,7 @@ export class Schema<
   /** Enable managed timestamps and/or soft deletion for this schema. */
   options<const Enabled extends SchemaOptions>(
     options: Enabled,
-  ): Schema<Shape & ManagedShape<Enabled>, Relations, Scopes, Enabled, Indexes> {
+  ): Schema<Shape & ManagedShape<Enabled>, Relations, Scopes, Enabled, Indexes, Virtuals> {
     if (Object.keys(this.optionsConfig).length > 0) {
       throw new SchemaConfigurationError(
         'Schema options are already configured. Combine all options in one .options({...}) call.',
@@ -146,14 +147,15 @@ export class Schema<
       Relations,
       Scopes,
       Enabled,
-      Indexes
+      Indexes,
+      Virtuals
     >;
   }
 
   /** Declare MongoDB indexes for explicit synchronization with the database. */
   indexes<const Definitions extends readonly SchemaIndex<Shape>[]>(
     definitions: readonly SchemaIndex<Shape>[] & ValidateIndexDefinitions<Shape, Definitions>,
-  ): Schema<Shape, Relations, Scopes, Options, Definitions> {
+  ): Schema<Shape, Relations, Scopes, Options, Definitions, Virtuals> {
     for (const definition of definitions) {
       if (Object.keys(definition.fields).length === 0) {
         throw new SchemaConfigurationError(
@@ -162,7 +164,7 @@ export class Schema<
       }
     }
     this.indexDefinitions = definitions as unknown as Indexes;
-    return this as unknown as Schema<Shape, Relations, Scopes, Options, Definitions>;
+    return this as unknown as Schema<Shape, Relations, Scopes, Options, Definitions, Virtuals>;
   }
 
   /** Add one or more one-way relations without requiring circular schema declarations. */
@@ -173,7 +175,14 @@ export class Schema<
   >(
     definitions: Definitions &
       Record<Exclude<keyof Definitions, Extract<ObjectIdFieldKeys<Shape>, string>>, never>,
-  ): Schema<Shape, Relations & RelationsFromDefinitions<Definitions>, Scopes, Options> {
+  ): Schema<
+    Shape,
+    Relations & RelationsFromDefinitions<Definitions>,
+    Scopes,
+    Options,
+    Indexes,
+    Virtuals
+  > {
     for (const [name, input] of Object.entries(definitions)) {
       const definition = (typeof input === 'function' ? { target: input } : input) as {
         target: () => SchemaLike;
@@ -189,16 +198,18 @@ export class Schema<
       Shape,
       Relations & RelationsFromDefinitions<Definitions>,
       Scopes,
-      Options
+      Options,
+      Indexes,
+      Virtuals
     >;
   }
 
   /** Declare named, reusable population scopes. */
-  scopes<const Definitions extends Record<string, PopulateSpecs<Relations>>>(
+  scopes<const Definitions extends Record<string, PopulateSpecs<Relations, Virtuals>>>(
     definitions: Definitions,
-  ): Schema<Shape, Relations, Definitions, Options> {
+  ): Schema<Shape, Relations, Definitions, Options, Indexes, Virtuals> {
     this.scopeMap = definitions as unknown as Scopes;
-    return this as unknown as Schema<Shape, Relations, Definitions, Options>;
+    return this as unknown as Schema<Shape, Relations, Definitions, Options, Indexes, Virtuals>;
   }
 
   /** Parse unknown input and return the inferred document type. */

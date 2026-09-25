@@ -14,7 +14,8 @@ type ObjectIdKeys<Shape extends SchemaShape> = {
     : never;
 }[keyof InferredFields<Shape>];
 
-type SchemaIndexes<Value> = Value extends Schema<any, any, any, any, infer Indexes> ? Indexes : [];
+type SchemaVirtuals<Value> =
+  Value extends Schema<any, any, any, any, any, infer Virtuals> ? Virtuals : {};
 
 /** Valid local ObjectId fields and targets accepted by `defineRelations`. */
 export type RelationDefinitions<Registry extends Record<string, SchemaLike>> = {
@@ -57,10 +58,6 @@ type VirtualsFor<
     : never;
 };
 
-type ExistingVirtuals<Value> = Value extends { readonly virtualMap: infer Virtuals }
-  ? Virtuals
-  : {};
-
 type RegistryWithVirtuals<
   Registry extends Record<string, SchemaLike>,
   Definitions extends VirtualDefinitions<Registry>,
@@ -69,12 +66,18 @@ type RegistryWithVirtuals<
     infer Shape,
     infer Relations,
     infer Scopes,
-    infer Options
+    infer Options,
+    infer Indexes,
+    infer Existing
   >
-    ? Schema<Shape, Relations, Scopes, Options, SchemaIndexes<Registry[Name]>> & {
-        readonly virtualMap: ExistingVirtuals<Registry[Name]> &
-          VirtualsFor<Registry, Definitions, Name>;
-      }
+    ? Schema<
+        Shape,
+        Relations,
+        Scopes,
+        Options,
+        Indexes,
+        Existing & VirtualsFor<Registry, Definitions, Name>
+      >
     : Registry[Name];
 };
 
@@ -101,14 +104,17 @@ type RegistryWithRelations<
     infer Shape,
     infer Relations,
     infer Scopes,
-    infer Options
+    infer Options,
+    infer Indexes,
+    infer Virtuals
   >
     ? Schema<
         Shape,
         Relations & RelationsFor<Registry, Definitions, NonNullable<Definitions[Name]>>,
         Scopes,
         Options,
-        SchemaIndexes<Registry[Name]>
+        Indexes,
+        Virtuals
       >
     : Registry[Name];
 };
@@ -122,7 +128,10 @@ type RelationMapOf<Value> =
 
 /** Scope declarations accepted for each registered model. */
 export type ScopeDefinitionsBySchema<Registry extends Record<string, SchemaLike>> = {
-  [Name in keyof Registry]?: Record<string, PopulateSpecs<RelationMapOf<Registry[Name]>>>;
+  [Name in keyof Registry]?: Record<
+    string,
+    PopulateSpecs<RelationMapOf<Registry[Name]>, SchemaVirtuals<Registry[Name]>>
+  >;
 };
 
 type RegistryWithScopes<
@@ -133,14 +142,17 @@ type RegistryWithScopes<
     infer Shape,
     infer Relations,
     infer Scopes,
-    infer Options
+    infer Options,
+    infer Indexes,
+    infer Virtuals
   >
     ? Schema<
         Shape,
         Relations,
         Scopes & (Definitions[Name] extends ScopeDefinitions ? Definitions[Name] : {}),
         Options,
-        SchemaIndexes<Registry[Name]>
+        Indexes,
+        Virtuals
       >
     : Registry[Name];
 };

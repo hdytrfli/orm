@@ -14,6 +14,7 @@ import type {
   SchemaLike,
   SchemaShape,
   SchemaRelationMap,
+  SchemaVirtualMap,
   ScopeDefinitions,
 } from '../schema/index.js';
 import { DatabaseNotConnectedError, SchemaConfigurationError } from '../validation/errors.js';
@@ -33,7 +34,14 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
     for (const [name, schema] of Object.entries(options.schemas)) {
       this.registerSchema(schema, name);
       let model:
-        | Model<SchemaShape, SchemaRelationMap, ScopeDefinitions, any, readonly SchemaIndex<any>[]>
+        | Model<
+            SchemaShape,
+            SchemaRelationMap,
+            ScopeDefinitions,
+            any,
+            readonly SchemaIndex<any>[],
+            SchemaVirtualMap
+          >
         | undefined;
       Object.defineProperty(this, name, {
         configurable: false,
@@ -62,10 +70,11 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
     Scopes extends ScopeDefinitions,
     Options extends SchemaOptions,
     Indexes extends readonly SchemaIndex<any>[],
+    Virtuals extends SchemaVirtualMap,
   >(
     name: string,
-    schema: Schema<Shape, Relations, Scopes, Options, Indexes>,
-  ): Model<Shape, Relations, Scopes, Options, Indexes> {
+    schema: Schema<Shape, Relations, Scopes, Options, Indexes, Virtuals>,
+  ): Model<Shape, Relations, Scopes, Options, Indexes, Virtuals> {
     this.registerSchema(schema, name);
     return new Model(this, name, schema);
   }

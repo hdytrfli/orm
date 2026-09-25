@@ -2,6 +2,7 @@ import { demonstrateAggregation } from '@/examples/aggregation';
 import { demonstrateCursors } from '@/examples/cursors';
 import { demonstrateQueries } from '@/examples/queries';
 import { demonstrateRelations } from '@/examples/relations';
+import { demonstrateVirtualPopulation } from '@/examples/virtual';
 import { demonstrateWrites } from '@/examples/writes';
 import { db } from '@/libs/database';
 import { log } from '@/utils/logger';
@@ -47,6 +48,7 @@ try {
 
   await demonstrateQueries();
   await demonstrateRelations();
+  await demonstrateVirtualPopulation();
   await demonstrateAggregation();
   await demonstrateCursors();
   await demonstrateWrites();

@@ -23,12 +23,34 @@ const relatedTicketSchema = ticketSchema.relations({ owner: () => ownerSchema })
 
 const owners = database.model('owners', ownerSchema);
 const tickets = database.model('tickets', relatedTicketSchema);
+const virtualRegistry = orm
+  .defineSchemas({
+    owners: orm.schema({ name: orm.string(), secret: orm.string().hidden() }),
+    tickets: orm.schema({
+      title: orm.string(),
+      status: orm.enum(['open', 'closed']),
+      priority: orm.number(),
+      owner: orm.objectId(),
+      secret: orm.string().hidden(),
+    }),
+  })
+  .defineRelations({ tickets: { owner: 'owners' } })
+  .defineVirtual({
+    owners: { tickets: { ref: 'tickets', localField: '_id', foreignField: 'owner' } },
+  })
+  .defineScopes({
+    owners: { ticketTitles: [{ virtual: 'tickets', select: ['title'] }] },
+  });
+const virtualOwners = database.model('virtual-owners', virtualRegistry.owners);
+const virtualTickets = database.model('virtual-tickets', virtualRegistry.tickets);
 
 describe.skipIf(!runDatabaseTests)('database CRUD', () => {
   beforeAll(() => database.connect());
   beforeEach(async () => {
     await tickets.delete({});
     await owners.delete({});
+    await virtualTickets.delete({});
+    await virtualOwners.delete({});
   });
   afterAll(() => database.disconnect());
 
@@ -166,6 +188,51 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     expect(created[0]._id).not.toEqual(created[1]._id);
     expect(await tickets.find({})).toHaveLength(2);
     expect((await tickets.find({}).show(['secret']))[1].secret).toBe('second-secret');
+  });
+
+  it('populates reverse virtual relations and supports virtual population scopes', async () => {
+    const ada = await virtualOwners.create({ name: 'Ada', secret: 'ada-secret' });
+    await virtualOwners.create({ name: 'Grace', secret: 'grace-secret' });
+    await virtualTickets.create({
+      title: 'Engine design',
+      status: 'open',
+      priority: 1,
+      owner: ada._id,
+      secret: 'engine-secret',
+    });
+    await virtualTickets.create({
+      title: 'Compiler validation',
+      status: 'closed',
+      priority: 2,
+      owner: ada._id,
+      secret: 'compiler-secret',
+    });
+
+    const populated = await virtualOwners
+      .find()
+      .sort({ name: 'asc' })
+      .populate([{ virtual: 'tickets', select: ['title'] }]);
+    expect(populated[0]).toMatchObject({
+      name: 'Ada',
+      tickets: [{ title: 'Engine design' }, { title: 'Compiler validation' }],
+    });
+    expect(populated[1]).toMatchObject({ name: 'Grace', tickets: [] });
+    expect(populated[0]?.tickets[0]).not.toHaveProperty('secret');
+
+    const scoped = await virtualOwners.find({ name: 'Ada' }).with('ticketTitles').first();
+    expect(scoped?.tickets).toEqual([
+      { _id: expect.any(ObjectId), title: 'Engine design' },
+      { _id: expect.any(ObjectId), title: 'Compiler validation' },
+    ]);
+
+    const nested = await virtualOwners.find({ name: 'Ada' }).populate([
+      {
+        virtual: 'tickets',
+        select: ['title', 'owner'],
+        populate: [{ ref: 'owner', select: ['name'] }],
+      },
+    ]);
+    expect(nested[0]?.tickets[0]?.owner?.name).toBe('Ada');
   });
 
   it('upserts complete data on a miss or match', async () => {

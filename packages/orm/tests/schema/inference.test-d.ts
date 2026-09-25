@@ -36,6 +36,20 @@ const projectTarget: typeof virtualProjectSchema = projectVirtual.resolve();
 const projectOwnerField: 'owner' = projectVirtual.foreignField;
 void projectTarget;
 void projectOwnerField;
+const virtualDb = createDatabase({
+  uri: 'mongodb://localhost:27017',
+  database: 'virtual-population-test',
+  schemas: virtualRegistry,
+});
+const populatedVirtualUser = await virtualDb.users
+  .find()
+  .populate([{ virtual: 'projects', select: ['title'] }]);
+const virtualProjectTitle: string | undefined = populatedVirtualUser[0]?.projects[0]?.title;
+void virtualProjectTitle;
+// @ts-expect-error Virtual population accepts only registered virtual keys.
+virtualDb.users.find().populate([{ virtual: 'missing' }]);
+// @ts-expect-error Virtual selection accepts only target schema fields.
+virtualDb.users.find().populate([{ virtual: 'projects', select: ['missing'] }]);
 orm.defineSchemas({ users: virtualUserSchema, projects: virtualProjectSchema }).defineVirtual({
   // @ts-expect-error Virtual targets must name a schema in the registry.
   users: { projects: { ref: 'tasks', localField: '_id', foreignField: 'owner' } },

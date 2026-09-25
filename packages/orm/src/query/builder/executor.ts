@@ -5,9 +5,10 @@ import { CursorQueryError, EstimatedCountError } from '../../validation/errors.j
 import { MODEL_CURSOR_BATCH_SIZE, ModelCursor } from '../cursor/cursor.js';
 import { createCursorFilter } from '../cursor/filter.js';
 import { PopulationExecutor } from '../population/executor.js';
+import type { RuntimePopulateSpec } from '../population/executor.js';
 import { projectionFor } from '../projection/runtime.js';
 import { SoftDeleteState } from '../soft-delete/state.js';
-import type { ModelFilter, ModelSort, PopulateSpecs, StoredDocument } from '../types.js';
+import type { ModelFilter, ModelSort, StoredDocument } from '../types.js';
 
 /** Runtime inputs needed to execute a fully configured model query. */
 export interface QueryExecutionContext<
@@ -26,7 +27,7 @@ export interface QueryExecutionContext<
   limitCount: number | undefined;
   softDelete: SoftDeleteState<Shape>;
   population: PopulationExecutor<Relations>;
-  populateSpecs: PopulateSpecs<Relations>;
+  populateSpecs: readonly RuntimePopulateSpec[];
 }
 
 /** Execute a list query or MongoDB's estimated collection count. */

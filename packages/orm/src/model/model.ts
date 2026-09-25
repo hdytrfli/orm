@@ -19,6 +19,7 @@ import type {
   SoftDeleteEnabled,
   SchemaRelationMap,
   SchemaShape,
+  SchemaVirtualMap,
   ScopeDefinitions,
 } from '../schema/index.js';
 import { SchemaConfigurationError } from '../validation/errors.js';
@@ -45,6 +46,7 @@ export class Model<
   Scopes extends ScopeDefinitions = {},
   Options extends SchemaOptions = {},
   Indexes extends readonly SchemaIndex<any>[] = [],
+  Virtuals extends SchemaVirtualMap = {},
 > {
   declare readonly index: IndexManager<Indexes>;
   declare readonly bulk: {
@@ -63,7 +65,7 @@ export class Model<
   constructor(
     private readonly db: Db,
     readonly name: string,
-    private readonly schema: Schema<Shape, Relations, Scopes, Options, Indexes>,
+    private readonly schema: Schema<Shape, Relations, Scopes, Options, Indexes, Virtuals>,
   ) {
     Object.defineProperty(this, 'bulk', {
       configurable: false,
@@ -163,7 +165,8 @@ export class Model<
     Relations,
     Scopes,
     'none',
-    SoftDeleteEnabled<Options>
+    SoftDeleteEnabled<Options>,
+    Virtuals
   > {
     return new ModelQuery(
       this.collection,
@@ -173,6 +176,7 @@ export class Model<
       this.db,
       this.schema.relationMap,
       this.schema.scopeMap,
+      this.schema.virtualMap,
       hasSoftDelete(this.schema.optionsConfig),
     );
   }
