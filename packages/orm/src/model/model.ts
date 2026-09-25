@@ -113,10 +113,13 @@ export class Model<
     return document as ModelResult<Shape, Relations, Scopes, Options>;
   }
 
-  private prepareDocument(input: CreateInput<Shape, Options>): Record<string, unknown> {
+  private prepareDocument(
+    input: CreateInput<Shape, Options>,
+    generateId = true,
+  ): Record<string, unknown> {
     const now = new Date();
     const document: Record<string, unknown> = {
-      _id: new ObjectId(),
+      ...(generateId ? { _id: new ObjectId() } : {}),
       ...this.schema.parse(input),
     };
     if (this.schema.optionsConfig.timestamps) {
@@ -180,14 +183,16 @@ export class Model<
 
   /** Insert a validated document when no active match exists, or set its fields on a match. */
   async upsert<const Filter extends UpsertFilter<Shape, Options>>(
-    filter: Filter,
+    filter: Filter & Record<Exclude<keyof Filter, keyof UpsertFilter<Shape, Options>>, never>,
     data: UpsertData<Shape, Options, Filter>,
   ): Promise<ModelResult<Shape, Relations, Scopes, Options>> {
-    const document = this.prepareDocument({ ...filter, ...data } as CreateInput<Shape, Options>);
+    const document = this.prepareDocument(
+      { ...filter, ...data } as CreateInput<Shape, Options>,
+      false,
+    );
     const insert: Record<string, unknown> = {};
     if (this.schema.optionsConfig.timestamps) insert.createdAt = document.createdAt;
     if (hasSoftDelete(this.schema.optionsConfig)) insert.deletedAt = document.deletedAt;
-    delete document._id;
     if (this.schema.optionsConfig.timestamps) delete document.createdAt;
     if (hasSoftDelete(this.schema.optionsConfig)) delete document.deletedAt;
     for (const field of Object.keys(filter)) delete document[field];
