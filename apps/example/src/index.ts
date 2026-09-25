@@ -286,11 +286,36 @@ try {
     value: await db.users.find({ $and: [{ role: 'member' }, { age: { $gte: 18 } }] }).limit(2),
   });
 
-  log.debug({ context: 'exact count', value: await db.users.find({ role: 'admin' }).count() });
+  log.debug({
+    context: 'exact count',
+    value: await db.users.find({ role: 'admin' }).count(),
+  });
 
   log.debug({
     context: 'estimated count',
     value: await db.users.find().deleted('include').count(true),
+  });
+
+  type UserCountByCountry = { _id: string; count: number };
+  const userCounts = await db.users.aggregate<UserCountByCountry>([
+    {
+      $group: {
+        _id: '$profile.location.country',
+        count: {
+          $sum: 1,
+        },
+      },
+    },
+    {
+      $sort: {
+        _id: 1,
+      },
+    },
+  ]);
+
+  log.debug({
+    context: 'user counts',
+    value: userCounts,
   });
 
   const test = await db.users.find().sort({ _id: 'asc' }).limit(6);

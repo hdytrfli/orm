@@ -14,6 +14,7 @@ Mongorm queries are lazy, typed builders. A query is assembled synchronously and
 - [Population](/queries/population): explicit and nested relation loading.
 - [Mutations](/queries/mutations): create, update, and delete behavior.
 - [Counts](/queries/counts): exact and estimated counts.
+- [Aggregation](/queries/aggregation): typed results from MongoDB pipelines and soft-delete behavior.
 
 ## A Query Is Data Access Policy
 

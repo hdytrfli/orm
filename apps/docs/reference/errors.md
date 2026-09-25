@@ -15,6 +15,7 @@ Thrown when a model attempts to access the native database before `connect()` ha
 ## `InvalidQueryError` (`INVALID_QUERY`)
 
 Thrown when incompatible query modes are combined, such as explicit population and a named scope.
+On a soft-delete model, aggregation also throws this error for a first stage that does not produce model documents, unless `{ includeDeleted: true }` explicitly opts out of automatic filtering.
 
 ## `CursorQueryError` (`CURSOR_QUERY_INVALID`)
 

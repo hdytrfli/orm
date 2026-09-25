@@ -6,6 +6,8 @@ order: 3
 
 `find()` builds a list query. It supports selection, population, sorting, pagination, limits, counts, and terminal `.first()` for a single document.
 
+Use [`Model.aggregate<Result>()`](/queries/aggregation) when MongoDB pipeline stages transform the result shape. The result type is explicit; awaiting the query returns `Result[]`, and the query is also async iterable.
+
 ## List Query Methods
 
 | Method               | Result            | Notes                                                      |
@@ -50,3 +52,7 @@ Applies a named scope. Explicit population and scopes cannot be combined on one 
 ## `ModelCursor`
 
 An async iterable that yields one page. Its `next` property is an `ObjectId` when another page is available and `null` at the end.
+
+## `Model.aggregate<Result>(pipeline, options?)`
+
+Runs an aggregation pipeline on the model's collection. Awaiting the result returns `Result[]`; it can also be consumed with `for await...of`. `Result` must describe the pipeline output; Mongorm does not infer or validate it. `options.filter` is schema-checked against the model and applied to source documents. On soft-delete schemas, active documents are filtered by default. `{ includeDeleted: true }` explicitly opts out of the implicit soft-delete condition and is only accepted for those schemas. See [Aggregation](/queries/aggregation) for stage-order constraints, limitations, and examples.

@@ -10,7 +10,7 @@ Mongorm covers common schema-driven reads and writes. When an operation needs a 
 
 `db.native` exposes the connected MongoDB driver's `Db`. Use it for operations that are not part of the model API, such as:
 
-- Aggregation pipelines with stages or operators Mongorm does not currently expose.
+- Database-level aggregations or raw collection operations that should not use a model's soft-delete policy.
 - Change streams and collection-level commands.
 - `bulkWrite()` or other specialized write APIs.
 - Transactions that need a MongoDB session.
@@ -27,6 +27,8 @@ const totals = await db.native
   ])
   .toArray();
 ```
+
+For aggregation over a model collection, prefer [`Model.aggregate<Result>()`](/queries/aggregation). It gives the output an explicit type and retains the model's default soft-delete filter.
 
 Transactions can use the driver's session API:
 
