@@ -1,23 +1,28 @@
-# Mongorm examples
+# Mongorm integration tests
 
-Run the complete, deterministic example against the MongoDB connection configured in `.env`:
+The example package is a Vitest integration suite. Its scenarios use the configured MongoDB database and verify behavior with assertions; they do not print demo output or modify application data outside the example collections.
 
 ```sh
-pnpm --filter @mongorm/example db
+# Run every scenario
+pnpm --filter @mongorm/test test
+
+# Run one feature file
+pnpm --filter @mongorm/test test -- tests/virtual.test.ts
+
+# Pick a scenario by its title
+pnpm --filter @mongorm/test test -- -t "negative"
 ```
 
-The runner resets the configured example collections, then runs each scenario and disconnects. Every feature module creates its own small, clearly named company/team/users/projects/tasks before demonstrating its APIs; examples do not depend on data created by another module. Use a development database: this command purges existing documents in those collections.
+Configure `MONGODB_URI` and `MONGODB_DATABASE` in the repository `.env` before running the tests. Use a development database: scenarios clear and repopulate their dedicated collections between runs.
 
-Scenarios live in `src/examples/`, grouped by the Mongorm feature they demonstrate:
+Tests are grouped by feature in `tests/`; scenario titles describe their intent (simple, negative, best case, complex, or real-world). Keep setup local to the feature test and assert the observable result so each scenario can be run and understood independently.
 
-| File             | Scenarios                                                                                                                                                                                  |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `writes.ts`      | Create/upsert insert and update, idempotent provisioning, bulk imports, task transitions and reassignment, soft-delete visibility, restore, and unmatched updates                          |
-| `queries.ts`     | Basic lookup, nested filters, hidden fields, tenant-scoped directory, ranges, `$in`/`$nin`, logical conditions, projection, sorting, pagination, exact/estimated counts, and empty results |
-| `relations.ts`   | Simple relation lookup, nested population, selected relation fields, detail scopes, project owner/company context, and no-match relations                                                  |
-| `aggregation.ts` | Group/count, average metrics, source filters, pipeline matches, top-N reports, effort totals, and async streaming                                                                          |
-| `cursors.ts`     | Seeded directory data, full async streaming for exports, bounded `_id`-ordered cursor pages, and continuation tokens                                                                       |
-
-Add new scenarios to the file for the feature they exercise, or create another feature-focused module and call it from `src/index.ts`. Keep each module's setup near the top so readers can understand exactly which data each scenario uses.
-
-Every scenario uses the regular example logger, with blank lines between labeled operation results to make the console output easier to scan.
+| Test file             | Coverage                                                                                                                                                                |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `database.test.ts`    | Destructive purge and index-drop warnings, quiet overrides, deletion totals, and post-purge state.                                                                      |
+| `queries.test.ts`     | Nested-field projection, empty matches/counts, hidden fields, missing optional fields, exact/estimated counts, tenant isolation, logical/range filters, and pagination. |
+| `relations.test.ts`   | Selected forward population, nested detail scopes, and missing related documents.                                                                                       |
+| `virtual.test.ts`     | Reverse matches, no children/no parents, projected join keys, per-parent matching, field selection, scopes, nested population, and tenant-directory output.             |
+| `writes.test.ts`      | Create/update, idempotent upsert, bulk insertion, validation failures, unmatched writes, and soft-delete/restore lifecycle.                                             |
+| `aggregation.test.ts` | Tenant-filtered grouping/metrics and empty aggregation results.                                                                                                         |
+| `cursors.test.ts`     | Unlimited async streaming and bounded continuation pages.                                                                                                               |
