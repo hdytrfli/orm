@@ -20,6 +20,7 @@ export type {
   SchemaVirtualMap,
 } from './schema/index.js';
 export { createDatabase, Db } from './connection/database.js';
+export type { UnsafePurgeOptions } from './connection/database.js';
 export type {
   RelationDefinitions,
   SchemaRegistryBuilder,
