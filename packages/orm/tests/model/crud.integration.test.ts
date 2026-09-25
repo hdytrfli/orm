@@ -17,7 +17,7 @@ const ticketSchema = orm.schema({
   owner: orm.objectId(),
   secret: orm.string().hidden(),
 });
-const ownerSchema = orm.schema({ name: orm.string() });
+const ownerSchema = orm.schema({ name: orm.string(), secret: orm.string().hidden() });
 const relatedTicketSchema = ticketSchema.relations({ owner: () => ownerSchema });
 
 const owners = database.model('owners', ownerSchema);
@@ -32,8 +32,8 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
   afterAll(() => database.disconnect());
 
   it('creates, filters, finds, updates, and deletes typed documents', async () => {
-    const owner = await owners.create({ name: 'Ada' });
-    const otherOwner = await owners.create({ name: 'Alan' });
+    const owner = await owners.create({ name: 'Ada', secret: 'ada-owner-secret' });
+    const otherOwner = await owners.create({ name: 'Alan', secret: 'alan-owner-secret' });
     const first = await tickets.create({
       title: 'Design API',
       status: 'open',
@@ -65,8 +65,9 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     expect(await tickets.find({ title: 'Missing ticket' }).first()).toBeNull();
     const populated = await tickets
       .find({ status: 'open' })
-      .populate([{ ref: 'owner', select: ['name'] }]);
+      .populate([{ ref: 'owner', select: ['name'], show: ['secret'] }]);
     expect(populated[0].owner?.name).toBe('Ada');
+    expect(populated[0].owner?.secret).toBe('ada-owner-secret');
     expect(populated[0].owner).toHaveProperty('_id');
     const populatedCursor = tickets
       .find({ status: 'open' })
@@ -76,6 +77,7 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     const cursorDocuments = [];
     for await (const ticket of populatedCursor) cursorDocuments.push(ticket);
     expect(cursorDocuments[0].owner?.name).toBe('Ada');
+    expect(cursorDocuments[0].owner).not.toHaveProperty('secret');
     expect(await tickets.find()).toEqual(await tickets.find({}));
     expect(await tickets.find({ status: 'open' }).count()).toBe(2);
     expect(await tickets.find().count(true)).toBeGreaterThanOrEqual(3);
@@ -133,7 +135,7 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
   });
 
   it('bulk creates validated documents with generated ids', async () => {
-    const owner = await owners.create({ name: 'Grace' });
+    const owner = await owners.create({ name: 'Grace', secret: 'grace-owner-secret' });
     const created = await tickets.bulk.create([
       {
         title: 'Bulk one',
@@ -159,7 +161,7 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
   });
 
   it('upserts complete data on a miss or match', async () => {
-    const owner = await owners.create({ name: 'Katherine' });
+    const owner = await owners.create({ name: 'Katherine', secret: 'katherine-owner-secret' });
     const filter = { title: 'Upsert API' };
     const firstData = {
       status: 'open' as const,

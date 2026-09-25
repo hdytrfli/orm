@@ -2,7 +2,8 @@ import { faker } from '@faker-js/faker';
 
 import { db } from '@/libs/database';
 import { env } from '@/libs/env';
-import { schema, userSchema } from '@/schemas';
+import { schemas } from '@/schemas';
+import { userSchema } from '@/schemas/user';
 import { log } from '@/utils/logger';
 
 faker.seed(env.FAKER_SEED);
@@ -329,7 +330,7 @@ try {
   });
 
   if (found) {
-    const groupRelation = schema.users.relationMap.group;
+    const groupRelation = schemas.users.relationMap.group;
     const relatedGroupModel = db.model('groups', groupRelation.resolve());
 
     log.debug({ context: 'relation path', value: 'group' });

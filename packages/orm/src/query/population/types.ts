@@ -1,9 +1,18 @@
 import type { Infer, Schema, SchemaRelationMap } from '../../schema/index.js';
+import type { HiddenDocumentKey, VisibleDocument } from '../types/document.js';
 import type { SelectableKey } from '../types/selection.js';
 import type { Simplify } from '../types/utils.js';
 
 type RelationTarget<Relation> = Relation extends { resolve: () => infer Target } ? Target : never;
 type RelationDocument<Relation> = Infer<RelationTarget<Relation>>;
+type ShownKeys<Spec> = Spec extends { show?: readonly (infer Keys)[] } ? Keys : never;
+type RelationResultDocument<Relation, Spec> =
+  RelationDocument<Relation> extends infer Document extends object
+    ? RelationTarget<Relation> extends Schema<infer TargetShape, any>
+      ? Omit<VisibleDocument<TargetShape> & Document, HiddenDocumentKey<TargetShape>> &
+          Pick<Document, Extract<ShownKeys<Spec>, keyof Document>>
+      : Document
+    : never;
 
 type RelationMapOf<Relation> = Relation extends { readonly __targetRelations?: infer Relations }
   ? NonNullable<Relations> extends SchemaRelationMap
@@ -19,6 +28,10 @@ type RelationSelect<Relation> =
   RelationTarget<Relation> extends Schema<infer TargetShape, any>
     ? Exclude<SelectableKey<TargetShape>, '_id'>
     : never;
+type RelationHiddenSelect<Relation> =
+  RelationTarget<Relation> extends Schema<infer TargetShape, any>
+    ? HiddenDocumentKey<TargetShape>
+    : never;
 
 export type ScopeName<Scopes> = Extract<keyof Scopes, string>;
 export type PopulationMode = 'none' | 'populate' | 'scope';
@@ -28,6 +41,7 @@ export type PopulateSpec<Relations extends SchemaRelationMap> = {
   [Name in Extract<keyof Relations, string>]: {
     ref: Name;
     select?: readonly RelationSelect<Relations[Name]>[];
+    show?: readonly RelationHiddenSelect<Relations[Name]>[];
     populate?: PopulateSpecs<RelationMapOf<Relations[Name]>>;
   };
 }[Extract<keyof Relations, string>];
@@ -49,7 +63,7 @@ export type PopulatedResult<
 type PopulatedRelation<Relation, Spec> = Spec extends {
   populate: infer Nested extends PopulateSpecs<RelationMapOf<Relation>>;
 }
-  ? RelationDocument<Relation> extends infer PopulatedDocument extends object
+  ? RelationResultDocument<Relation, Spec> extends infer PopulatedDocument extends object
     ? PopulatedResult<PopulatedDocument, RelationMapOf<Relation>, Nested>
     : never
-  : RelationDocument<Relation>;
+  : RelationResultDocument<Relation, Spec>;

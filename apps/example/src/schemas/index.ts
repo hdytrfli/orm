@@ -6,13 +6,7 @@ import { projectSchema } from '@/schemas/project';
 import { taskSchema } from '@/schemas/task';
 import { userSchema } from '@/schemas/user';
 
-export { companySchema } from '@/schemas/company';
-export { groupSchema } from '@/schemas/group';
-export { projectSchema } from '@/schemas/project';
-export { taskSchema } from '@/schemas/task';
-export { userSchema } from '@/schemas/user';
-
-export const schema = orm
+export const schemas = orm
   .defineSchemas({
     users: userSchema,
     tasks: taskSchema,
@@ -48,6 +42,7 @@ export const schema = orm
           populate: [
             {
               ref: 'creator',
+              show: ['createdAt', 'updatedAt'],
             },
           ],
         },

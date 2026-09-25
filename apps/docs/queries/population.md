@@ -38,7 +38,21 @@ Nested relation keys are included in the related projection when required to res
 
 ## Population and Hidden Fields
 
-Related models also omit hidden fields by default. A relation's `select` list can request visible fields, but hidden fields should remain unavailable unless the related model's design explicitly supports showing them.
+Related models omit hidden fields by default. Use `show` to explicitly include hidden target fields;
+`select` continues to choose visible fields. The two options can be combined:
+
+```ts
+const posts = await db.post.find({}).populate([
+  {
+    ref: 'author',
+    select: ['name'],
+    show: ['password'],
+  },
+]);
+```
+
+`show` is typed against hidden fields on the populated schema, and the returned relation exposes the
+requested hidden fields in its type. The same option is available on nested populate specs.
 
 ## Population Cost
 

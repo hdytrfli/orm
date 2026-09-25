@@ -188,7 +188,7 @@ await accounts.find().select(['_id']);
 // @ts-expect-error Only hidden fields can be shown.
 await accounts.find().show(['name']);
 
-const relationGroupSchema = orm.schema({ name: orm.string() });
+const relationGroupSchema = orm.schema({ name: orm.string(), secret: orm.string().hidden() });
 const relationUserSchema = orm.schema({
   name: orm.string(),
   groupId: orm.objectId().optional(),
@@ -202,8 +202,16 @@ groupSchema.relations({ name: () => relationUserSchema });
 const relatedUsers = db.model('related-users', relatedUserSchema);
 const populatedUsers = await relatedUsers.find().populate([{ ref: 'groupId', select: ['name'] }]);
 populatedUsers[0].groupId?.name;
+// @ts-expect-error Hidden target fields are omitted unless requested with show.
+populatedUsers[0].groupId?.secret;
 // @ts-expect-error Population replaces the local ObjectId with the populated document.
 const groupId: ObjectId = populatedUsers[0].groupId;
+const populatedUsersWithHidden = await relatedUsers
+  .find()
+  .populate([{ ref: 'groupId', select: ['name'], show: ['secret'] }]);
+populatedUsersWithHidden[0].groupId?.secret;
+// @ts-expect-error Populate show only accepts hidden fields on the target schema.
+relatedUsers.find().populate([{ ref: 'groupId', show: ['name'] }]);
 
 const schema = orm
   .defineSchemas({

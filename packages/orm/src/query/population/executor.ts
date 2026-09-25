@@ -5,6 +5,7 @@ import { normalizeProjectionFields } from '../projection/runtime.js';
 export type RuntimePopulateSpec = {
   ref: string;
   select?: readonly string[];
+  show?: readonly string[];
   populate?: readonly RuntimePopulateSpec[];
 };
 
@@ -52,6 +53,7 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
     const hiddenTargetFields = new Set(target.hiddenFields);
     const projectionFields = normalizeProjectionFields([
       ...new Set(spec.select ?? target.fields.filter((field) => !hiddenTargetFields.has(field))),
+      ...(spec.show ?? []),
       ...nestedRelationFields,
     ]);
     const related = value
