@@ -19,7 +19,7 @@ On a soft-delete model, aggregation also throws this error for a first stage tha
 
 ## `CursorQueryError` (`CURSOR_QUERY_INVALID`)
 
-Thrown when cursor pagination is requested without a positive limit, with `skip()`, or with an unsupported sort.
+Thrown when cursor pagination is requested with a zero limit, with `skip()`, or with an unsupported sort. Omit the limit to stream all matching documents.
 
 ## `EstimatedCountError` (`ESTIMATED_COUNT_FILTER_UNSUPPORTED`)
 

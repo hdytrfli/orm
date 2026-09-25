@@ -161,6 +161,9 @@ const nextPage = await users
   .limit(2)
   .cursor(firstPage.next ?? undefined);
 for await (const nextUser of nextPage) nextUser.name;
+const allUsersCursor = users.find().cursor();
+for await (const streamedUser of allUsersCursor) streamedUser.role;
+allUsersCursor.next;
 // @ts-expect-error Cursor positions use ObjectId values.
 await users.find().limit(2).cursor('after');
 // @ts-expect-error Cursor pagination cannot be combined with skip.

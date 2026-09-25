@@ -10,20 +10,20 @@ Use [`Model.aggregate<Result>()`](/queries/aggregation) when MongoDB pipeline st
 
 ## List Query Methods
 
-| Method               | Result            | Notes                                                      |
-| -------------------- | ----------------- | ---------------------------------------------------------- |
-| `sort(spec)`         | list query        | Directions are `asc` or `desc`.                            |
-| `skip(count)`        | list query        | Non-negative integer; incompatible with cursor pagination. |
-| `limit(count)`       | list query        | Non-negative integer.                                      |
-| `select(fields)`     | narrowed query    | Retains `_id`; accepts nested paths.                       |
-| `show(fields)`       | expanded query    | Explicitly includes hidden fields.                         |
-| `populate(specs)`    | populated query   | Loads declared relations.                                  |
-| `with(name)`         | scoped query      | Applies a named population scope.                          |
-| `deleted('only')`    | query             | Restricts results to soft-deleted documents.               |
-| `deleted('include')` | query             | Includes active and soft-deleted documents.                |
-| `count()`            | promise of number | Exact filtered count.                                      |
-| `count(true)`        | promise of number | Estimated unfiltered count.                                |
-| `cursor(after?)`     | async cursor      | Requires positive limit and default `_id` sort.            |
+| Method               | Result            | Notes                                                                                          |
+| -------------------- | ----------------- | ---------------------------------------------------------------------------------------------- |
+| `sort(spec)`         | list query        | Directions are `asc` or `desc`.                                                                |
+| `skip(count)`        | list query        | Non-negative integer; incompatible with cursor pagination.                                     |
+| `limit(count)`       | list query        | Non-negative integer.                                                                          |
+| `select(fields)`     | narrowed query    | Retains `_id`; accepts nested paths.                                                           |
+| `show(fields)`       | expanded query    | Explicitly includes hidden fields.                                                             |
+| `populate(specs)`    | populated query   | Loads declared relations.                                                                      |
+| `with(name)`         | scoped query      | Applies a named population scope.                                                              |
+| `deleted('only')`    | query             | Restricts results to soft-deleted documents.                                                   |
+| `deleted('include')` | query             | Includes active and soft-deleted documents.                                                    |
+| `count()`            | promise of number | Exact filtered count.                                                                          |
+| `count(true)`        | promise of number | Estimated unfiltered count.                                                                    |
+| `cursor(after?)`     | async cursor      | No limit streams all matches; a positive limit enables bounded pages. Uses default `_id` sort. |
 
 ## `first()`
 
@@ -51,7 +51,7 @@ Applies a named scope. Explicit population and scopes cannot be combined on one 
 
 ## `ModelCursor`
 
-An async iterable that yields one page. Its `next` property is an `ObjectId` when another page is available and `null` at the end.
+An async iterable. Without a limit it streams all matching documents in batches; with a positive limit it yields one page. In page mode, `next` is an `ObjectId` when another page is available and `null` at the end. In stream mode, `next` remains `null`.
 
 ## `Model.aggregate<Result>(pipeline, options?)`
 

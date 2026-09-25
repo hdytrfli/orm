@@ -41,6 +41,24 @@ export const demonstrateCursors = async () => {
 
   await db.users.bulk.create(users);
 
+  // Full export: no limit means every match is streamed in bounded batches.
+
+  let exportedUsers = 0;
+  for await (const user of db.users.find({ company: company._id }).cursor()) {
+    exportedUsers += 1;
+    if (exportedUsers <= 2) {
+      log.info({
+        context: 'exported directory record',
+        value: user,
+      });
+    }
+  }
+
+  log.info({
+    context: 'directory export complete',
+    value: { exportedUsers },
+  });
+
   // Cursor pages are bounded and ordered by `_id`; unlike array reads, they can resume.
 
   const firstPage = db.users.find({ company: company._id }).limit(3).cursor();

@@ -115,7 +115,14 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     expect(() => tickets.find({}).limit(-1)).toThrow('non-negative integer');
     const invalidCursorQuery = tickets.find({}).limit(3).sort({ priority: 'desc' }).skip(5) as any;
     expect(() => invalidCursorQuery.cursor()).toThrow('Cursor queries do not support skip');
-    expect(() => tickets.find({}).cursor()).toThrow('Cursor queries require a positive limit');
+    const allMatches = tickets.find({}).cursor();
+    const streamedTickets = [];
+    for await (const ticket of allMatches) streamedTickets.push(ticket);
+    expect(streamedTickets).toHaveLength(3);
+    expect(allMatches.next).toBeNull();
+    expect(() => tickets.find({}).limit(0).cursor()).toThrow(
+      'Cursor queries require a positive limit',
+    );
     expect(() => (tickets.find({}).limit(3).sort({ priority: 'desc' }).cursor as any)()).toThrow(
       'default _id ascending sort',
     );

@@ -288,7 +288,7 @@ export class ModelQuery<
     return countQuery(this.executionContext(), estimate);
   }
 
-  /** Return one bounded `_id`-ordered page and its continuation cursor. */
+  /** Stream all matches, or return one bounded `_id`-ordered page when a limit is set. */
   private createCursor(after?: ObjectId): ModelCursor<Shape, Result> {
     return createCursorPage(this.executionContext(), after);
   }

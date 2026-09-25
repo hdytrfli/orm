@@ -16,8 +16,8 @@ Scenarios live in `src/examples/`, grouped by the Mongorm feature they demonstra
 | `queries.ts`     | Basic lookup, nested filters, hidden fields, tenant-scoped directory, ranges, `$in`/`$nin`, logical conditions, projection, sorting, pagination, exact/estimated counts, and empty results |
 | `relations.ts`   | Simple relation lookup, nested population, selected relation fields, detail scopes, project owner/company context, and no-match relations                                                  |
 | `aggregation.ts` | Group/count, average metrics, source filters, pipeline matches, top-N reports, effort totals, and async streaming                                                                          |
-| `cursors.ts`     | Seeded directory data, bounded `_id`-ordered cursor pages, continuation tokens, and draining pages without materializing the full result                                                   |
+| `cursors.ts`     | Seeded directory data, full async streaming for exports, bounded `_id`-ordered cursor pages, and continuation tokens                                                                       |
 
 Add new scenarios to the file for the feature they exercise, or create another feature-focused module and call it from `src/index.ts`. Keep each module's setup near the top so readers can understand exactly which data each scenario uses.
 
-Every scenario uses the regular example logger. Its output includes horizontal dividers around each labeled result, making operation/result pairs easy to scan in the console.
+Every scenario uses the regular example logger, with blank lines between labeled operation results to make the console output easier to scan.

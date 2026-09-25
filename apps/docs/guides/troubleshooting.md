@@ -18,7 +18,7 @@ The relation must be defined in `defineRelations()`, and nested `ref` values mus
 
 ## Cursor Errors
 
-Set a positive limit, remove `skip()`, and use the default `_id` ascending ordering. Cursor pagination intentionally rejects arbitrary sorting.
+For bounded cursor pages, set a positive limit. Omit the limit to stream all matches in batches. Both modes reject `skip()` and custom sorting; cursor queries use the default `_id` ascending order.
 
 ## Estimated Count Errors
 

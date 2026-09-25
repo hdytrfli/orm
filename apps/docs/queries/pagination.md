@@ -26,9 +26,19 @@ const page = await db.post
 
 `skip()` and `limit()` require non-negative integers. Offset pagination is straightforward, but large offsets can become expensive because MongoDB must advance past skipped records.
 
-## Cursor Pagination
+## Cursor Streaming and Pagination
 
-Cursor pagination requires a positive limit and uses the default `_id` ascending order:
+`.cursor()` uses the default `_id` ascending order. Without `.limit()`, it streams every matching document lazily in batches. This is suitable for exports because the full result set is not accumulated in memory:
+
+```ts
+const exportCursor = db.post.find({ published: true }).cursor();
+
+for await (const post of exportCursor) {
+  await writePostToExport(post);
+}
+```
+
+To paginate through bounded pages, set a positive limit:
 
 ```ts
 const query = db.post.find({ published: true }).limit(25);
@@ -51,13 +61,13 @@ const nextPage = db.post
   .cursor(cursor.next ?? undefined);
 ```
 
-The cursor exposes a lazy async iterable and updates `next` after iteration. It reads one extra document internally to determine whether another page exists.
+The cursor exposes a lazy async iterable. In page mode, it reads one extra document internally and updates `next` with the last `_id` when another page exists. Pass that token to the next limited query. In unbounded streaming mode, `next` remains `null`; the cursor is intended to be consumed to completion rather than resumed as a page.
 
 ## Cursor Restrictions
 
 Cursor queries reject:
 
-- Missing or zero limits.
+- A zero limit (omit `.limit()` to stream all matching documents).
 - `skip()`.
 - Custom sort specifications.
 - Sorts other than the default `_id: 'asc'`.
