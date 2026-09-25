@@ -77,8 +77,13 @@ export class Schema<
     this.definition = z.object(shape);
     this.relationMap = relations;
     this.scopeMap = scopeMap;
-    this.fields = Object.keys(shape) as (keyof Shape & string)[];
-    this.hiddenFields = this.fields.filter((field) => '__hidden' in shape[field]);
+    const fields = Object.keys(shape) as (keyof Shape & string)[];
+    const hiddenFields: (keyof Shape & string)[] = [];
+    for (const field of fields) {
+      if ('__hidden' in shape[field]) hiddenFields.push(field);
+    }
+    this.fields = fields;
+    this.hiddenFields = hiddenFields;
     this.optionsConfig = optionsConfig;
     this.indexDefinitions = indexDefinitions;
   }

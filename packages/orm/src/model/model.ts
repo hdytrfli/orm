@@ -94,7 +94,8 @@ export class Model<
   }
 
   private async dropIndexes(names: readonly IndexNames<Indexes>[]): Promise<void> {
-    await Promise.all(names.map((name) => this.collection.dropIndex(name)));
+    const dropIndex = (name: IndexNames<Indexes>) => this.collection.dropIndex(name);
+    await Promise.all(names.map(dropIndex));
   }
 
   private activeFilter(filter: ModelFilter<Shape>): ModelFilter<Shape> {
@@ -117,7 +118,9 @@ export class Model<
     inputs: readonly CreateInput<Shape, Options>[],
   ): Promise<ModelResult<Shape, Relations, Scopes, Options>[]> {
     if (inputs.length === 0) return [];
-    const documents = inputs.map((input) => prepareDocument(this.schema, input));
+    const prepareInput = (input: CreateInput<Shape, Options>) =>
+      prepareDocument(this.schema, input);
+    const documents = inputs.map(prepareInput);
     await this.collection.insertMany(
       documents as unknown as OptionalUnlessRequiredId<StoredDocument<Shape>>[],
     );
