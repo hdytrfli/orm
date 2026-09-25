@@ -50,7 +50,11 @@ try {
     domain: 'team@analytical-engines.example',
     description: 'Computing research and engineering',
     plan: 'growth',
-    settings: { timezone: 'Europe/London', weeklyDigest: true, maxMembers: 250 },
+    settings: {
+      timezone: 'Europe/London',
+      weeklyDigest: true,
+      maxMembers: 250,
+    },
   });
 
   const group = await db.groups.create({
@@ -61,6 +65,44 @@ try {
       canInvite: true,
       canManageBilling: false,
       canExportData: true,
+    },
+  });
+
+  const inserted = await db.groups.upsert(
+    {
+      company: company._id,
+      name: 'Upsert demo',
+    },
+    {
+      description: 'Created by upsert',
+      permissions: {
+        canInvite: false,
+        canManageBilling: false,
+        canExportData: false,
+      },
+    },
+  );
+
+  const upserted = await db.groups.upsert(
+    {
+      company: company._id,
+      name: 'Upsert demo',
+    },
+    {
+      description: 'Updated by upsert',
+      permissions: {
+        canInvite: true,
+        canManageBilling: false,
+        canExportData: false,
+      },
+    },
+  );
+
+  log.info({
+    context: 'upsert insert and update',
+    value: {
+      inserted: inserted,
+      updated: upserted,
     },
   });
 

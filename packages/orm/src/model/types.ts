@@ -1,3 +1,5 @@
+import type { ObjectId } from 'mongodb';
+
 import type {
   Infer,
   InferInput,
@@ -17,6 +19,17 @@ export type CreateInput<Shape extends SchemaShape, Options extends SchemaOptions
 
 export type UpdateInput<Shape extends SchemaShape, Options extends SchemaOptions> = Partial<
   Omit<InferInput<Schema<Shape, {}, {}, Options>>, '_id'>
+>;
+
+/** Equality-only upsert filter that can seed the inserted document. */
+export type UpsertFilter<Shape extends SchemaShape, Options extends SchemaOptions> = Partial<
+  InferInput<Schema<Shape, {}, {}, Options>>
+> & { _id?: ObjectId };
+
+/** Required create fields not already supplied as equality fields in the upsert filter. */
+export type UpsertData<Shape extends SchemaShape, Options extends SchemaOptions, Filter> = Omit<
+  CreateInput<Shape, Options>,
+  keyof Filter
 >;
 
 export type ModelResult<

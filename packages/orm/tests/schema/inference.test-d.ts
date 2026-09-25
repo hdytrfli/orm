@@ -225,6 +225,13 @@ const registeredDb = createDatabase({
 });
 await registeredDb.users.find({});
 await registeredDb.groups.find({});
+await registeredDb.users.upsert({ name: 'Ada' }, { groupId: userId });
+// @ts-expect-error Upsert filters are constrained to the schema's fields.
+await registeredDb.users.upsert({ missing: true }, {});
+// @ts-expect-error Filter fields are supplied by the filter and cannot be repeated in data.
+await registeredDb.users.upsert({ name: 'Ada' }, { name: 'Ada' });
+// @ts-expect-error Upsert data must provide the remaining required create fields.
+await registeredDb.users.upsert({}, {});
 // @ts-expect-error Only registered plural schema names are exposed as models.
 await registeredDb.user.find({});
 

@@ -157,4 +157,36 @@ describe.skipIf(!runDatabaseTests)('database CRUD', () => {
     expect(await tickets.find({})).toHaveLength(2);
     expect((await tickets.find({}).show(['secret']))[1].secret).toBe('second-secret');
   });
+
+  it('upserts complete data on a miss or match', async () => {
+    const owner = await owners.create({ name: 'Katherine' });
+    const filter = { title: 'Upsert API' };
+    const firstData = {
+      status: 'open' as const,
+      priority: 1,
+      owner: owner._id,
+      secret: 'upsert-secret',
+    };
+
+    const inserted = await tickets.upsert(filter, firstData);
+    expect(inserted).toMatchObject({
+      title: 'Upsert API',
+      status: 'open',
+      priority: 1,
+      secret: 'upsert-secret',
+    });
+    expect(inserted._id).toBeInstanceOf(ObjectId);
+
+    const updated = await tickets.upsert(filter, {
+      ...firstData,
+      status: 'closed',
+      priority: 5,
+    });
+    expect(updated._id).toEqual(inserted._id);
+    expect(updated).toMatchObject({
+      title: 'Upsert API',
+      status: 'closed',
+      priority: 5,
+    });
+  });
 });

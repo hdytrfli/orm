@@ -21,7 +21,15 @@ import type {
   ScopeDefinitions,
 } from '../schema/index.js';
 import { applySoftDeleteFilter } from './soft-delete.js';
-import type { CreateInput, IndexManager, IndexNames, ModelResult, UpdateInput } from './types.js';
+import type {
+  CreateInput,
+  IndexManager,
+  IndexNames,
+  ModelResult,
+  UpdateInput,
+  UpsertData,
+  UpsertFilter,
+} from './types.js';
 /** A MongoDB collection with CRUD operations derived from a schema. */
 export class Model<
   Shape extends SchemaShape,
@@ -168,6 +176,32 @@ export class Model<
       { $set: parsedPatch } as unknown as UpdateFilter<StoredDocument<Shape>>,
       { returnDocument: 'after' },
     )) as unknown as ModelResult<Shape, Relations, Scopes, Options> | null;
+  }
+
+  /** Insert a validated document when no active match exists, or set its fields on a match. */
+  async upsert<const Filter extends UpsertFilter<Shape, Options>>(
+    filter: Filter,
+    data: UpsertData<Shape, Options, Filter>,
+  ): Promise<ModelResult<Shape, Relations, Scopes, Options>> {
+    const document = this.prepareDocument({ ...filter, ...data } as CreateInput<Shape, Options>);
+    const insert: Record<string, unknown> = {};
+    if (this.schema.optionsConfig.timestamps) insert.createdAt = document.createdAt;
+    if (hasSoftDelete(this.schema.optionsConfig)) insert.deletedAt = document.deletedAt;
+    delete document._id;
+    if (this.schema.optionsConfig.timestamps) delete document.createdAt;
+    if (hasSoftDelete(this.schema.optionsConfig)) delete document.deletedAt;
+    for (const field of Object.keys(filter)) delete document[field];
+
+    return (await this.collection.findOneAndUpdate(
+      this.activeFilter(filter as unknown as ModelFilter<Shape>) as MongoFilter<
+        StoredDocument<Shape>
+      >,
+      {
+        $set: document,
+        $setOnInsert: insert,
+      } as unknown as UpdateFilter<StoredDocument<Shape>>,
+      { returnDocument: 'after', upsert: true },
+    )) as unknown as ModelResult<Shape, Relations, Scopes, Options>;
   }
 
   /** Restore matching soft-deleted documents. */

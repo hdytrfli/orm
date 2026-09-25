@@ -80,6 +80,17 @@ Builds a list query resolving to an array. The filter defaults to `{}`. Chain `.
 
 Parses a partial patch, applies `$set` to the first matching document, and returns the updated document or `null`.
 
+## `Model.upsert(filter, data)`
+
+Atomically inserts a document when no active match exists, or applies `data` to the match. Equality
+fields in `filter` seed the inserted document, so they do not need to be repeated in `data`. The
+filter must contain equality values rather than operators such as `$gt` or `$or`; `data` must provide
+the remaining required create fields. The created or updated document is returned.
+
+```ts
+const user = await db.users.upsert({ email: 'ada@example.com' }, { name: 'Ada' });
+```
+
 ## `Model.delete(filter)`
 
 Deletes all matching documents and returns MongoDB's `DeleteResult`. For a soft-delete schema, it marks active matching documents with `deletedAt` instead.
