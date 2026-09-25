@@ -1,369 +1,55 @@
-import { faker } from '@faker-js/faker';
-
+import { demonstrateAggregation } from '@/examples/aggregation';
+import { demonstrateCursors } from '@/examples/cursors';
+import { demonstrateQueries } from '@/examples/queries';
+import { demonstrateRelations } from '@/examples/relations';
+import { demonstrateWrites } from '@/examples/writes';
 import { db } from '@/libs/database';
-import { env } from '@/libs/env';
-import { schemas } from '@/schemas';
-import { userSchema } from '@/schemas/user';
 import { log } from '@/utils/logger';
 
-faker.seed(env.FAKER_SEED);
-
-await db.connect();
-
-log.info({
-  context: 'database',
-  value: 'database connection established',
-});
-
-await db.sync({
-  dropIndexes: true,
-});
-
-log.info({
-  context: 'database',
-  value: 'database indexes reset',
-});
-
 try {
-  await db.tasks.purge({
-    //
-  });
-
-  await db.projects.purge({
-    //
-  });
-
-  await db.users.purge({
-    //
-  });
-
-  await db.groups.purge({
-    //
-  });
-
-  await db.companies.purge({
-    //
-  });
-
-  const company = await db.companies.create({
-    slug: 'analytical-engines',
-    name: 'Analytical Engines Ltd.',
-    domain: 'team@analytical-engines.example',
-    description: 'Computing research and engineering',
-    plan: 'growth',
-    settings: {
-      timezone: 'Europe/London',
-      weeklyDigest: true,
-      maxMembers: 250,
-    },
-  });
-
-  const group = await db.groups.create({
-    company: company._id,
-    name: 'Language',
-    description: 'Language and compiler research',
-    permissions: {
-      canInvite: true,
-      canManageBilling: false,
-      canExportData: true,
-    },
-  });
-
-  const inserted = await db.groups.upsert(
-    {
-      company: company._id,
-      name: 'Upsert demo',
-    },
-    {
-      description: 'Created by upsert',
-      permissions: {
-        canInvite: false,
-        canManageBilling: false,
-        canExportData: false,
-      },
-    },
-  );
-
-  const upserted = await db.groups.upsert(
-    {
-      company: company._id,
-      name: 'Upsert demo',
-    },
-    {
-      description: 'Updated by upsert',
-      permissions: {
-        canInvite: true,
-        canManageBilling: false,
-        canExportData: false,
-      },
-    },
-  );
+  await db.connect();
 
   log.info({
-    context: 'upsert insert and update',
-    value: {
-      inserted: inserted,
-      updated: upserted,
-    },
+    context: 'database',
+    value: 'database connection established',
   });
 
-  const userData = {
-    name: 'Ada Lovelace',
-    age: 11,
-    role: 'admin',
-    password: 'ada-secret',
-    group: group._id,
-    company: company._id,
-    profile: {
-      email: 'ada@example.com',
-      website: 'https://ada.example',
-      location: {
-        city: 'London',
-        country: 'United Kingdom',
-      },
-    },
-  };
-
-  const validated = userSchema.parse(userData);
-  log.debug({
-    context: 'validated',
-    value: validated,
+  await db.sync({
+    dropIndexes: true,
   });
 
-  const user = await db.users.create(validated);
-  log.debug({
-    context: 'created',
-    value: user,
-  });
+  await Promise.all([
+    db.tasks.purge({
+      //
+    }),
 
-  const another = await db.users.create({
-    name: 'Alan Turing',
-    age: 36,
-    role: 'member',
-    password: 'alan-secret',
-    group: group._id,
-    company: company._id,
-    profile: {
-      email: 'alan@example.com',
-      website: 'https://alan.example',
-      location: {
-        city: 'London',
-        country: 'United Kingdom',
-      },
-    },
-  });
+    db.projects.purge({
+      //
+    }),
 
-  await db.groups.update({ _id: group._id }, { creator: user._id });
+    db.users.purge({
+      //
+    }),
 
-  const project = await db.projects.create({
-    company: company._id,
-    owner: user._id,
-    key: 'COMPILER',
-    name: 'Compiler research',
-    description: 'Experiments in automatic computing and language design',
-    status: 'active',
-    visibility: 'company',
-    repository: 'https://github.com/example/compiler-research',
-    metadata: {
-      color: '#b387e8',
-      tags: ['research', 'language'],
-    },
-  });
+    db.groups.purge({
+      //
+    }),
 
-  const task = await db.tasks.create({
-    project: project._id,
-    createdBy: user._id,
-    assignee: another._id,
-    title: 'Document the instruction set',
-    description: 'Capture the instruction set and examples for the research team.',
-    status: 'in_progress',
-    priority: 'high',
-    labels: ['documentation', 'architecture'],
-    dueAt: new Date('2026-12-01T00:00:00.000Z'),
-    estimateHours: 12,
-    audit: {
-      source: 'manual',
-    },
-  });
-
-  log.debug({
-    context: 'project',
-    value: await db.projects.find({ _id: project._id }).with('detail').first(),
-  });
-
-  log.debug({
-    context: 'task',
-    value: await db.tasks.find({ _id: task._id }).with('detail').first(),
-  });
-
-  await db.users.bulk.create(
-    Array.from({ length: 18 }, () => ({
-      name: faker.person.fullName(),
-      age: faker.number.int({ min: 18, max: 65 }),
-      role: faker.helpers.arrayElement(['admin', 'member']),
-      password: faker.internet.password(),
-      group: group._id,
-      company: company._id,
-      profile: {
-        email: faker.internet.email(),
-        website: faker.internet.url(),
-        location: {
-          city: faker.location.city(),
-          country: faker.location.country(),
-        },
-      },
-    })),
-  );
-
-  const found = await db.users
-    .find({ _id: user._id })
-    .select(['name', 'group', 'profile.location.city'])
-    .first();
-
-  if (!found) throw new Error('User not found');
-
-  log.debug({
-    context: 'found',
-    value: found,
-  });
-
-  log.debug({
-    context: 'city',
-    value: found.profile.location.city,
-  });
-
-  log.debug({
-    context: 'populated',
-    value: await db.users
-      .find({ _id: user._id })
-      .populate([{ ref: 'group', populate: [{ ref: 'creator' }] }])
-      .deleted('include')
-      .first(),
-  });
-
-  log.debug({
-    context: 'with detail',
-    value: await db.users.find({ _id: user._id }).with('detail').first(),
-  });
-
-  log.debug({
-    context: 'with hidden field',
-    value: await db.users.find({ _id: user._id }).show(['password']).first(),
-  });
-
-  log.debug({
-    context: 'filtered simple',
-    value: await db.users.find({ role: 'admin' }),
-  });
-
-  log.debug({
-    context: 'filtered nested city',
-    value: await db.users
-      .find({ 'profile.location.city': 'London' })
-      .select(['name', 'profile.location.city']),
-  });
-
-  const filteredSorted = await db.users
-    .find({ $or: [{ role: 'admin' }, { age: { $gte: 18 } }] })
-    .select(['name', 'age'])
-    .show(['deletedAt'])
-    .sort({ age: 'asc' })
-    .skip(1)
-    .limit(3);
-
-  log.debug({
-    context: 'filtered sorted with skip',
-    value: { count: filteredSorted.length, preview: filteredSorted.slice(0, 3) },
-  });
-
-  log.debug({
-    context: 'filtered with or',
-    value: await db.users.find({ $or: [{ role: 'admin' }, { age: { $gte: 18 } }] }).limit(2),
-  });
-
-  log.debug({
-    context: 'filtered with and',
-    value: await db.users.find({ $and: [{ role: 'member' }, { age: { $gte: 18 } }] }).limit(2),
-  });
-
-  log.debug({
-    context: 'exact count',
-    value: await db.users.find({ role: 'admin' }).count(),
-  });
-
-  log.debug({
-    context: 'estimated count',
-    value: await db.users.find().deleted('include').count(true),
-  });
-
-  type UserCountByCountry = { _id: string; count: number };
-  const userCounts = await db.users.aggregate<UserCountByCountry>([
-    {
-      $group: {
-        _id: '$profile.location.country',
-        count: {
-          $sum: 1,
-        },
-      },
-    },
-    {
-      $sort: {
-        _id: 1,
-      },
-    },
+    db.companies.purge({
+      //
+    }),
   ]);
 
-  log.debug({
-    context: 'user counts',
-    value: userCounts,
+  log.info({
+    context: 'database',
+    value: 'example collections cleared and indexes synchronized',
   });
 
-  const test = await db.users.find().sort({ _id: 'asc' }).limit(6);
-  log.debug({ context: 'test', value: test });
-
-  let count = 0;
-  const first = db.users.find().limit(3).cursor();
-  for await (const item of first) {
-    log.debug({
-      context: 'cursor item',
-      value: { count: ++count, item },
-    });
-  }
-
-  const next = first.next ?? undefined;
-  const second = db.users.find().limit(3).cursor(next);
-  for await (const item of second) {
-    log.debug({
-      context: 'cursor item',
-      value: { count: ++count, item },
-    });
-  }
-
-  log.debug({
-    context: 'cursor pages',
-    value: { next: second.next },
-  });
-
-  log.debug({
-    context: 'updated',
-    value: await db.users.update({ _id: user._id }, { role: 'admin', age: 20 }),
-  });
-
-  log.debug({
-    context: 'deleted',
-    value: await db.users.delete({ _id: { $in: [user._id, another._id] } }),
-  });
-
-  if (found) {
-    const groupRelation = schemas.users.relationMap.group;
-    const relatedGroupModel = db.model('groups', groupRelation.resolve());
-
-    log.debug({ context: 'relation path', value: 'group' });
-    log.debug({ context: 'relation value', value: found.group });
-
-    const relatedGroup = await relatedGroupModel.find({ _id: found.group }).first();
-    log.debug({ context: 'related group', value: relatedGroup });
-  }
+  await demonstrateQueries();
+  await demonstrateRelations();
+  await demonstrateAggregation();
+  await demonstrateCursors();
+  await demonstrateWrites();
 } finally {
   await db.disconnect();
 }

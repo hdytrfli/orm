@@ -12,7 +12,7 @@ export const log = pino({
       colorize: true,
       ignore: 'pid,hostname,context,value',
       singleLine: false,
-      messageFormat: '[{context}]\n{value}',
+      messageFormat: '[{context}]\n{value}\n\n',
       translateTime: 'HH:MM:ss',
     },
   },
