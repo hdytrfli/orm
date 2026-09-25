@@ -81,10 +81,49 @@ void member;
 declare const db: Db;
 await db.sync({ dropIndexes: true });
 const users = db.model('users', userSchema);
+type UserCount = { _id: string; count: number };
+const userCounts = await users.aggregate<UserCount>([
+  { $group: { _id: '$role', count: { $sum: 1 } } },
+  { $sort: { _id: 1 } },
+]);
+userCounts[0]?.count;
+users.aggregate<UserCount>([
+  { $group: { _id: '$role', count: { $sum: 1 } } },
+  // @ts-expect-error Aggregate sort fields must exist in the source or result document.
+  { $sort: { missing: 1 } },
+]);
+users.aggregate<UserCount>([
+  // @ts-expect-error Group field paths are checked against the source schema.
+  { $group: { _id: '$missing', count: { $sum: 1 } } },
+]);
+users.aggregate<UserCount>([
+  // @ts-expect-error Group output keys must match the declared result type.
+  { $group: { _id: '$role', total: { $sum: 1 } } },
+]);
+users.aggregate<UserCount>([
+  // @ts-expect-error Accumulator field references are checked against the source/result shape.
+  { $group: { _id: '$role', count: { $sum: '$missing' } } },
+]);
+users.aggregate<UserCount>([
+  // @ts-expect-error Pipeline matches are schema-checked against source/result fields.
+  { $match: { missing: true } },
+  { $group: { _id: '$role', count: { $sum: 1 } } },
+]);
+const untypedCounts = await users.aggregate([{ $count: 'total' }]);
+// @ts-expect-error Without an explicit result type, aggregate fields remain unknown.
+const untypedTotal: number = untypedCounts[0]?.total;
+await users.aggregate<UserCount>([], { filter: { role: 'admin' } });
+// @ts-expect-error Aggregate source filters only accept fields from the model schema.
+users.aggregate<UserCount>([], { filter: { email: 'ada@example.com' } });
+// @ts-expect-error includeDeleted is only available when soft deletion is configured.
+users.aggregate([{ $count: 'count' }], { includeDeleted: true });
 const managedFieldsSchema = orm
   .schema({ name: orm.string() })
   .options({ timestamps: true, softdelete: true, hideManaged: true });
 const managedFieldsModel = db.model('managed-fields', managedFieldsSchema);
+managedFieldsModel.aggregate<UserCount>([{ $group: { _id: '$name', count: { $sum: 1 } } }], {
+  includeDeleted: true,
+});
 const defaultManagedFields = await managedFieldsModel.find();
 // @ts-expect-error Managed fields are hidden by default.
 defaultManagedFields[0].createdAt;
