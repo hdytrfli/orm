@@ -16,7 +16,12 @@ type ZodConstructorKey = {
       : never
     : never;
 }[keyof typeof z];
+
 type ZodConstructors = Pick<typeof z, ZodConstructorKey>;
+
+const isZodConstructor = ([name, value]: [string, unknown]): boolean => {
+  return name === name.toLowerCase() && typeof value === 'function';
+};
 
 /** The public schema-construction API. */
 export type OrmApi = ZodConstructors & {
@@ -31,11 +36,9 @@ export type OrmApi = ZodConstructors & {
 };
 
 /** The ORM schema API with the complete native Zod namespace. */
-const zodConstructors = Object.fromEntries(
-  Object.entries(z).filter(
-    ([name, value]) => name === name.toLowerCase() && typeof value === 'function',
-  ),
-) as ZodConstructors;
+const zodEntries = Object.entries(z);
+const constructorEntries = zodEntries.filter(isZodConstructor);
+const zodConstructors = Object.fromEntries(constructorEntries) as ZodConstructors;
 
 export const orm: OrmApi = Object.assign({}, withZodNamespace(zodConstructors), {
   schema: <Shape extends SchemaShape>(shape: Shape) => new Schema(shape),
