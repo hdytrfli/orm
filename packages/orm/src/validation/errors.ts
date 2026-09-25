@@ -4,6 +4,7 @@ export const ORM_ERROR_CODES = {
   INVALID_QUERY: 'INVALID_QUERY',
   CURSOR_QUERY_INVALID: 'CURSOR_QUERY_INVALID',
   ESTIMATED_COUNT_FILTER_UNSUPPORTED: 'ESTIMATED_COUNT_FILTER_UNSUPPORTED',
+  SCHEMA_CONFIGURATION_INVALID: 'SCHEMA_CONFIGURATION_INVALID',
 } as const;
 
 export type OrmErrorCode = (typeof ORM_ERROR_CODES)[keyof typeof ORM_ERROR_CODES];
@@ -23,7 +24,17 @@ export class OrmError extends Error {
 /** Raised when an operation requires a connected database. */
 export class DatabaseNotConnectedError extends OrmError {
   constructor() {
-    super('Database is not connected', ORM_ERROR_CODES.DATABASE_NOT_CONNECTED);
+    super(
+      'Database is not connected. Call db.connect() before accessing models or collections.',
+      ORM_ERROR_CODES.DATABASE_NOT_CONNECTED,
+    );
+  }
+}
+
+/** Raised when schema, relation, or model configuration is invalid. */
+export class SchemaConfigurationError extends OrmError {
+  constructor(message: string) {
+    super(message, ORM_ERROR_CODES.SCHEMA_CONFIGURATION_INVALID);
   }
 }
 

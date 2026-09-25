@@ -8,6 +8,7 @@ const runDatabaseTests = Boolean(env.MONGODB_URI);
 const database = createDatabase({
   uri: env.MONGODB_URI ?? 'mongodb://127.0.0.1:27017',
   database: env.MONGODB_DATABASE,
+  schemas: {},
 });
 
 const ticketSchema = orm.schema({

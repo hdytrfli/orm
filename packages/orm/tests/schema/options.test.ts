@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { orm } from '../../src/index.js';
+import { ORM_ERROR_CODES, SchemaConfigurationError, orm } from '../../src/index.js';
 
 describe('schema options', () => {
   it('adds managed timestamp and soft-delete fields', () => {
@@ -31,6 +31,18 @@ describe('schema options', () => {
     );
     expect(() => orm.schema({ deletedAt: orm.date() }).options({ softdelete: true })).toThrow(
       'managed by Mongorm',
+    );
+  });
+
+  it('reports configuration failures with an actionable typed error', () => {
+    const configured = orm.schema({ name: orm.string() }).options({ timestamps: true });
+
+    expect(() => configured.options({ softdelete: true })).toThrow(
+      expect.objectContaining({
+        name: SchemaConfigurationError.name,
+        code: ORM_ERROR_CODES.SCHEMA_CONFIGURATION_INVALID,
+        message: expect.stringContaining('Combine all options'),
+      }),
     );
   });
 

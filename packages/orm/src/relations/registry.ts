@@ -1,3 +1,4 @@
+import { SchemaConfigurationError } from '../validation/errors.js';
 import type { SchemaRelationMap, SchemaLike } from './definitions.js';
 import type {
   RelationDefinitions,
@@ -18,13 +19,23 @@ const attachMethods = <Registry extends Record<string, SchemaLike>>(
   const defineRelations = (definitions: RelationDefinitions<Registry>) => {
     for (const [name, relations] of Object.entries(definitions)) {
       const source = registry[name];
-      if (!source) throw new Error(`Unknown schema "${name}" in relation definitions`);
+      if (!source) {
+        throw new SchemaConfigurationError(
+          `Unknown schema "${name}" in relation definitions. Add it to defineSchemas() first.`,
+        );
+      }
 
       for (const [field, targetName] of Object.entries(relations ?? {})) {
         const target = registry[targetName as string];
-        if (!target) throw new Error(`Unknown relation target "${targetName}"`);
+        if (!target) {
+          throw new SchemaConfigurationError(
+            `Unknown relation target "${targetName}". Use a schema name registered with defineSchemas().`,
+          );
+        }
         if (!(field in source.definition.shape)) {
-          throw new Error(`Unknown relation field "${name}.${field}"`);
+          throw new SchemaConfigurationError(
+            `Unknown relation field "${name}.${field}". Declare the local ObjectId field in the schema first.`,
+          );
         }
 
         (source.relationMap as SchemaRelationMap)[field] = {
@@ -40,7 +51,11 @@ const attachMethods = <Registry extends Record<string, SchemaLike>>(
   const defineScopes = (definitions: ScopeDefinitionsBySchema<Registry>) => {
     for (const [name, scopes] of Object.entries(definitions)) {
       const schema = registry[name];
-      if (!schema) throw new Error(`Unknown schema "${name}" in scope definitions`);
+      if (!schema) {
+        throw new SchemaConfigurationError(
+          `Unknown schema "${name}" in scope definitions. Add it to defineSchemas() first.`,
+        );
+      }
       Object.assign(schema.scopeMap, scopes);
     }
     return attachMethods(registry);

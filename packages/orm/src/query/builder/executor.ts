@@ -34,15 +34,15 @@ export const countQuery = async <Shape extends SchemaShape, Relations extends Sc
   context: QueryExecutionContext<Shape, Relations>,
   estimate: boolean,
 ): Promise<number> => {
-  if (estimate) {
-    if (Object.keys(context.filter).length > 0 || context.softDelete.isFiltered()) {
-      throw new EstimatedCountError();
-    }
-    return context.collection.estimatedDocumentCount();
+  if (!estimate) {
+    return context.collection.countDocuments(
+      context.effectiveFilter as MongoFilter<StoredDocument<Shape>>,
+    );
   }
-  return context.collection.countDocuments(
-    context.effectiveFilter as MongoFilter<StoredDocument<Shape>>,
-  );
+
+  const hasFilter = Object.keys(context.filter).length > 0;
+  if (hasFilter || context.softDelete.isFiltered()) throw new EstimatedCountError();
+  return context.collection.estimatedDocumentCount();
 };
 
 /** Open an `_id`-ordered, bounded cursor page. */
@@ -54,7 +54,8 @@ export const createCursorPage = <
   context: QueryExecutionContext<Shape, Relations>,
   after?: ObjectId,
 ): ModelCursor<Shape, Result> => {
-  if (context.limitCount === undefined || context.limitCount === 0) {
+  const pageSize = context.limitCount;
+  if (!pageSize) {
     throw new CursorQueryError('Cursor queries require a positive limit');
   }
   if (context.skipCount !== undefined) {
@@ -68,24 +69,24 @@ export const createCursorPage = <
   }
 
   const filter = createCursorFilter(context.effectiveFilter, after);
-  return new ModelCursor<Shape, Result>(
-    () => {
-      let cursor = context.collection
-        .find(filter as MongoFilter<StoredDocument<Shape>>)
-        .sort({ _id: 1 })
-        .limit(context.limitCount! + 1);
-      const projection = projectionFor(
-        context.fields,
-        context.hiddenFields,
-        context.selectedFields,
-        context.shownFields,
-      );
-      if (projection) cursor = cursor.project(projection);
-      return cursor;
-    },
-    context.limitCount,
-    (documents) => context.population.apply(documents, context.populateSpecs),
-  );
+  const openCursor = () => {
+    let cursor = context.collection
+      .find(filter as MongoFilter<StoredDocument<Shape>>)
+      .sort({ _id: 1 })
+      .limit(pageSize + 1);
+    const projection = projectionFor(
+      context.fields,
+      context.hiddenFields,
+      context.selectedFields,
+      context.shownFields,
+    );
+    if (projection) cursor = cursor.project(projection);
+    return cursor;
+  };
+  const populateResults = (documents: Result[]) =>
+    context.population.apply(documents, context.populateSpecs);
+
+  return new ModelCursor(openCursor, pageSize, populateResults);
 };
 
 /** Execute a list query and populate its results. */
@@ -109,10 +110,8 @@ export const executeFirst = async <
   context: QueryExecutionContext<Shape, Relations>,
 ): Promise<Result | null> => {
   const documents = await createFindCursor(context).limit(1).toArray();
-  const populated = await context.population.apply(
-    documents as unknown as Result[],
-    context.populateSpecs,
-  );
+  const results = documents as unknown as Result[];
+  const populated = await context.population.apply(results, context.populateSpecs);
   return populated[0] ?? null;
 };
 
@@ -122,15 +121,22 @@ const createFindCursor = <Shape extends SchemaShape, Relations extends SchemaRel
   let cursor = context.collection.find(
     context.effectiveFilter as MongoFilter<StoredDocument<Shape>>,
   );
-  if (context.sortSpec) cursor = cursor.sort(context.sortSpec as Sort);
-  if (context.skipCount !== undefined) cursor = cursor.skip(context.skipCount);
-  if (context.limitCount !== undefined) cursor = cursor.limit(context.limitCount);
+  const sortSpec = context.sortSpec;
+  if (sortSpec) cursor = cursor.sort(sortSpec as Sort);
+
+  const skipCount = context.skipCount;
+  if (skipCount !== undefined) cursor = cursor.skip(skipCount);
+
+  const limitCount = context.limitCount;
+  if (limitCount !== undefined) cursor = cursor.limit(limitCount);
+
   const projection = projectionFor(
     context.fields,
     context.hiddenFields,
     context.selectedFields,
     context.shownFields,
   );
+
   if (projection) cursor = cursor.project(projection);
   return cursor;
 };

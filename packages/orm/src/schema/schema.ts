@@ -9,6 +9,7 @@ import type {
   SchemaRelationMap,
   SchemaLike,
 } from '../relations/definitions.js';
+import { SchemaConfigurationError } from '../validation/errors.js';
 import type { SchemaDefinition, SchemaShape, ScopeDefinitions } from './contracts.js';
 import type { SchemaIndex, ValidateIndexDefinitions } from './indexes.js';
 import type { InferShape } from './inference.js';
@@ -86,17 +87,22 @@ export class Schema<
   options<const Enabled extends SchemaOptions>(
     options: Enabled,
   ): Schema<Shape & ManagedShape<Enabled>, Relations, Scopes, Enabled, Indexes> {
-    if (this.optionsConfig && Object.keys(this.optionsConfig).length > 0) {
-      throw new Error('Schema options can only be configured once');
+    if (Object.keys(this.optionsConfig).length > 0) {
+      throw new SchemaConfigurationError(
+        'Schema options are already configured. Combine all options in one .options({...}) call.',
+      );
     }
-    if (
-      options.timestamps &&
-      ('createdAt' in this.definition.shape || 'updatedAt' in this.definition.shape)
-    ) {
-      throw new Error('Timestamp fields createdAt and updatedAt are managed by Mongorm');
+    const hasTimestampCollision =
+      'createdAt' in this.definition.shape || 'updatedAt' in this.definition.shape;
+    if (options.timestamps && hasTimestampCollision) {
+      throw new SchemaConfigurationError(
+        'Fields createdAt and updatedAt are managed by Mongorm when timestamps are enabled; omit them from the schema shape.',
+      );
     }
     if (options.softdelete && 'deletedAt' in this.definition.shape) {
-      throw new Error('The deletedAt field is managed by Mongorm');
+      throw new SchemaConfigurationError(
+        'Field deletedAt is managed by Mongorm when softdelete is enabled; omit it from the schema shape.',
+      );
     }
 
     const managedShape = {
@@ -136,8 +142,12 @@ export class Schema<
   indexes<const Definitions extends readonly SchemaIndex<Shape>[]>(
     definitions: readonly SchemaIndex<Shape>[] & ValidateIndexDefinitions<Shape, Definitions>,
   ): Schema<Shape, Relations, Scopes, Options, Definitions> {
-    if (definitions.some(({ fields }) => Object.keys(fields).length === 0)) {
-      throw new Error('Index definitions must include at least one field');
+    for (const definition of definitions) {
+      if (Object.keys(definition.fields).length === 0) {
+        throw new SchemaConfigurationError(
+          'Index definitions must include at least one field in fields.',
+        );
+      }
     }
     this.indexDefinitions = definitions as unknown as Indexes;
     return this as unknown as Schema<Shape, Relations, Scopes, Options, Definitions>;

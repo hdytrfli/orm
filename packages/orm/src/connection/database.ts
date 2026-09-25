@@ -16,8 +16,8 @@ import type {
   SchemaRelationMap,
   ScopeDefinitions,
 } from '../schema/index.js';
-import { DatabaseNotConnectedError } from '../validation/errors.js';
-import type { DatabaseModels, DbOptions, RegistryOfBuilder, SchemaRegistry } from './types.js';
+import { DatabaseNotConnectedError, SchemaConfigurationError } from '../validation/errors.js';
+import type { DatabaseModels, DbOptions, SchemaRegistry } from './types.js';
 
 export type { DatabaseModels, DbOptions, SchemaRegistry } from './types.js';
 
@@ -30,7 +30,7 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
   /** Create a disconnected database handle. */
   constructor(private readonly options: DbOptions<Registry>) {
     this.client = new MongoClient(options.uri, options.clientOptions);
-    for (const [name, schema] of Object.entries(options.schemas ?? {})) {
+    for (const [name, schema] of Object.entries(options.schemas)) {
       this.registerSchema(schema, name);
       let model:
         | Model<SchemaShape, SchemaRelationMap, ScopeDefinitions, any, readonly SchemaIndex<any>[]>
@@ -73,8 +73,8 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
   private registerSchema(schema: SchemaLike, name: string): void {
     const registeredName = this.schemaCollections.get(schema);
     if (registeredName && registeredName !== name) {
-      throw new Error(
-        `Schema is already registered with collection "${registeredName}" and cannot also use "${name}"`,
+      throw new SchemaConfigurationError(
+        `Schema is already registered with collection "${registeredName}" and cannot also use "${name}". Use separate schema instances for separate collections.`,
       );
     }
     this.schemaCollections.set(schema, name);
@@ -83,7 +83,11 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
   /** Resolve a registered schema to its MongoDB collection. */
   collectionFor(schema: SchemaLike): Collection<Document> {
     const name = this.schemaCollections.get(schema);
-    if (!name) throw new Error('Schema is not registered with this database');
+    if (!name) {
+      throw new SchemaConfigurationError(
+        'Schema is not registered with this database. Add it to createDatabase({ schemas }) or register it with db.model().',
+      );
+    }
     return this.native.collection<Document>(name);
   }
 
@@ -112,14 +116,28 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
   }
 }
 
-/** Create a disconnected MongoDB database handle. */
-export function createDatabase<const Registry extends SchemaRegistry>(
-  options: DbOptions<Registry> & { schemas: Registry },
-): Db<Registry> & DatabaseModels<Registry>;
-export function createDatabase<const Builder extends { readonly __registry?: SchemaRegistry }>(
-  options: Omit<DbOptions<RegistryOfBuilder<Builder>>, 'schemas'> & { schemas: Builder },
-): Db<RegistryOfBuilder<Builder>> & DatabaseModels<RegistryOfBuilder<Builder>>;
-export function createDatabase(options: DbOptions): Db;
-export function createDatabase(options: DbOptions): Db {
-  return new Db(options);
-}
+type DatabaseSchemaInput = SchemaRegistry | { readonly __registry?: SchemaRegistry };
+
+type RegistryFromBuilder<Input> = Input extends { readonly __registry?: infer Registry }
+  ? NonNullable<Registry> extends SchemaRegistry
+    ? NonNullable<Registry>
+    : SchemaRegistry
+  : SchemaRegistry;
+
+type RegistryFromInput<Input> = '__registry' extends keyof Input
+  ? RegistryFromBuilder<Input>
+  : Input extends SchemaRegistry
+    ? Input
+    : SchemaRegistry;
+
+type DatabaseFromInput<Input> = Db<RegistryFromInput<Input>> &
+  DatabaseModels<RegistryFromInput<Input>>;
+
+/** Create a disconnected MongoDB database handle with models inferred from its schemas. */
+export const createDatabase = <const Schemas extends DatabaseSchemaInput>(options: {
+  uri: string;
+  database: string;
+  clientOptions?: DbOptions<SchemaRegistry>['clientOptions'];
+  schemas: Schemas;
+}): DatabaseFromInput<Schemas> =>
+  new Db(options as DbOptions<RegistryFromInput<Schemas>>) as DatabaseFromInput<Schemas>;

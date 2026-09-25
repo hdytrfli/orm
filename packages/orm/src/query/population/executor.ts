@@ -20,13 +20,12 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
     documents: Result[],
     specs: readonly RuntimePopulateSpec[],
   ): Promise<Result[]> {
-    await Promise.all(
-      documents.map(async (document) => {
-        for (const spec of specs) {
-          await this.populateDocument(document as Record<string, unknown>, spec, this.relations);
-        }
-      }),
-    );
+    const populateDocument = async (document: Result) => {
+      for (const spec of specs) {
+        await this.populateDocument(document as Record<string, unknown>, spec, this.relations);
+      }
+    };
+    await Promise.all(documents.map(populateDocument));
     return documents;
   }
 
@@ -47,27 +46,30 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
     const target = relation.resolve();
     const value = document[relation.localField];
     const targetRelations = target.relationMap as SchemaRelationMap;
-    const nestedRelationFields = (spec.populate ?? []).map(
-      (nested) => targetRelations[nested.ref].localField,
-    );
     const hiddenTargetFields = new Set(target.hiddenFields);
-    const projectionFields = normalizeProjectionFields([
-      ...new Set(spec.select ?? target.fields.filter((field) => !hiddenTargetFields.has(field))),
-      ...(spec.show ?? []),
-      ...nestedRelationFields,
-    ]);
+    const selectedFields =
+      spec.select ?? target.fields.filter((field) => !hiddenTargetFields.has(field));
+    const projectionFields = [...new Set(selectedFields)];
+    const nestedSpecs = spec.populate ?? [];
+    for (const nested of nestedSpecs) {
+      projectionFields.push(targetRelations[nested.ref].localField);
+    }
+    projectionFields.push(...(spec.show ?? []));
+
+    const normalizedFields = normalizeProjectionFields(projectionFields);
+    const projection = Object.fromEntries(normalizedFields.map((field) => [field, 1]));
     const related = value
       ? await this.db
           .collectionFor(target)
-          .findOne(
-            { [relation.foreignField]: value },
-            { projection: Object.fromEntries(projectionFields.map((field) => [field, 1])) },
-          )
+          .findOne({ [relation.foreignField]: value }, { projection })
       : null;
-    if (related && spec.populate) {
-      for (const nested of spec.populate) {
-        await this.populateDocument(related, nested, targetRelations);
-      }
+    if (!related) {
+      document[spec.ref] = null;
+      return;
+    }
+
+    for (const nested of nestedSpecs) {
+      await this.populateDocument(related, nested, targetRelations);
     }
     document[spec.ref] = related;
   }

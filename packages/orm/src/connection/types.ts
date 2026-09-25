@@ -7,7 +7,7 @@ import type { Schema, SchemaIndex, SchemaLike } from '../schema/index.js';
 export type SchemaRegistry = Record<string, SchemaLike>;
 
 /** Configuration for a MongoDB connection and its registered collections. */
-export interface DbOptions<Registry extends SchemaRegistry = SchemaRegistry> {
+export interface DbOptions<Registry extends SchemaRegistry> {
   /** MongoDB connection string. */
   uri: string;
   /** Logical database name. */
@@ -15,7 +15,7 @@ export interface DbOptions<Registry extends SchemaRegistry = SchemaRegistry> {
   /** Optional native MongoDB client options. */
   clientOptions?: MongoClientOptions;
   /** Registered schemas, exposed as matching model properties and collection names. */
-  schemas?: Registry;
+  schemas: Registry;
 }
 
 type ModelForSchema<SchemaType> =
@@ -33,6 +33,3 @@ type ModelForSchema<SchemaType> =
 export type DatabaseModels<Registry extends SchemaRegistry> = {
   readonly [Name in keyof Registry]: ModelForSchema<Registry[Name]>;
 };
-
-export type RegistryOfBuilder<Builder extends { readonly __registry?: SchemaRegistry }> =
-  NonNullable<Builder['__registry']>;

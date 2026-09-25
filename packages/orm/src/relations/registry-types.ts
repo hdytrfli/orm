@@ -2,18 +2,19 @@ import type { ObjectId } from 'mongodb';
 
 import type { PopulateSpecs } from '../query/index.js';
 import type { SchemaShape, ScopeDefinitions } from '../schema/contracts.js';
-import type { SchemaIndex } from '../schema/indexes.js';
 import type { InferShape } from '../schema/inference.js';
 import type { Schema } from '../schema/schema.js';
 import type { SchemaRelation, SchemaLike } from './definitions.js';
 
+type InferredFields<Shape extends SchemaShape> = InferShape<Schema<Shape>>;
+
 type ObjectIdKeys<Shape extends SchemaShape> = {
-  [Key in keyof InferShape<Schema<Shape>>]-?: NonNullable<
-    InferShape<Schema<Shape>>[Key]
-  > extends ObjectId
+  [Key in keyof InferredFields<Shape>]-?: NonNullable<InferredFields<Shape>[Key]> extends ObjectId
     ? Key
     : never;
-}[keyof InferShape<Schema<Shape>>];
+}[keyof InferredFields<Shape>];
+
+type SchemaIndexes<Value> = Value extends Schema<any, any, any, any, infer Indexes> ? Indexes : [];
 
 /** Valid local ObjectId fields and targets accepted by `defineRelations`. */
 export type RelationDefinitions<Registry extends Record<string, SchemaLike>> = {
@@ -52,15 +53,7 @@ type RegistryWithRelations<
         Relations & RelationsFor<Registry, Definitions, NonNullable<Definitions[Name]>>,
         Scopes,
         Options,
-        Registry[Name] extends Schema<
-          any,
-          any,
-          any,
-          any,
-          infer Indexes extends readonly SchemaIndex<any>[]
-        >
-          ? Indexes
-          : []
+        SchemaIndexes<Registry[Name]>
       >
     : Registry[Name];
 };
@@ -92,15 +85,7 @@ type RegistryWithScopes<
         Relations,
         Scopes & (Definitions[Name] extends ScopeDefinitions ? Definitions[Name] : {}),
         Options,
-        Registry[Name] extends Schema<
-          any,
-          any,
-          any,
-          any,
-          infer Indexes extends readonly SchemaIndex<any>[]
-        >
-          ? Indexes
-          : []
+        SchemaIndexes<Registry[Name]>
       >
     : Registry[Name];
 };

@@ -19,6 +19,7 @@ import type {
   SchemaShape,
   ScopeDefinitions,
 } from '../schema/index.js';
+import { SchemaConfigurationError } from '../validation/errors.js';
 import { prepareDocument } from './document.js';
 import { applySoftDeleteFilter } from './soft-delete.js';
 import type {
@@ -97,9 +98,8 @@ export class Model<
   }
 
   private activeFilter(filter: ModelFilter<Shape>): ModelFilter<Shape> {
-    return hasSoftDelete(this.schema.optionsConfig)
-      ? applySoftDeleteFilter(filter, 'active')
-      : filter;
+    if (!hasSoftDelete(this.schema.optionsConfig)) return filter;
+    return applySoftDeleteFilter(filter, 'active');
   }
 
   /** Validate and insert one document, generating its ObjectId. */
@@ -155,7 +155,9 @@ export class Model<
   ): Promise<ModelResult<Shape, Relations, Scopes, Options> | null> {
     const parsedPatch = this.schema.parsePartial(patch) as Record<string, unknown>;
     const managedFields = new Set(['createdAt', 'updatedAt', 'deletedAt']);
-    managedFields.forEach((field) => delete parsedPatch[field]);
+    for (const field of managedFields) {
+      delete parsedPatch[field];
+    }
     if (this.schema.optionsConfig.timestamps) parsedPatch.updatedAt = new Date();
     return (await this.collection.findOneAndUpdate(
       this.activeFilter(filter) as MongoFilter<StoredDocument<Shape>>,
@@ -198,7 +200,9 @@ export class Model<
     filter: ModelFilter<Shape>,
   ): Promise<ModelResult<Shape, Relations, Scopes, Options> | null> {
     if (!hasSoftDelete(this.schema.optionsConfig)) {
-      throw new Error('Restore requires softdelete schema options');
+      throw new SchemaConfigurationError(
+        'Cannot restore documents because soft deletion is disabled. Enable it with schema.options({ softdelete: true }).',
+      );
     }
     const patch: Record<string, unknown> = { deletedAt: null };
     if (this.schema.optionsConfig.timestamps) patch.updatedAt = new Date();
@@ -214,6 +218,7 @@ export class Model<
     if (!hasSoftDelete(this.schema.optionsConfig)) {
       return this.collection.deleteMany(filter as MongoFilter<StoredDocument<Shape>>);
     }
+
     const patch: Record<string, unknown> = { deletedAt: new Date() };
     if (this.schema.optionsConfig.timestamps) patch.updatedAt = new Date();
     const result = await this.collection.updateMany(

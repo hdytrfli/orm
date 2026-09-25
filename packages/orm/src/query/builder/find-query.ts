@@ -29,6 +29,11 @@ import {
   type QueryExecutionContext,
 } from './executor.js';
 
+/** Makes invalid population-mode transitions explain themselves in editor errors. */
+type QueryModeDiagnostic<Message extends string> = {
+  readonly __mongorm_query_error__: Message;
+};
+
 type ScopeResult<
   Result extends object,
   Relations extends SchemaRelationMap,
@@ -214,10 +219,10 @@ export class ModelQuery<
 
   /** Populate declared one-way relations, including nested relation arrays. */
   populate<Specs extends PopulateSpecs<Relations>>(
-    this: Mode extends 'scope'
-      ? never
-      : ModelQuery<Shape, Result, CursorReady, Relations, Scopes, Mode, SoftDelete>,
-    specs: Specs,
+    specs: Specs &
+      (Mode extends 'scope'
+        ? QueryModeDiagnostic<'Cannot call populate() after with(); choose one population mode.'>
+        : unknown),
   ): ModelQuery<
     Shape,
     PopulatedResult<Result, Relations, Specs>,
@@ -247,10 +252,10 @@ export class ModelQuery<
 
   /** Apply a named population scope. */
   with<Name extends ScopeName<Scopes>>(
-    this: Mode extends 'populate'
-      ? never
-      : ModelQuery<Shape, Result, CursorReady, Relations, Scopes, Mode, SoftDelete>,
-    name: Name,
+    name: Name &
+      (Mode extends 'populate'
+        ? QueryModeDiagnostic<'Cannot call with() after populate(); choose one population mode.'>
+        : unknown),
   ): ModelQuery<
     Shape,
     ScopeResult<Result, Relations, Scopes, Name>,

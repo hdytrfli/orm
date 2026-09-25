@@ -245,6 +245,19 @@ await registeredDb.users.upsert({}, {});
 // @ts-expect-error Only registered plural schema names are exposed as models.
 await registeredDb.user.find({});
 
+const plainRegistryDb = createDatabase({
+  uri: 'mongodb://127.0.0.1:27017',
+  database: 'mongorm_plain_registry_test',
+  schemas: { users: relationUserSchema, groups: relationGroupSchema },
+});
+await plainRegistryDb.users.find({ name: 'Ada' });
+await plainRegistryDb.groups.find({ name: 'Group' });
+// @ts-expect-error Plain schema registries only expose their registered model names.
+plainRegistryDb.posts;
+
+// @ts-expect-error Database creation requires a schema registry.
+createDatabase({ uri: 'mongodb://127.0.0.1:27017', database: 'mongorm_unregistered_test' });
+
 const scopedUserSchema = relationUserSchema
   .relations({ groupId: () => relationGroupSchema })
   .scopes({ detail: [{ ref: 'groupId', select: ['name'] }] });
@@ -274,16 +287,14 @@ nestedTask?.project?.owner?.username;
 nestedTask?.project?.owner?.missing;
 // @ts-expect-error Scope names are inferred from Schema.scopes().
 scopedUsers.find().with('summary');
-// @ts-expect-error A query cannot combine a named scope with explicit population.
 scopedUsers
   .find()
   .with('detail')
+  // @ts-expect-error A query cannot combine a named scope with explicit population.
   .populate([{ ref: 'groupId' }]);
+const populatedScopedUsers = scopedUsers.find().populate([{ ref: 'groupId' }]);
 // @ts-expect-error A query cannot combine explicit population with a named scope.
-scopedUsers
-  .find()
-  .populate([{ ref: 'groupId' }])
-  .with('detail');
+populatedScopedUsers.with('detail');
 
 await users.find({
   $or: [{ role: 'admin' }, { name: { $regex: /^Ada/ } }],
