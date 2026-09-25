@@ -14,6 +14,7 @@ import type {
   SchemaLike,
   SchemaShape,
   SchemaRelationMap,
+  SchemaVirtualMap,
   ScopeDefinitions,
 } from '../schema/index.js';
 import { DatabaseNotConnectedError, SchemaConfigurationError } from '../validation/errors.js';
@@ -21,11 +22,34 @@ import type { DatabaseModels, DbOptions, SchemaRegistry } from './types.js';
 
 export type { DatabaseModels, DbOptions, SchemaRegistry } from './types.js';
 
+/** Options for operations that intentionally bypass schema-level safeguards. */
+export interface UnsafePurgeOptions {
+  /** Suppress the destructive-operation warning. Defaults to `false`. */
+  quiet?: boolean;
+}
+
 /** Owns a MongoDB client and creates schema-bound models. */
 export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
   private readonly client: MongoClient;
   private database: MongoDatabase | null = null;
   private readonly schemaCollections = new Map<SchemaLike, string>();
+
+  /** Destructive database operations that bypass model-level behavior. */
+  readonly unsafe = {
+    purge: async (options: UnsafePurgeOptions = {}): Promise<number> => {
+      if (!options.quiet) {
+        console.warn(
+          '[mongorm] db.unsafe.purge() permanently deletes every document from all registered collections.',
+        );
+      }
+
+      const collectionNames = new Set(this.schemaCollections.values());
+      const results = await Promise.all(
+        [...collectionNames].map((name) => this.native.collection(name).deleteMany({})),
+      );
+      return results.reduce((total, result) => total + result.deletedCount, 0);
+    },
+  };
 
   /** Create a disconnected database handle. */
   constructor(private readonly options: DbOptions<Registry>) {
@@ -33,7 +57,14 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
     for (const [name, schema] of Object.entries(options.schemas)) {
       this.registerSchema(schema, name);
       let model:
-        | Model<SchemaShape, SchemaRelationMap, ScopeDefinitions, any, readonly SchemaIndex<any>[]>
+        | Model<
+            SchemaShape,
+            SchemaRelationMap,
+            ScopeDefinitions,
+            any,
+            readonly SchemaIndex<any>[],
+            SchemaVirtualMap
+          >
         | undefined;
       Object.defineProperty(this, name, {
         configurable: false,
@@ -62,10 +93,11 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
     Scopes extends ScopeDefinitions,
     Options extends SchemaOptions,
     Indexes extends readonly SchemaIndex<any>[],
+    Virtuals extends SchemaVirtualMap,
   >(
     name: string,
-    schema: Schema<Shape, Relations, Scopes, Options, Indexes>,
-  ): Model<Shape, Relations, Scopes, Options, Indexes> {
+    schema: Schema<Shape, Relations, Scopes, Options, Indexes, Virtuals>,
+  ): Model<Shape, Relations, Scopes, Options, Indexes, Virtuals> {
     this.registerSchema(schema, name);
     return new Model(this, name, schema);
   }
@@ -92,7 +124,14 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
   }
 
   /** Explicitly create all indexes declared by registered schemas. */
-  async sync(options: { dropIndexes?: boolean } = {}): Promise<Record<string, string[]>> {
+  async sync(
+    options: { dropIndexes?: boolean; quiet?: boolean } = {},
+  ): Promise<Record<string, string[]>> {
+    if (options.dropIndexes && !options.quiet) {
+      console.warn(
+        '[mongorm] db.sync({ dropIndexes: true }) drops indexes from every registered collection before recreating declared indexes.',
+      );
+    }
     const synchronized: Record<string, string[]> = {};
     for (const [schema, name] of this.schemaCollections) {
       const definitions = (schema.indexDefinitions ?? []) as readonly SchemaIndex<any>[];

@@ -35,7 +35,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "test": "vitest run --config vitest.config.ts",
+    "test": "vitest run --typecheck.only --typecheck.tsconfig tsconfig.json",
     "typecheck": "pnpm build && tsc --noEmit",
     "version:bump": "bumpp"
   },
@@ -46,6 +46,6 @@
   "devDependencies": {
     "@types/node": "^26.6.2",
     "bumpp": "^12.3.0",
-    "dotenv": "^17.2.2"
+    "vitest": "5.0.1"
   }
 }

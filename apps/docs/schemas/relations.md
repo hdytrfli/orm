@@ -1,5 +1,5 @@
 ---
-order: 4
+order: 6
 ---
 
 # Registries and Relations
@@ -31,7 +31,7 @@ Each relation's public `ref` name is the local foreign-key field name itself. Th
 
 ## Relation Requirements
 
-The relation field must exist on the source schema and use an ObjectId-compatible type. Unknown schema names and unknown relation fields fail during registry construction.
+The relation field must exist on the source schema and use an ObjectId type. Top-level fields and nested paths are supported; nested paths use dot notation and remain type-hinted. Unknown schema names, non-ObjectId fields, and unknown relation paths fail during registry construction.
 
 ```ts
 const post = orm.schema({
@@ -39,6 +39,40 @@ const post = orm.schema({
 });
 
 const schemas = orm.defineSchemas({ user, post }).defineRelations({ post: { author: 'user' } });
+```
+
+For an ObjectId nested inside an object, use its dot path as the relation name and populate `ref`:
+
+```ts
+const person = orm.schema({
+  profile: orm.object({ department: orm.objectId() }),
+});
+
+const schemas = orm
+  .defineSchemas({ people: person, departments: department })
+  .defineRelations({ people: { 'profile.department': 'departments' } });
+
+const people = await db.people.find().populate([{ ref: 'profile.department', select: ['name'] }]);
+```
+
+The populated result retains the nested shape: `person.profile.department` is the department document rather than a flattened `"profile.department"` property.
+
+## Virtuals Can Join Nested ObjectIds
+
+Virtuals use the same typed dot-path notation for their local and foreign ObjectId fields. The virtual's own name remains the key used by `populate`:
+
+```ts
+const schemas = connected.defineVirtual({
+  people: {
+    departmentProjects: {
+      ref: 'projects',
+      localField: 'profile.department',
+      foreignField: 'department',
+    },
+  },
+});
+
+const people = await db.people.find().populate([{ virtual: 'departmentProjects' }]);
 ```
 
 ## Relations Are Opt-In

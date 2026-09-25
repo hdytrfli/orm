@@ -2,12 +2,13 @@ import { ObjectId, type Collection, type Filter as MongoFilter, type Sort } from
 
 import type { SchemaRelationMap, SchemaShape } from '../../schema/index.js';
 import { CursorQueryError, EstimatedCountError } from '../../validation/errors.js';
-import { ModelCursor } from '../cursor/cursor.js';
+import { MODEL_CURSOR_BATCH_SIZE, ModelCursor } from '../cursor/cursor.js';
 import { createCursorFilter } from '../cursor/filter.js';
 import { PopulationExecutor } from '../population/executor.js';
+import type { RuntimePopulateSpec } from '../population/executor.js';
 import { projectionFor } from '../projection/runtime.js';
 import { SoftDeleteState } from '../soft-delete/state.js';
-import type { ModelFilter, ModelSort, PopulateSpecs, StoredDocument } from '../types.js';
+import type { ModelFilter, ModelSort, StoredDocument } from '../types.js';
 
 /** Runtime inputs needed to execute a fully configured model query. */
 export interface QueryExecutionContext<
@@ -26,7 +27,7 @@ export interface QueryExecutionContext<
   limitCount: number | undefined;
   softDelete: SoftDeleteState<Shape>;
   population: PopulationExecutor<Relations>;
-  populateSpecs: PopulateSpecs<Relations>;
+  populateSpecs: readonly RuntimePopulateSpec[];
 }
 
 /** Execute a list query or MongoDB's estimated collection count. */
@@ -45,7 +46,7 @@ export const countQuery = async <Shape extends SchemaShape, Relations extends Sc
   return context.collection.estimatedDocumentCount();
 };
 
-/** Open an `_id`-ordered, bounded cursor page. */
+/** Open an `_id`-ordered cursor stream or one bounded cursor page. */
 export const createCursorPage = <
   Shape extends SchemaShape,
   Result extends object,
@@ -55,7 +56,7 @@ export const createCursorPage = <
   after?: ObjectId,
 ): ModelCursor<Shape, Result> => {
   const pageSize = context.limitCount;
-  if (!pageSize) {
+  if (pageSize === 0) {
     throw new CursorQueryError('Cursor queries require a positive limit');
   }
   if (context.skipCount !== undefined) {
@@ -72,8 +73,9 @@ export const createCursorPage = <
   const openCursor = () => {
     let cursor = context.collection
       .find(filter as MongoFilter<StoredDocument<Shape>>)
-      .sort({ _id: 1 })
-      .limit(pageSize + 1);
+      .sort({ _id: 1 });
+    if (pageSize === undefined) cursor = cursor.batchSize(MODEL_CURSOR_BATCH_SIZE);
+    else cursor = cursor.limit(pageSize + 1);
     const projection = projectionFor(
       context.fields,
       context.hiddenFields,

@@ -43,6 +43,22 @@ process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 ```
 
+## Test Cleanup
+
+`db.unsafe.purge()` permanently deletes every document in every collection registered with that database handle. It bypasses model-level filters such as soft-delete behavior and writes no data. Mongorm prints a warning by default; pass `{ quiet: true }` to suppress it when the destructive operation is intentional, such as clearing a dedicated integration-test database.
+
+```ts
+const deletedDocuments = await db.unsafe.purge({ quiet: true });
+```
+
+Use this only with a database that is safe to empty. The method returns the total number of deleted documents.
+
+`db.sync({ dropIndexes: true })` also warns before dropping indexes from registered collections and then recreating the indexes declared by their schemas. Pass `quiet: true` only when that destructive index reset is intentional.
+
+```ts
+await db.sync({ dropIndexes: true, quiet: true });
+```
+
 ## Serverless Runtimes
 
 Cache the client outside the request handler when the platform reuses the process. Reconnecting for every invocation adds latency and can exhaust client limits.

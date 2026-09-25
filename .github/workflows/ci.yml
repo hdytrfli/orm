@@ -2,10 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
     tags-ignore: ['**']
+
   pull_request:
-    branches: [main]
 
 permissions:
   contents: read
@@ -13,6 +12,27 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+
+    env:
+      MONGODB_URI: mongodb://root:example@127.0.0.1:27017/?authSource=admin
+      MONGODB_DATABASE: mongorm_ci
+      FAKER_SEED: 20260922
+      LOG_LEVEL: info
+
+    services:
+      mongodb:
+        image: mongo:8.0
+        env:
+          MONGO_INITDB_ROOT_USERNAME: root
+          MONGO_INITDB_ROOT_PASSWORD: example
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand(\"ping\").ok'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -33,3 +53,6 @@ jobs:
 
       - name: Run checks
         run: pnpm check
+
+      - name: Run tests
+        run: pnpm test

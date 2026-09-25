@@ -11,9 +11,9 @@ export type {
 export type { Infer, InferInput, InferShape } from './inference.js';
 export type { SchemaDefinition, SchemaShape, ScopeDefinitions } from './contracts.js';
 export type {
-  RelationInput,
-  RelationInputTarget,
   SchemaLike,
   SchemaRelation,
   SchemaRelationMap,
+  SchemaVirtual,
+  SchemaVirtualMap,
 } from '../relations/definitions.js';

@@ -12,12 +12,20 @@ export type {
 } from './schema/index.js';
 export { hasSoftDelete } from './schema/index.js';
 export type { SoftDeleteEnabled } from './schema/index.js';
-export type { SchemaLike, SchemaRelation, SchemaRelationMap } from './schema/index.js';
+export type {
+  SchemaLike,
+  SchemaRelation,
+  SchemaRelationMap,
+  SchemaVirtual,
+  SchemaVirtualMap,
+} from './schema/index.js';
 export { createDatabase, Db } from './connection/database.js';
+export type { UnsafePurgeOptions } from './connection/database.js';
 export type {
   RelationDefinitions,
   SchemaRegistryBuilder,
   ScopeDefinitionsBySchema,
+  VirtualDefinitions,
 } from './relations/registry.js';
 export {
   CursorQueryError,

@@ -1,16 +1,41 @@
+import { ObjectId } from 'mongodb';
+
 import { SchemaConfigurationError } from '../validation/errors.js';
 import type { SchemaRelationMap, SchemaLike } from './definitions.js';
 import type {
   RelationDefinitions,
   SchemaRegistryBuilder,
   ScopeDefinitionsBySchema,
+  VirtualDefinitions,
 } from './registry-types.js';
 
 export type {
   RelationDefinitions,
   SchemaRegistryBuilder,
   ScopeDefinitionsBySchema,
+  VirtualDefinitions,
 } from './registry-types.js';
+
+type RuntimeFieldSchema = {
+  readonly shape?: Record<string, RuntimeFieldSchema>;
+  readonly unwrap?: () => RuntimeFieldSchema;
+  readonly safeParse?: (value: unknown) => { success: boolean };
+};
+
+const fieldSchemaAtPath = (schema: SchemaLike, path: string): RuntimeFieldSchema | undefined => {
+  let current: RuntimeFieldSchema | undefined = schema.definition as RuntimeFieldSchema;
+
+  for (const segment of path.split('.')) {
+    while (current?.unwrap) current = current.unwrap();
+    current = current?.shape?.[segment];
+    if (!current) return undefined;
+  }
+
+  return current;
+};
+
+const isObjectIdField = (schema: SchemaLike, path: string): boolean =>
+  fieldSchemaAtPath(schema, path)?.safeParse?.(new ObjectId()).success ?? false;
 
 /** Attach relation/scope builder methods and apply definitions to schema metadata. */
 const attachMethods = <Registry extends Record<string, SchemaLike>>(
@@ -32,9 +57,14 @@ const attachMethods = <Registry extends Record<string, SchemaLike>>(
             `Unknown relation target "${targetName}". Use a schema name registered with defineSchemas().`,
           );
         }
-        if (!(field in source.definition.shape)) {
+        if (!fieldSchemaAtPath(source, field)) {
           throw new SchemaConfigurationError(
-            `Unknown relation field "${name}.${field}". Declare the local ObjectId field in the schema first.`,
+            `Unknown relation field "${name}.${field}". Declare the local field in the schema first.`,
+          );
+        }
+        if (!isObjectIdField(source, field)) {
+          throw new SchemaConfigurationError(
+            `Relation field "${name}.${field}" must be an ObjectId field.`,
           );
         }
 
@@ -42,6 +72,56 @@ const attachMethods = <Registry extends Record<string, SchemaLike>>(
           resolve: () => target,
           localField: field,
           foreignField: '_id',
+        };
+      }
+    }
+    return attachMethods(registry);
+  };
+
+  const defineVirtual = (definitions: VirtualDefinitions<Registry>) => {
+    for (const [name, virtuals] of Object.entries(definitions)) {
+      const source = registry[name];
+      if (!source) {
+        throw new SchemaConfigurationError(
+          `Unknown schema "${name}" in virtual definitions. Add it to defineSchemas() first.`,
+        );
+      }
+
+      for (const [virtualName, input] of Object.entries(virtuals ?? {}) as [
+        string,
+        { ref: string; localField: string; foreignField: string },
+      ][]) {
+        const target = registry[input.ref];
+        if (!target) {
+          throw new SchemaConfigurationError(
+            `Unknown virtual target "${input.ref}". Use a schema name registered with defineSchemas().`,
+          );
+        }
+        if (input.localField !== '_id' && !fieldSchemaAtPath(source, input.localField)) {
+          throw new SchemaConfigurationError(
+            `Unknown local field "${name}.${input.localField}" in virtual "${virtualName}".`,
+          );
+        }
+        if (input.localField !== '_id' && !isObjectIdField(source, input.localField)) {
+          throw new SchemaConfigurationError(
+            `Virtual local field "${name}.${input.localField}" must be an ObjectId field.`,
+          );
+        }
+        if (input.foreignField !== '_id' && !fieldSchemaAtPath(target, input.foreignField)) {
+          throw new SchemaConfigurationError(
+            `Unknown foreign field "${input.ref}.${input.foreignField}" in virtual "${virtualName}".`,
+          );
+        }
+        if (input.foreignField !== '_id' && !isObjectIdField(target, input.foreignField)) {
+          throw new SchemaConfigurationError(
+            `Virtual foreign field "${input.ref}.${input.foreignField}" must be an ObjectId field.`,
+          );
+        }
+
+        source.virtualMap[virtualName] = {
+          resolve: () => target,
+          localField: input.localField,
+          foreignField: input.foreignField,
         };
       }
     }
@@ -64,6 +144,7 @@ const attachMethods = <Registry extends Record<string, SchemaLike>>(
   Object.defineProperties(registry, {
     __registry: { configurable: false, enumerable: false, value: registry },
     defineRelations: { configurable: true, enumerable: false, value: defineRelations },
+    defineVirtual: { configurable: true, enumerable: false, value: defineVirtual },
     defineScopes: { configurable: true, enumerable: false, value: defineScopes },
   });
   return registry as SchemaRegistryBuilder<Registry>;

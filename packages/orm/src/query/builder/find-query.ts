@@ -1,7 +1,12 @@
 import { ObjectId, type Collection } from 'mongodb';
 
 import type { Db } from '../../connection/database.js';
-import type { SchemaRelationMap, SchemaShape, ScopeDefinitions } from '../../schema/index.js';
+import type {
+  SchemaRelationMap,
+  SchemaShape,
+  SchemaVirtualMap,
+  ScopeDefinitions,
+} from '../../schema/index.js';
 import { InvalidQueryError } from '../../validation/errors.js';
 import type { ModelCursor } from '../cursor/cursor.js';
 import { PopulationExecutor } from '../population/executor.js';
@@ -39,7 +44,13 @@ type ScopeResult<
   Relations extends SchemaRelationMap,
   Scopes extends ScopeDefinitions,
   Name extends ScopeName<Scopes>,
-> = PopulatedResult<Result, Relations, Extract<Scopes[Name], PopulateSpecs<Relations>>>;
+  Virtuals extends SchemaVirtualMap,
+> = PopulatedResult<
+  Result,
+  Relations,
+  Extract<Scopes[Name], PopulateSpecs<Relations, Virtuals>>,
+  Virtuals
+>;
 
 export type {
   ModelFilter,
@@ -64,6 +75,7 @@ export class ModelQuery<
   Scopes extends ScopeDefinitions = {},
   Mode extends PopulationMode = 'none',
   SoftDelete extends boolean = false,
+  Virtuals extends SchemaVirtualMap = {},
 > implements PromiseLike<Result[]> {
   declare readonly deleted: SoftDelete extends true ? (mode: 'only' | 'include') => this : never;
   private sortSpec: ModelSort<Shape> | undefined;
@@ -71,7 +83,7 @@ export class ModelQuery<
   private limitCount: number | undefined;
   private selectedFields: readonly string[] | undefined;
   private shownFields: readonly string[] = [];
-  private populateSpecs: PopulateSpecs<Relations> = [];
+  private populateSpecs: PopulateSpecs<Relations, Virtuals> = [];
   private populationMode: PopulationMode = 'none';
   private readonly softDelete: SoftDeleteState<Shape>;
   private readonly population: PopulationExecutor<Relations>;
@@ -89,10 +101,11 @@ export class ModelQuery<
     private readonly db: Db,
     private readonly relations: Relations,
     private readonly scopes: Scopes,
+    private readonly virtuals: Virtuals,
     private readonly softdeleteEnabled: boolean,
   ) {
     this.softDelete = new SoftDeleteState(softdeleteEnabled);
-    this.population = new PopulationExecutor(db, relations);
+    this.population = new PopulationExecutor(db, relations, virtuals);
     if (softdeleteEnabled) {
       Object.defineProperties(this, {
         deleted: {
@@ -146,18 +159,38 @@ export class ModelQuery<
   /** Sort results by one or more schema fields. */
   sort(
     spec: ModelSort<Shape>,
-  ): ModelQuery<Shape, Result, false, Relations, Scopes, Mode, SoftDelete> {
+  ): ModelQuery<Shape, Result, false, Relations, Scopes, Mode, SoftDelete, Virtuals> {
     this.sortSpec = spec;
-    return this as unknown as ModelQuery<Shape, Result, false, Relations, Scopes, Mode, SoftDelete>;
+    return this as unknown as ModelQuery<
+      Shape,
+      Result,
+      false,
+      Relations,
+      Scopes,
+      Mode,
+      SoftDelete,
+      Virtuals
+    >;
   }
 
   /** Skip a non-negative number of matching documents. */
-  skip(count: number): ModelQuery<Shape, Result, false, Relations, Scopes, Mode, SoftDelete> {
+  skip(
+    count: number,
+  ): ModelQuery<Shape, Result, false, Relations, Scopes, Mode, SoftDelete, Virtuals> {
     if (!Number.isInteger(count) || count < 0) {
       throw new RangeError('Query skip must be a non-negative integer');
     }
     this.skipCount = count;
-    return this as unknown as ModelQuery<Shape, Result, false, Relations, Scopes, Mode, SoftDelete>;
+    return this as unknown as ModelQuery<
+      Shape,
+      Result,
+      false,
+      Relations,
+      Scopes,
+      Mode,
+      SoftDelete,
+      Virtuals
+    >;
   }
 
   /** Limit the number of matching documents returned. */
@@ -179,7 +212,8 @@ export class ModelQuery<
     Relations,
     Scopes,
     Mode,
-    SoftDelete
+    SoftDelete,
+    Virtuals
   > {
     this.selectedFields = fields;
     return this as unknown as ModelQuery<
@@ -189,7 +223,8 @@ export class ModelQuery<
       Relations,
       Scopes,
       Mode,
-      SoftDelete
+      SoftDelete,
+      Virtuals
     >;
   }
 
@@ -203,7 +238,8 @@ export class ModelQuery<
     Relations,
     Scopes,
     Mode,
-    SoftDelete
+    SoftDelete,
+    Virtuals
   > {
     this.shownFields = fields;
     return this as unknown as ModelQuery<
@@ -213,24 +249,26 @@ export class ModelQuery<
       Relations,
       Scopes,
       Mode,
-      SoftDelete
+      SoftDelete,
+      Virtuals
     >;
   }
 
   /** Populate declared one-way relations, including nested relation arrays. */
-  populate<Specs extends PopulateSpecs<Relations>>(
+  populate<const Specs extends PopulateSpecs<Relations, Virtuals>>(
     specs: Specs &
       (Mode extends 'scope'
         ? QueryModeDiagnostic<'Cannot call populate() after with(); choose one population mode.'>
         : unknown),
   ): ModelQuery<
     Shape,
-    PopulatedResult<Result, Relations, Specs>,
+    PopulatedResult<Result, Relations, Specs, Virtuals>,
     CursorReady,
     Relations,
     Scopes,
     'populate',
-    SoftDelete
+    SoftDelete,
+    Virtuals
   > {
     if (this.populationMode === 'scope') {
       throw new InvalidQueryError(
@@ -241,12 +279,13 @@ export class ModelQuery<
     this.populateSpecs = specs;
     return this as unknown as ModelQuery<
       Shape,
-      PopulatedResult<Result, Relations, Specs>,
+      PopulatedResult<Result, Relations, Specs, Virtuals>,
       CursorReady,
       Relations,
       Scopes,
       'populate',
-      SoftDelete
+      SoftDelete,
+      Virtuals
     >;
   }
 
@@ -258,12 +297,13 @@ export class ModelQuery<
         : unknown),
   ): ModelQuery<
     Shape,
-    ScopeResult<Result, Relations, Scopes, Name>,
+    ScopeResult<Result, Relations, Scopes, Name, Virtuals>,
     CursorReady,
     Relations,
     Scopes,
     'scope',
-    SoftDelete
+    SoftDelete,
+    Virtuals
   > {
     if (this.populationMode === 'populate') {
       throw new InvalidQueryError(
@@ -271,15 +311,16 @@ export class ModelQuery<
       );
     }
     this.populationMode = 'scope';
-    this.populateSpecs = this.scopes[name] as PopulateSpecs<Relations>;
+    this.populateSpecs = this.scopes[name] as PopulateSpecs<Relations, Virtuals>;
     return this as unknown as ModelQuery<
       Shape,
-      ScopeResult<Result, Relations, Scopes, Name>,
+      ScopeResult<Result, Relations, Scopes, Name, Virtuals>,
       CursorReady,
       Relations,
       Scopes,
       'scope',
-      SoftDelete
+      SoftDelete,
+      Virtuals
     >;
   }
 
@@ -288,7 +329,7 @@ export class ModelQuery<
     return countQuery(this.executionContext(), estimate);
   }
 
-  /** Return one bounded `_id`-ordered page and its continuation cursor. */
+  /** Stream all matches, or return one bounded `_id`-ordered page when a limit is set. */
   private createCursor(after?: ObjectId): ModelCursor<Shape, Result> {
     return createCursorPage(this.executionContext(), after);
   }
