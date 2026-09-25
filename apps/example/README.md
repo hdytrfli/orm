@@ -7,10 +7,10 @@ The example package is a Vitest integration suite. Its scenarios use the configu
 pnpm --filter @mongorm/test test
 
 # Run one feature file
-pnpm --filter @mongorm/test test -- tests/virtual.test.ts
+pnpm --filter @mongorm/test test tests/virtual.test.ts
 
 # Pick a scenario by its title
-pnpm --filter @mongorm/test test -- -t "negative"
+pnpm --filter @mongorm/test test -t "negative"
 ```
 
 Configure `MONGODB_URI` and `MONGODB_DATABASE` in the repository `.env` before running the tests. Use a development database: scenarios clear and repopulate their dedicated collections between runs.
@@ -22,7 +22,7 @@ Tests are grouped by feature in `tests/`; scenario titles describe their intent 
 | `database.test.ts`    | Destructive purge and index-drop warnings, quiet overrides, deletion totals, and post-purge state.                                                                      |
 | `queries.test.ts`     | Nested-field projection, empty matches/counts, hidden fields, missing optional fields, exact/estimated counts, tenant isolation, logical/range filters, and pagination. |
 | `relations.test.ts`   | Selected forward population, nested detail scopes, and missing related documents.                                                                                       |
-| `virtual.test.ts`     | Reverse matches, no children/no parents, projected join keys, per-parent matching, field selection, scopes, nested population, and tenant-directory output.             |
+| `virtual.test.ts`     | Reverse matches, nested ObjectId relations/joins, no children/no parents, projected join keys, field selection, scopes, nested population, and tenant-directory output. |
 | `writes.test.ts`      | Create/update, idempotent upsert, bulk insertion, validation failures, unmatched writes, and soft-delete/restore lifecycle.                                             |
 | `aggregation.test.ts` | Tenant-filtered grouping/metrics and empty aggregation results.                                                                                                         |
 | `cursors.test.ts`     | Unlimited async streaming and bounded continuation pages.                                                                                                               |

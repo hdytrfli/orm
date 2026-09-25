@@ -12,7 +12,7 @@ Creates a schema from a record of Zod fields.
 const user = orm.schema({ name: orm.string() });
 ```
 
-The returned schema supports parsing and carries the field metadata used by models and query types.
+The returned schema supports parsing and carries the field metadata used by models and query types. Configure persistence behavior with `.options()` and indexes with `.indexes()`. Define relations and population scopes on a schema registry with `defineRelations()` and `defineScopes()`.
 
 The underlying Zod object is available as `schema.definition` for advanced Zod composition. A derived Zod schema does not change the schema registered with a model; see [Escape Hatches](/guides/escape-hatches) for details.
 
