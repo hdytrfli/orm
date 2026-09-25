@@ -19,10 +19,12 @@ const ticketSchema = orm.schema({
   secret: orm.string().hidden(),
 });
 const ownerSchema = orm.schema({ name: orm.string(), secret: orm.string().hidden() });
-const relatedTicketSchema = ticketSchema.relations({ owner: () => ownerSchema });
+const relationRegistry = orm
+  .defineSchemas({ owners: ownerSchema, tickets: ticketSchema })
+  .defineRelations({ tickets: { owner: 'owners' } });
 
-const owners = database.model('owners', ownerSchema);
-const tickets = database.model('tickets', relatedTicketSchema);
+const owners = database.model('owners', relationRegistry.owners);
+const tickets = database.model('tickets', relationRegistry.tickets);
 const virtualRegistry = orm
   .defineSchemas({
     owners: orm.schema({ name: orm.string(), secret: orm.string().hidden() }),

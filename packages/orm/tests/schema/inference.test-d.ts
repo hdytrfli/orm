@@ -22,7 +22,7 @@ const indexedUserSchema = userSchema.indexes([
 ]);
 void indexedUserSchema;
 
-const virtualUserSchema = orm.schema({ name: orm.string() });
+const virtualUserSchema = orm.schema({ name: orm.string(), externalId: orm.objectId() });
 const virtualProjectSchema = orm.schema({ owner: orm.objectId(), title: orm.string() });
 const virtualRegistry = orm
   .defineSchemas({ users: virtualUserSchema, projects: virtualProjectSchema })
@@ -53,6 +53,71 @@ virtualDb.users.find().populate([{ virtual: 'projects', select: ['missing'] }]);
 orm.defineSchemas({ users: virtualUserSchema, projects: virtualProjectSchema }).defineVirtual({
   // @ts-expect-error Virtual targets must name a schema in the registry.
   users: { projects: { ref: 'tasks', localField: '_id', foreignField: 'owner' } },
+});
+
+const nestedDepartmentSchema = orm.schema({ name: orm.string() });
+const nestedPersonSchema = orm.schema({
+  name: orm.string(),
+  profile: orm.object({ department: orm.objectId(), nickname: orm.string() }),
+});
+const nestedProjectSchema = orm.schema({ department: orm.objectId(), title: orm.string() });
+const nestedBaseRegistry = orm.defineSchemas({
+  people: nestedPersonSchema,
+  departments: nestedDepartmentSchema,
+  projects: nestedProjectSchema,
+});
+const nestedRelationRegistry = nestedBaseRegistry.defineRelations({
+  people: { 'profile.department': 'departments' },
+});
+const nestedVirtualRegistry = nestedRelationRegistry.defineVirtual({
+  people: {
+    departmentProjects: {
+      ref: 'projects',
+      localField: 'profile.department',
+      foreignField: 'department',
+    },
+  },
+});
+const nestedPopulationDb = createDatabase({
+  uri: 'mongodb://localhost:27017',
+  database: 'nested-path-population-test',
+  schemas: nestedVirtualRegistry,
+});
+const nestedPopulatedPeople = await nestedPopulationDb.people.find().populate([
+  { ref: 'profile.department', select: ['name'] },
+  { virtual: 'departmentProjects', select: ['title'] },
+]);
+nestedPopulatedPeople[0].profile.department?.name;
+nestedPopulatedPeople[0].departmentProjects[0]?.title;
+// @ts-expect-error A nested relation path must resolve to an ObjectId field.
+nestedRelationRegistry.defineRelations({ people: { 'profile.nickname': 'departments' } });
+nestedVirtualRegistry.defineVirtual({
+  people: {
+    departmentProjects: {
+      ref: 'projects',
+      // @ts-expect-error Virtual local paths must resolve to ObjectId fields.
+      localField: 'profile.nickname',
+      foreignField: 'department',
+    },
+  },
+});
+nestedVirtualRegistry.defineVirtual({
+  people: {
+    departmentProjects: {
+      ref: 'projects',
+      localField: 'profile.department',
+      // @ts-expect-error Virtual foreign paths must resolve to ObjectId fields.
+      foreignField: 'title',
+    },
+  },
+});
+orm.defineSchemas({ users: virtualUserSchema, projects: virtualProjectSchema }).defineVirtual({
+  // @ts-expect-error Virtual local fields must be ObjectId fields.
+  users: { projects: { ref: 'projects', localField: 'name', foreignField: 'owner' } },
+});
+orm.defineSchemas({ users: virtualUserSchema, projects: virtualProjectSchema }).defineVirtual({
+  // @ts-expect-error Virtual foreign fields must be ObjectId fields.
+  users: { projects: { ref: 'projects', localField: '_id', foreignField: 'title' } },
 });
 orm.defineSchemas({ users: virtualUserSchema, projects: virtualProjectSchema }).defineVirtual({
   // @ts-expect-error Virtual local fields must exist on the source schema.
@@ -276,13 +341,23 @@ const relationUserSchema = orm.schema({
   name: orm.string(),
   groupId: orm.objectId().optional(),
 });
-const relatedUserSchema = relationUserSchema.relations({
-  groupId: () => relationGroupSchema,
+const relationSchemas = orm.defineSchemas({
+  users: relationUserSchema,
+  groups: relationGroupSchema,
 });
+const scopedRelationSchemas = relationSchemas
+  .defineRelations({ users: { groupId: 'groups' } })
+  .defineScopes({ users: { detail: [{ ref: 'groupId', select: ['name'] }] } });
+const relatedUserSchema = scopedRelationSchemas.users;
 void relatedUserSchema.relationMap.groupId;
-// @ts-expect-error Relations require an ObjectId field on the local schema.
-groupSchema.relations({ name: () => relationUserSchema });
-const relatedUsers = db.model('related-users', relatedUserSchema);
+// @ts-expect-error Relations only accept ObjectId local fields.
+relationSchemas.defineRelations({ users: { name: 'groups' } });
+const registeredDb = createDatabase({
+  uri: 'mongodb://127.0.0.1:27017',
+  database: 'mongorm_registry_test',
+  schemas: scopedRelationSchemas,
+});
+const relatedUsers = registeredDb.users;
 const populatedUsers = await relatedUsers.find().populate([{ ref: 'groupId', select: ['name'] }]);
 populatedUsers[0].groupId?.name;
 // @ts-expect-error Hidden target fields are omitted unless requested with show.
@@ -296,24 +371,6 @@ populatedUsersWithHidden[0].groupId?.secret;
 // @ts-expect-error Populate show only accepts hidden fields on the target schema.
 relatedUsers.find().populate([{ ref: 'groupId', show: ['name'] }]);
 
-const schema = orm
-  .defineSchemas({
-    users: relationUserSchema,
-    groups: relationGroupSchema,
-  })
-  .defineRelations({
-    users: { groupId: 'groups' },
-  })
-  .defineScopes({
-    users: {
-      detail: [{ ref: 'groupId', select: ['name'] }],
-    },
-  });
-const registeredDb = createDatabase({
-  uri: 'mongodb://127.0.0.1:27017',
-  database: 'mongorm_registry_test',
-  schemas: schema,
-});
 await registeredDb.users.find({});
 await registeredDb.groups.find({});
 await registeredDb.users.upsert({ name: 'Ada' }, { groupId: userId });
@@ -341,10 +398,7 @@ plainRegistryDb.posts;
 // @ts-expect-error Database creation requires a schema registry.
 createDatabase({ uri: 'mongodb://127.0.0.1:27017', database: 'mongorm_unregistered_test' });
 
-const scopedUserSchema = relationUserSchema
-  .relations({ groupId: () => relationGroupSchema })
-  .scopes({ detail: [{ ref: 'groupId', select: ['name'] }] });
-const scopedUsers = db.model('scoped-users', scopedUserSchema);
+const scopedUsers = registeredDb.users;
 const detailedUsers = await scopedUsers.find().with('detail');
 detailedUsers[0].groupId?.name;
 const ownerSchema = orm.schema({ username: orm.string() });
@@ -368,7 +422,7 @@ const nestedTask = await nestedDb.tasks.find().with('check').first();
 nestedTask?.project?.owner?.username;
 // @ts-expect-error Nested population still exposes only fields on the related schema.
 nestedTask?.project?.owner?.missing;
-// @ts-expect-error Scope names are inferred from Schema.scopes().
+// @ts-expect-error Scope names are inferred from registry-defined scopes.
 scopedUsers.find().with('summary');
 scopedUsers
   .find()

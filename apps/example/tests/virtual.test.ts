@@ -5,23 +5,42 @@ import { env } from '@/libs/env';
 
 const schemas = orm
   .defineSchemas({
+    companies: orm.schema({
+      slug: orm.string(),
+      name: orm.string(),
+      description: orm.string(),
+    }),
+    departments: orm.schema({
+      name: orm.string(),
+      description: orm.string(),
+      company: orm.objectId(),
+    }),
     people: orm.schema({
       name: orm.string(),
-      department: orm.string(),
+      email: orm.email(),
+      profile: orm.object({
+        department: orm.objectId(),
+      }),
     }),
     projects: orm.schema({
       company: orm.objectId(),
       key: orm.string(),
       owner: orm.objectId(),
+      department: orm.objectId().optional(),
       title: orm.string(),
       status: orm.enum(['active', 'complete']),
       internalNotes: orm.string().hidden(),
     }),
+    tasks: orm.schema({
+      title: orm.string(),
+      owner: orm.objectId(),
+      project: orm.objectId(),
+    }),
   })
   .defineRelations({
-    projects: {
-      owner: 'people',
-    },
+    projects: { owner: 'people', company: 'companies' },
+    tasks: { owner: 'people', project: 'projects' },
+    people: { 'profile.department': 'departments' },
   })
   .defineVirtual({
     people: {
@@ -29,6 +48,11 @@ const schemas = orm
         ref: 'projects',
         localField: '_id',
         foreignField: 'owner',
+      },
+      departmentProjects: {
+        ref: 'projects',
+        localField: 'profile.department',
+        foreignField: 'department',
       },
     },
   })
@@ -51,6 +75,29 @@ const database = createDatabase({
 
 const people = database.people;
 const projects = database.projects;
+const departments = database.departments;
+const companies = database.companies;
+
+const createDepartment = async (name: string) => {
+  const company = await companies.create({
+    slug: `virtual-${name.toLowerCase()}-${new ObjectId().toHexString()}`,
+    name: `${name} Company`,
+    description: `Company supporting ${name}`,
+  });
+
+  return departments.create({
+    name,
+    description: `${name} department`,
+    company: company._id,
+  });
+};
+
+const createPerson = async (name: string, departmentId: ObjectId) =>
+  people.create({
+    name,
+    email: `${name.toLowerCase().replaceAll(' ', '.')}@example.test`,
+    profile: { department: departmentId },
+  });
 
 describe('virtual population integration scenarios', () => {
   beforeAll(async () => database.connect());
@@ -62,15 +109,16 @@ describe('virtual population integration scenarios', () => {
   );
 
   it('simple: populates the projects belonging to one person', async () => {
-    const person = await people.create({
-      name: 'Ada Lovelace',
-      department: 'Research',
-    });
+    const research = await createDepartment('Research');
+    const person = await createPerson('Ada Lovelace', research._id);
+
     const company = new ObjectId();
+
     await projects.create({
       company,
       key: 'ADA-ENGINE',
       owner: person._id,
+      department: research._id,
       title: 'Analytical Engine',
       status: 'active',
       internalNotes: 'Early computing project',
@@ -96,10 +144,8 @@ describe('virtual population integration scenarios', () => {
   });
 
   it('negative: returns an empty array when the person has no projects', async () => {
-    const person = await people.create({
-      name: 'Alan Turing',
-      department: 'Research',
-    });
+    const research = await createDepartment('Research');
+    const person = await createPerson('Alan Turing', research._id);
 
     const result = await people
       .find({
@@ -116,15 +162,14 @@ describe('virtual population integration scenarios', () => {
   });
 
   it('edge case: an outer projection retains the virtual join key', async () => {
-    const person = await people.create({
-      name: 'Katherine Johnson',
-      department: 'Research',
-    });
+    const research = await createDepartment('Research');
+    const person = await createPerson('Katherine Johnson', research._id);
     const company = new ObjectId();
     await projects.create({
       company,
       key: 'KATHERINE-TRAJECTORY',
       owner: person._id,
+      department: research._id,
       title: 'Orbital Trajectory',
       status: 'active',
       internalNotes: 'Flight calculations',
@@ -164,18 +209,50 @@ describe('virtual population integration scenarios', () => {
     expect(result).toBeNull();
   });
 
+  it('nested reference: populates an ObjectId stored inside a nested object', async () => {
+    const research = await createDepartment('Research');
+    const person = await createPerson('Katherine Johnson', research._id);
+
+    const result = await people
+      .find({ _id: person._id })
+      .populate([{ ref: 'profile.department', select: ['name'] }])
+      .first();
+
+    expect(result?.profile.department?.name).toBe('Research');
+    expect(result?.profile.department).not.toHaveProperty('description');
+  });
+
+  it('nested virtual join: matches projects using a nested department ObjectId', async () => {
+    const research = await createDepartment('Research');
+    const person = await createPerson('Ada Lovelace', research._id);
+    const differentOwner = await createPerson('Grace Hopper', research._id);
+    const company = new ObjectId();
+    await projects.create({
+      company,
+      key: 'SHARED-DEPARTMENT-PROJECT',
+      owner: differentOwner._id,
+      department: research._id,
+      title: 'Department-wide Research',
+      status: 'active',
+      internalNotes: 'Shared with the whole department',
+    });
+
+    const result = await people
+      .find({ _id: person._id })
+      .populate([{ virtual: 'departmentProjects', select: ['title'] }])
+      .first();
+    const [firstProject] = result?.departmentProjects ?? [];
+
+    expect(result?.departmentProjects).toHaveLength(1);
+    expect(firstProject?.title).toBe('Department-wide Research');
+    expect(firstProject).not.toHaveProperty('internalNotes');
+  });
+
   it('best case: keeps each person matched only to their own projects', async () => {
-    const [ada, grace] = await people.bulk.create([
-      {
-        name: 'Ada Lovelace',
-        department: 'Research',
-      },
-      {
-        name: 'Grace Hopper',
-        department: 'Platform',
-      },
-    ]);
-    if (!ada || !grace) throw new Error('Expected the people fixtures to be created');
+    const research = await createDepartment('Research');
+    const platform = await createDepartment('Platform');
+    const ada = await createPerson('Ada Lovelace', research._id);
+    const grace = await createPerson('Grace Hopper', platform._id);
 
     await projects.bulk.create([
       {
@@ -229,15 +306,14 @@ describe('virtual population integration scenarios', () => {
   });
 
   it('complex: applies a virtual scope and populates each project owner', async () => {
-    const person = await people.create({
-      name: 'Grace Hopper',
-      department: 'Platform',
-    });
+    const platform = await createDepartment('Platform');
+    const person = await createPerson('Grace Hopper', platform._id);
     const company = new ObjectId();
     await projects.create({
       company,
       key: 'GRACE-COMPILER',
       owner: person._id,
+      department: platform._id,
       title: 'Compiler Validation',
       status: 'active',
       internalNotes: 'Regression suite',
@@ -278,28 +354,18 @@ describe('virtual population integration scenarios', () => {
   });
 
   it('real world: projects a tenant directory with each person’s active work', async () => {
-    const [ada, alan, otherTenant] = await people.bulk.create([
-      {
-        name: 'Ada Lovelace',
-        department: 'Research',
-      },
-      {
-        name: 'Alan Turing',
-        department: 'Research',
-      },
-      {
-        name: 'Ada Lovelace',
-        department: 'Operations',
-      },
-    ]);
-    if (!ada || !alan || !otherTenant)
-      throw new Error('Expected the directory fixtures to be created');
+    const research = await createDepartment('Research');
+    const operations = await createDepartment('Operations');
+    const ada = await createPerson('Ada Lovelace', research._id);
+    await createPerson('Alan Turing', research._id);
+    const otherTenant = await createPerson('Ada Lovelace', operations._id);
 
     await projects.bulk.create([
       {
         company: new ObjectId(),
         key: 'RESEARCH-ENGINE',
         owner: ada._id,
+        department: research._id,
         title: 'Analytical Engine',
         status: 'active',
         internalNotes: 'Tenant research work',
@@ -308,6 +374,7 @@ describe('virtual population integration scenarios', () => {
         company: new ObjectId(),
         key: 'RESEARCH-NOTES',
         owner: ada._id,
+        department: research._id,
         title: 'Computing Notes',
         status: 'complete',
         internalNotes: 'Archived work',
@@ -316,6 +383,7 @@ describe('virtual population integration scenarios', () => {
         company: new ObjectId(),
         key: 'OPERATIONS-DASHBOARD',
         owner: otherTenant._id,
+        department: operations._id,
         title: 'Operations Dashboard',
         status: 'active',
         internalNotes: 'Different department',
@@ -324,13 +392,17 @@ describe('virtual population integration scenarios', () => {
 
     const directory = await people
       .find({
-        department: 'Research',
+        'profile.department': research._id,
       })
-      .select(['name', 'department'])
+      .select(['name', 'profile.department'])
       .sort({
         name: 'asc',
       })
       .populate([
+        {
+          ref: 'profile.department',
+          select: ['name'],
+        },
         {
           virtual: 'projects',
           select: ['title', 'status'],
@@ -347,6 +419,7 @@ describe('virtual population integration scenarios', () => {
     expect(secondResearchProject?.status).toBe('complete');
     expect(researchAlan?.name).toBe('Alan Turing');
     expect(researchAlan?.projects).toEqual([]);
-    expect(directory.every((person) => person.department === 'Research')).toBe(true);
+    expect(researchAda?.profile.department?.name).toBe('Research');
+    expect(researchAlan?.profile.department?.name).toBe('Research');
   });
 });
