@@ -21,6 +21,33 @@ const indexedUserSchema = userSchema.indexes([
   },
 ]);
 void indexedUserSchema;
+
+const virtualUserSchema = orm.schema({ name: orm.string() });
+const virtualProjectSchema = orm.schema({ owner: orm.objectId(), title: orm.string() });
+const virtualRegistry = orm
+  .defineSchemas({ users: virtualUserSchema, projects: virtualProjectSchema })
+  .defineVirtual({
+    users: {
+      projects: { ref: 'projects', localField: '_id', foreignField: 'owner' },
+    },
+  });
+const projectVirtual = virtualRegistry.users.virtualMap.projects;
+const projectTarget: typeof virtualProjectSchema = projectVirtual.resolve();
+const projectOwnerField: 'owner' = projectVirtual.foreignField;
+void projectTarget;
+void projectOwnerField;
+orm.defineSchemas({ users: virtualUserSchema, projects: virtualProjectSchema }).defineVirtual({
+  // @ts-expect-error Virtual targets must name a schema in the registry.
+  users: { projects: { ref: 'tasks', localField: '_id', foreignField: 'owner' } },
+});
+orm.defineSchemas({ users: virtualUserSchema, projects: virtualProjectSchema }).defineVirtual({
+  // @ts-expect-error Virtual local fields must exist on the source schema.
+  users: { projects: { ref: 'projects', localField: 'missing', foreignField: 'owner' } },
+});
+orm.defineSchemas({ users: virtualUserSchema, projects: virtualProjectSchema }).defineVirtual({
+  // @ts-expect-error Virtual foreign fields must exist on the target schema.
+  users: { projects: { ref: 'projects', localField: '_id', foreignField: 'missing' } },
+});
 // @ts-expect-error Index definitions must contain at least one field.
 userSchema.indexes([{ fields: {} }]);
 // @ts-expect-error Index fields must be declared in the schema.

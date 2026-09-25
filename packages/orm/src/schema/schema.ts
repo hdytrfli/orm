@@ -8,6 +8,7 @@ import type {
   SchemaRelation,
   SchemaRelationMap,
   SchemaLike,
+  SchemaVirtualMap,
 } from '../relations/definitions.js';
 import { SchemaConfigurationError } from '../validation/errors.js';
 import type { SchemaDefinition, SchemaShape, ScopeDefinitions } from './contracts.js';
@@ -48,6 +49,9 @@ export class Schema<
   /** One-way relation metadata declared for this schema. */
   readonly relationMap: Relations;
 
+  /** Reverse/virtual relation metadata declared for this schema. */
+  readonly virtualMap: SchemaVirtualMap;
+
   /** Named population scopes declared for this schema. */
   scopeMap: Scopes;
 
@@ -73,9 +77,11 @@ export class Schema<
     scopeMap = {} as Scopes,
     optionsConfig = {} as Options,
     indexDefinitions = [] as unknown as Indexes,
+    virtualMap = {} as SchemaVirtualMap,
   ) {
     this.definition = z.object(shape);
     this.relationMap = relations;
+    this.virtualMap = virtualMap;
     this.scopeMap = scopeMap;
     const fields = Object.keys(shape) as (keyof Shape & string)[];
     const hiddenFields: (keyof Shape & string)[] = [];
@@ -133,6 +139,7 @@ export class Schema<
       this.scopeMap,
       options,
       this.indexDefinitions as unknown as readonly SchemaIndex<Shape & ManagedShape<Enabled>>[],
+      this.virtualMap,
     );
     return next as unknown as Schema<
       Shape & ManagedShape<Enabled>,

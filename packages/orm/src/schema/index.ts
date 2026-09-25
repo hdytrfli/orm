@@ -16,4 +16,6 @@ export type {
   SchemaLike,
   SchemaRelation,
   SchemaRelationMap,
+  SchemaVirtual,
+  SchemaVirtualMap,
 } from '../relations/definitions.js';

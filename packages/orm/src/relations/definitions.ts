@@ -19,6 +19,23 @@ export interface SchemaRelation<
 
 export type SchemaRelationMap = Record<string, SchemaRelation>;
 
+/** Metadata for a reverse/virtual relation populated from a target collection. */
+export interface SchemaVirtual<
+  Target extends SchemaLike = SchemaLike,
+  LocalField extends string = string,
+  ForeignField extends string = string,
+> {
+  readonly resolve: () => Target;
+  readonly localField: LocalField;
+  readonly foreignField: ForeignField;
+  /** Target relations are carried separately to avoid recursively wrapping its schema type. */
+  readonly __targetRelations?: Target extends { readonly relationMap: infer Relations }
+    ? Relations
+    : {};
+}
+
+export type SchemaVirtualMap = Record<string, SchemaVirtual>;
+
 /** Relation target declaration accepted by `Schema.relations()`. */
 export type RelationInput<Target extends SchemaLike = SchemaLike> =
   | (() => Target)

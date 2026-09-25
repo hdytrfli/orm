@@ -4,12 +4,14 @@ import type {
   RelationDefinitions,
   SchemaRegistryBuilder,
   ScopeDefinitionsBySchema,
+  VirtualDefinitions,
 } from './registry-types.js';
 
 export type {
   RelationDefinitions,
   SchemaRegistryBuilder,
   ScopeDefinitionsBySchema,
+  VirtualDefinitions,
 } from './registry-types.js';
 
 /** Attach relation/scope builder methods and apply definitions to schema metadata. */
@@ -48,6 +50,46 @@ const attachMethods = <Registry extends Record<string, SchemaLike>>(
     return attachMethods(registry);
   };
 
+  const defineVirtual = (definitions: VirtualDefinitions<Registry>) => {
+    for (const [name, virtuals] of Object.entries(definitions)) {
+      const source = registry[name];
+      if (!source) {
+        throw new SchemaConfigurationError(
+          `Unknown schema "${name}" in virtual definitions. Add it to defineSchemas() first.`,
+        );
+      }
+
+      for (const [virtualName, input] of Object.entries(virtuals ?? {}) as [
+        string,
+        { ref: string; localField: string; foreignField: string },
+      ][]) {
+        const target = registry[input.ref];
+        if (!target) {
+          throw new SchemaConfigurationError(
+            `Unknown virtual target "${input.ref}". Use a schema name registered with defineSchemas().`,
+          );
+        }
+        if (input.localField !== '_id' && !source.fields.includes(input.localField)) {
+          throw new SchemaConfigurationError(
+            `Unknown local field "${name}.${input.localField}" in virtual "${virtualName}".`,
+          );
+        }
+        if (input.foreignField !== '_id' && !target.fields.includes(input.foreignField)) {
+          throw new SchemaConfigurationError(
+            `Unknown foreign field "${input.ref}.${input.foreignField}" in virtual "${virtualName}".`,
+          );
+        }
+
+        source.virtualMap[virtualName] = {
+          resolve: () => target,
+          localField: input.localField,
+          foreignField: input.foreignField,
+        };
+      }
+    }
+    return attachMethods(registry);
+  };
+
   const defineScopes = (definitions: ScopeDefinitionsBySchema<Registry>) => {
     for (const [name, scopes] of Object.entries(definitions)) {
       const schema = registry[name];
@@ -64,6 +106,7 @@ const attachMethods = <Registry extends Record<string, SchemaLike>>(
   Object.defineProperties(registry, {
     __registry: { configurable: false, enumerable: false, value: registry },
     defineRelations: { configurable: true, enumerable: false, value: defineRelations },
+    defineVirtual: { configurable: true, enumerable: false, value: defineVirtual },
     defineScopes: { configurable: true, enumerable: false, value: defineScopes },
   });
   return registry as SchemaRegistryBuilder<Registry>;
