@@ -25,6 +25,12 @@ Connects the owned MongoDB client and selects the configured database. Queries b
 
 Closes the client and clears the active database reference.
 
+## `Db.native`
+
+Returns the connected native MongoDB `Db`. This is an escape hatch for driver features not currently wrapped by Mongorm, such as aggregation pipelines, change streams, specialized bulk writes, and transactions. It throws `DatabaseNotConnectedError` until `connect()` completes.
+
+Native operations bypass Mongorm's model-level validation, default projections, soft-delete filters, population, and inferred result types. See [Escape Hatches](/guides/escape-hatches) for examples and guidance on keeping those boundaries safe.
+
 ## `Db.model(name, schema)`
 
 Creates a model bound to a collection name and schema. Registered schemas are normally accessed through generated model properties instead.

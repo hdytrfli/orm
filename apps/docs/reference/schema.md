@@ -14,6 +14,8 @@ const user = orm.schema({ name: orm.string() });
 
 The returned schema supports parsing and carries the field metadata used by models and query types.
 
+The underlying Zod object is available as `schema.definition` for advanced Zod composition. A derived Zod schema does not change the schema registered with a model; see [Escape Hatches](/guides/escape-hatches) for details.
+
 ## Native Zod Constructors
 
 `orm` exposes lowercase callable Zod constructors, including `string`, `number`, `boolean`, `object`, `array`, `record`, `union`, `literal`, `enum`, and the constructors available in the installed Zod version.
