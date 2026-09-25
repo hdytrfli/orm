@@ -16,6 +16,26 @@ export type RuntimePopulateSpec =
       populate?: readonly RuntimePopulateSpec[];
     };
 
+const valueAtPath = (document: Record<string, unknown>, path: string): unknown =>
+  path.split('.').reduce<unknown>((value, segment) => {
+    if (value === null || typeof value !== 'object') return undefined;
+    return (value as Record<string, unknown>)[segment];
+  }, document);
+
+const setValueAtPath = (document: Record<string, unknown>, path: string, value: unknown): void => {
+  const segments = path.split('.');
+  const property = segments.pop();
+  if (!property) return;
+
+  let parent = document;
+  for (const segment of segments) {
+    const nested = parent[segment];
+    if (nested === null || typeof nested !== 'object') parent[segment] = {};
+    parent = parent[segment] as Record<string, unknown>;
+  }
+  parent[property] = value;
+};
+
 /** Executes already-validated population instructions against related collections. */
 export class PopulationExecutor<Relations extends SchemaRelationMap> {
   constructor(
@@ -55,10 +75,10 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
       const virtual = virtuals[spec.virtual];
       if (!virtual) return;
       const target = virtual.resolve();
-      const localValue = document[virtual.localField];
+      const localValue = valueAtPath(document, virtual.localField);
       const nestedSpecs = spec.populate ?? [];
       if (localValue === undefined || localValue === null) {
-        document[spec.virtual] = [];
+        setValueAtPath(document, spec.virtual, []);
         return;
       }
 
@@ -83,13 +103,13 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
           await this.populateDocument(relatedDocument, nested, nestedRelations, nestedVirtuals);
         }
       }
-      document[spec.virtual] = related;
+      setValueAtPath(document, spec.virtual, related);
       return;
     }
 
     const relation = relations[spec.ref];
     const target = relation.resolve();
-    const value = document[relation.localField];
+    const value = valueAtPath(document, relation.localField);
     const targetRelations = target.relationMap as SchemaRelationMap;
     const hiddenTargetFields = new Set(target.hiddenFields);
     const selectedFields =
@@ -112,7 +132,7 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
           .findOne({ [relation.foreignField]: value }, { projection })
       : null;
     if (!related) {
-      document[spec.ref] = null;
+      setValueAtPath(document, spec.ref, null);
       return;
     }
 
@@ -120,6 +140,6 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
       const nestedVirtuals = target.virtualMap as SchemaVirtualMap;
       await this.populateDocument(related, nested, targetRelations, nestedVirtuals);
     }
-    document[spec.ref] = related;
+    setValueAtPath(document, spec.ref, related);
   }
 }

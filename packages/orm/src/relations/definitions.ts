@@ -35,17 +35,3 @@ export interface SchemaVirtual<
 }
 
 export type SchemaVirtualMap = Record<string, SchemaVirtual>;
-
-/** Relation target declaration accepted by `Schema.relations()`. */
-export type RelationInput<Target extends SchemaLike = SchemaLike> =
-  | (() => Target)
-  | {
-      target: () => Target;
-      foreignField?: string;
-    };
-
-export type RelationInputTarget<Input> = Input extends () => infer Target
-  ? Target
-  : Input extends { target: () => infer Target }
-    ? Target
-    : never;

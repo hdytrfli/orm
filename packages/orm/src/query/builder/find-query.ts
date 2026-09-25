@@ -255,7 +255,7 @@ export class ModelQuery<
   }
 
   /** Populate declared one-way relations, including nested relation arrays. */
-  populate<Specs extends PopulateSpecs<Relations, Virtuals>>(
+  populate<const Specs extends PopulateSpecs<Relations, Virtuals>>(
     specs: Specs &
       (Mode extends 'scope'
         ? QueryModeDiagnostic<'Cannot call populate() after with(); choose one population mode.'>

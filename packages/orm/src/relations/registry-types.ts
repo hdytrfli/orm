@@ -1,30 +1,44 @@
 import type { ObjectId } from 'mongodb';
 
 import type { PopulateSpecs } from '../query/index.js';
-import type { SchemaShape, ScopeDefinitions } from '../schema/contracts.js';
+import type { ScopeDefinitions } from '../schema/contracts.js';
 import type { InferShape } from '../schema/inference.js';
 import type { Schema } from '../schema/schema.js';
 import type { SchemaRelation, SchemaLike, SchemaVirtual } from './definitions.js';
 
-type InferredFields<Shape extends SchemaShape> = InferShape<Schema<Shape>>;
+type ObjectIdPathKeys<Value, Prefix extends string = ''> = Value extends object
+  ? {
+      [Key in Extract<keyof Value, string>]-?: NonNullable<Value[Key]> extends ObjectId
+        ? `${Prefix}${Key}`
+        : NonNullable<Value[Key]> extends Date | readonly unknown[]
+          ? never
+          : NonNullable<Value[Key]> extends object
+            ? ObjectIdPathKeys<NonNullable<Value[Key]>, `${Prefix}${Key}.`>
+            : never;
+    }[Extract<keyof Value, string>]
+  : never;
 
-type ObjectIdKeys<Shape extends SchemaShape> = {
-  [Key in keyof InferredFields<Shape>]-?: NonNullable<InferredFields<Shape>[Key]> extends ObjectId
-    ? Key
-    : never;
-}[keyof InferredFields<Shape>];
+type ObjectIdPathsOfSchema<Value> = ObjectIdPathKeys<InferShape<Value>>;
 
 type SchemaVirtuals<Value> =
   Value extends Schema<any, any, any, any, any, infer Virtuals> ? Virtuals : {};
 
 /** Valid local ObjectId fields and targets accepted by `defineRelations`. */
 export type RelationDefinitions<Registry extends Record<string, SchemaLike>> = {
-  [Name in keyof Registry]?: Registry[Name] extends Schema<infer Shape, any, any, any>
-    ? Partial<Record<Extract<ObjectIdKeys<Shape>, string>, Extract<keyof Registry, string>>>
+  [Name in keyof Registry]?: Registry[Name] extends Schema<any, any, any, any>
+    ? Partial<
+        Record<
+          Extract<ObjectIdPathsOfSchema<Registry[Name]>, string>,
+          Extract<keyof Registry, string>
+        >
+      >
     : never;
 };
 
-type DocumentKey<Value> = Extract<keyof InferShape<Value>, string> | '_id';
+type ObjectIdDocumentPath<Value> =
+  Value extends Schema<any, any, any, any>
+    ? Extract<ObjectIdPathsOfSchema<Value>, string> | '_id'
+    : '_id';
 
 type VirtualTargetInput<
   Registry extends Record<string, SchemaLike>,
@@ -32,8 +46,8 @@ type VirtualTargetInput<
 > = {
   [Target in Extract<keyof Registry, string>]: {
     ref: Target;
-    localField: DocumentKey<Registry[Source]>;
-    foreignField: DocumentKey<Registry[Target]>;
+    localField: ObjectIdDocumentPath<Registry[Source]>;
+    foreignField: ObjectIdDocumentPath<Registry[Target]>;
   };
 }[Extract<keyof Registry, string>];
 

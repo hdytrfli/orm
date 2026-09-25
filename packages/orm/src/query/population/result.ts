@@ -32,12 +32,7 @@ export type PopulatedResult<
   Specs extends PopulateSpecs<Relations, Virtuals>,
   Virtuals extends SchemaVirtualMap = {},
 > = Simplify<
-  Omit<Result, Extract<RelationSpec<Specs[number]>['ref'], keyof Result>> & {
-    [Spec in RelationSpec<Specs[number]> as Spec['ref']]: PopulatedRelation<
-      Relations[Spec['ref']],
-      Spec
-    > | null;
-  } & {
+  ApplyRelationSpecs<Result, Relations, Specs> & {
     [Spec in VirtualSpec<Specs[number]> as Spec['virtual']]: PopulatedVirtual<
       Virtuals[Spec['virtual']],
       Spec
@@ -45,8 +40,43 @@ export type PopulatedResult<
   }
 >;
 
-type RelationSpec<Spec> = Spec extends { ref: string } ? Spec : never;
 type VirtualSpec<Spec> = Spec extends { virtual: string } ? Spec : never;
+
+type ReplacePath<
+  Value,
+  Path extends string,
+  Replacement,
+> = Path extends `${infer Head}.${infer Tail}`
+  ? Value extends object
+    ? {
+        [Key in keyof Value]: Key extends Head
+          ?
+              | ReplacePath<NonNullable<Value[Key]>, Tail, Replacement>
+              | Extract<Value[Key], null | undefined>
+          : Value[Key];
+      }
+    : Value
+  : Value extends object
+    ? {
+        [Key in keyof Value]: Key extends Path
+          ? Replacement | Extract<Value[Key], null | undefined>
+          : Value[Key];
+      }
+    : Value;
+
+type ApplyRelationSpecs<
+  Result,
+  Relations extends SchemaRelationMap,
+  Specs extends readonly unknown[],
+> = Specs extends readonly [infer Spec, ...infer Remaining]
+  ? Spec extends { ref: infer Path extends keyof Relations & string }
+    ? ApplyRelationSpecs<
+        ReplacePath<Result, Path, PopulatedRelation<Relations[Path], Spec> | null>,
+        Relations,
+        Remaining
+      >
+    : ApplyRelationSpecs<Result, Relations, Remaining>
+  : Result;
 
 type PopulatedRelation<Relation, Spec> = Spec extends {
   populate: infer Nested extends PopulateSpecs<RelationMapOf<Relation>, VirtualMapOf<Relation>>;
