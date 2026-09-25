@@ -3,7 +3,7 @@ import { type Condition, type Document, type ObjectId, type RootFilterOperators 
 import type { SchemaShape } from '../../schema/contracts.js';
 import type { ModelDocument, StoredDocument } from './document.js';
 
-type NestedFilterKey<Value, Prefix extends string = ''> = Value extends object
+export type NestedFilterKey<Value, Prefix extends string = ''> = Value extends object
   ? Value extends ObjectId | Date | readonly unknown[]
     ? never
     : {

@@ -30,6 +30,12 @@ export {
 } from './validation/errors.js';
 export type { OrmErrorCode } from './validation/errors.js';
 export { Model } from './model/model.js';
+export type {
+  AggregatePipeline,
+  AggregateStage,
+  ModelAggregateOptions,
+} from './model/aggregate.js';
+export type { AggregateQuery } from './query/aggregate/query.js';
 export { ModelCursor, ModelQuery } from './query/index.js';
 export type {
   HiddenDocumentKey,

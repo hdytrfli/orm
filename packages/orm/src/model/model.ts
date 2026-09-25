@@ -1,12 +1,14 @@
 import {
   type Collection,
   type DeleteResult,
+  type Document,
   type Filter as MongoFilter,
   type OptionalUnlessRequiredId,
   type UpdateFilter,
 } from 'mongodb';
 
 import type { Db } from '../connection/database.js';
+import { createAggregateQuery, type AggregateQuery } from '../query/aggregate/query.js';
 import { ModelQuery } from '../query/index.js';
 import type { ModelFilter, StoredDocument, VisibleDocument } from '../query/index.js';
 import { hasSoftDelete } from '../schema/index.js';
@@ -20,6 +22,11 @@ import type {
   ScopeDefinitions,
 } from '../schema/index.js';
 import { SchemaConfigurationError } from '../validation/errors.js';
+import {
+  prepareAggregatePipeline,
+  type AggregatePipeline,
+  type ModelAggregateOptions,
+} from './aggregate.js';
 import { prepareDocument } from './document.js';
 import { applySoftDeleteFilter } from './soft-delete.js';
 import type {
@@ -101,6 +108,25 @@ export class Model<
   private activeFilter(filter: ModelFilter<Shape>): ModelFilter<Shape> {
     if (!hasSoftDelete(this.schema.optionsConfig)) return filter;
     return applySoftDeleteFilter(filter, 'active');
+  }
+
+  /** Run a MongoDB aggregation with an explicit result type. */
+  aggregate<Result extends Document = Record<string, unknown>>(
+    pipeline: AggregatePipeline<Shape, NoInfer<Result>>,
+    options?: ModelAggregateOptions<Shape, SoftDeleteEnabled<Options>>,
+  ): AggregateQuery<Result> {
+    const { filter, includeDeleted = false, ...driverOptions } = options ?? {};
+    const softDeleteEnabled = hasSoftDelete(this.schema.optionsConfig);
+
+    return createAggregateQuery(() => {
+      const preparedPipeline = prepareAggregatePipeline(
+        pipeline,
+        softDeleteEnabled,
+        includeDeleted,
+        filter,
+      );
+      return this.collection.aggregate<Result>(preparedPipeline, driverOptions);
+    });
   }
 
   /** Validate and insert one document, generating its ObjectId. */
