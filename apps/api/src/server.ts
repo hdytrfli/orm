@@ -1,6 +1,6 @@
 import { createApp } from '@/app';
 import { env } from '@/config/env';
-import { log } from '@/middlewares/logger';
+import { log } from '@/middlewares/http-logger';
 
 const app = createApp();
 
@@ -17,6 +17,7 @@ const shutdown = (signal: NodeJS.Signals) => {
       process.exitCode = 1;
       return;
     }
+
     log.info('API server stopped');
   });
 };

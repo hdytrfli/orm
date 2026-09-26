@@ -1,7 +1,10 @@
 import { orm } from '@mongorm/orm';
+import * as z from 'zod';
 
 export const TASK_STATUSES = ['backlog', 'todo', 'in-progress', 'blocked', 'done'] as const;
+
 export const TASK_PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
+
 export const TASK_SOURCES = ['manual', 'import', 'integration'] as const;
 
 export const taskSchema = orm
@@ -41,3 +44,7 @@ export const taskSchema = orm
       },
     },
   ]);
+
+export const transitionSchema = z.object({
+  status: z.enum(TASK_STATUSES),
+});

@@ -15,13 +15,16 @@ export const log = pino({
 
 export const httpLog = pinoHttp({
   logger: log,
-  genReqId: (request) => request.headers['x-request-id']?.toString() ?? randomUUID(),
+  genReqId: (request) => request.headers['x-request-id'] ?? randomUUID(),
   serializers: {
-    req: (request) => ({
-      id: request.id,
-      method: request.method,
-      url: request.url?.split('?')[0],
-      remoteAddress: request.remoteAddress,
-    }),
+    req: (request) => {
+      const [origin] = request.url ? request.url.split('?') : [];
+      return {
+        url: origin,
+        id: request.id,
+        method: request.method,
+        remoteAddress: request.remoteAddress,
+      };
+    },
   },
 });
