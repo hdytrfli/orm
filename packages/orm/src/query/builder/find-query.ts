@@ -128,32 +128,42 @@ export class ModelQuery<
   }
 
   private executionContext(): QueryExecutionContext<Shape, Relations> {
-    const context = {
+    const getEffectiveFilter = () => this.effectiveFilter();
+    const getSelectedFields = () => this.selectedFields;
+    const getShownFields = () => this.shownFields;
+    const getSortSpec = () => this.sortSpec;
+    const getSkipCount = () => this.skipCount;
+    const getLimitCount = () => this.limitCount;
+    const getPopulateSpecs = () => this.populateSpecs;
+    return {
       collection: this.collection,
       filter: this.filterSpec,
-      effectiveFilter: this.effectiveFilter(),
+      get effectiveFilter() {
+        return getEffectiveFilter();
+      },
       fields: this.fields,
       hiddenFields: this.hiddenFields,
-      selectedFields: this.selectedFields,
-      shownFields: this.shownFields,
-      sortSpec: this.sortSpec,
-      skipCount: this.skipCount,
-      limitCount: this.limitCount,
+      get selectedFields() {
+        return getSelectedFields();
+      },
+      get shownFields() {
+        return getShownFields();
+      },
+      get sortSpec() {
+        return getSortSpec();
+      },
+      get skipCount() {
+        return getSkipCount();
+      },
+      get limitCount() {
+        return getLimitCount();
+      },
       softDelete: this.softDelete,
       population: this.population,
-      populateSpecs: this.populateSpecs,
+      get populateSpecs() {
+        return getPopulateSpecs();
+      },
     };
-    Object.defineProperties(context, {
-      effectiveFilter: { get: () => this.effectiveFilter() },
-      selectedFields: { get: () => this.selectedFields },
-      shownFields: { get: () => this.shownFields },
-      sortSpec: { get: () => this.sortSpec },
-      skipCount: { get: () => this.skipCount },
-      limitCount: { get: () => this.limitCount },
-      softDelete: { get: () => this.softDelete },
-      populateSpecs: { get: () => this.populateSpecs },
-    });
-    return context;
   }
 
   /** Sort results by one or more schema fields. */
