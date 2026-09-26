@@ -4,13 +4,20 @@ import {
   type Document,
   type Filter as MongoFilter,
   type OptionalUnlessRequiredId,
+  type ObjectId,
   type UpdateFilter,
 } from 'mongodb';
+import type { ZodType } from 'zod';
 
 import type { Db } from '../connection/database.js';
 import { createAggregateQuery, type AggregateQuery } from '../query/aggregate/query.js';
 import { ModelQuery } from '../query/index.js';
-import type { ModelFilter, StoredDocument, VisibleDocument } from '../query/index.js';
+import type {
+  ModelFilter,
+  PopulateSpecs,
+  StoredDocument,
+  VisibleDocument,
+} from '../query/index.js';
 import { hasSoftDelete } from '../schema/index.js';
 import type {
   Schema,
@@ -254,6 +261,11 @@ export class Model<
     )) as unknown as ModelResult<Shape, Relations, Scopes, Options> | null;
   }
 
+  /** Restore a soft-deleted document by its MongoDB identifier. */
+  restoreById(id: ObjectId): Promise<ModelResult<Shape, Relations, Scopes, Options> | null> {
+    return this.restoreDocument({ _id: id } as ModelFilter<Shape>);
+  }
+
   /** Delete every document matching a MongoDB filter. */
   async delete(filter: ModelFilter<Shape>): Promise<DeleteResult> {
     if (!hasSoftDelete(this.schema.optionsConfig)) {
@@ -278,14 +290,37 @@ export class Model<
   }
 }
 
-/** The names of registry-defined scopes available on a model type. */
-export type ModelScopeName<ModelType> =
-  ModelType extends Model<any, any, infer Scopes, any, any, any>
-    ? Extract<keyof Scopes, string>
-    : never;
+/** Extract the schema shape registered on a Mongorm model. */
+export type AnyModel = Model<any, any, any, any, any, any>;
 
+export type ShapeOf<T> = T extends Model<infer Shape, any, any, any, any, any> ? Shape : never;
+/** Extract the relation map registered on a Mongorm model. */
+export type RelationsOf<T> =
+  T extends Model<any, infer Relations, any, any, any, any> ? Relations : never;
+/** Extract the scope map registered on a Mongorm model. */
+export type ScopesOf<T> = T extends Model<any, any, infer Scopes, any, any, any> ? Scopes : never;
+/** Extract the schema options registered on a Mongorm model. */
+export type OptionsOf<T> =
+  T extends Model<any, any, any, infer Options, any, any> ? Options : never;
+/** Extract the indexes registered on a Mongorm model. */
+export type IndexesOf<T> =
+  T extends Model<any, any, any, any, infer Indexes, any> ? Indexes : never;
+/** Extract the virtual map registered on a Mongorm model. */
+export type VirtualsOf<T> =
+  T extends Model<any, any, any, any, any, infer Virtuals> ? Virtuals : never;
+/** A schema filter type derived from a model. */
+export type FilterOf<T> = ModelFilter<ShapeOf<T>>;
+/** A create input derived from a model. */
+export type CreateInputOf<T> = CreateInput<ShapeOf<T>, OptionsOf<T>>;
+/** An update input derived from a model. */
+export type UpdateInputOf<T> = UpdateInput<ShapeOf<T>, OptionsOf<T>>;
+/** A model's create schema with a matching partial-update schema operation. */
+export type CrudSchemaOf<T extends AnyModel> = ZodType<CreateInputOf<T>> & {
+  partial: () => ZodType<UpdateInputOf<T>>;
+};
+/** Valid population instructions derived from a model's relations and virtuals. */
+export type PopulateOf<T> = PopulateSpecs<RelationsOf<T>, VirtualsOf<T>>;
+/** The names of registry-defined scopes available on a model type. */
+export type ModelScopeName<T> = Extract<keyof ScopesOf<T>, string>;
 /** Whether a model type supports soft deletion. */
-export type ModelSoftDeleteEnabled<ModelType> =
-  ModelType extends Model<any, any, any, infer Options, any, any>
-    ? SoftDeleteEnabled<Options>
-    : never;
+export type ModelSoftDeleteEnabled<T> = SoftDeleteEnabled<OptionsOf<T>>;

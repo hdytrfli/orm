@@ -3,7 +3,7 @@ export { orm } from './api.js';
 export type { OrmApi } from './api.js';
 export { Schema } from './schema/index.js';
 export type { Infer, InferInput, InferShape } from './schema/index.js';
-export type { SchemaDefinition, SchemaShape } from './schema/index.js';
+export type { SchemaDefinition, SchemaShape, ScopeDefinitions } from './schema/index.js';
 export type {
   ManagedField,
   SchemaIndex,
@@ -38,7 +38,23 @@ export {
 } from './validation/errors.js';
 export type { OrmErrorCode } from './validation/errors.js';
 export { Model } from './model/model.js';
-export type { ModelScopeName, ModelSoftDeleteEnabled } from './model/model.js';
+export type {
+  AnyModel,
+  CreateInputOf,
+  CrudSchemaOf,
+  FilterOf,
+  IndexesOf,
+  ModelScopeName,
+  ModelSoftDeleteEnabled,
+  OptionsOf,
+  PopulateOf,
+  RelationsOf,
+  ScopesOf,
+  ShapeOf,
+  UpdateInputOf,
+  VirtualsOf,
+} from './model/model.js';
+export type { CreateInput, UpdateInput } from './model/types.js';
 export type {
   AggregatePipeline,
   AggregateStage,

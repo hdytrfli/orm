@@ -1,6 +1,7 @@
 import type { IndexDescription, IndexDirection } from 'mongodb';
 
-import type { ModelFilter } from '../query/types.js';
+import type { ModelDocument, StoredDocument } from '../query/types.js';
+import type { SchemaFilter } from '../query/types/filter.js';
 import type { SchemaShape } from './contracts.js';
 
 type IndexFieldMap<Shape extends SchemaShape> = Record<
@@ -15,7 +16,10 @@ export type SchemaIndexFields<Shape extends SchemaShape> = {
 }[keyof IndexFieldMap<Shape>];
 
 /** Partial-index filter restricted to this schema's fields and operators. */
-export type SchemaPartialFilter<Shape extends SchemaShape> = ModelFilter<Shape>;
+export type SchemaPartialFilter<Shape extends SchemaShape> = SchemaFilter<
+  StoredDocument<Shape>,
+  ModelDocument<Shape>
+>;
 
 export type SchemaIndexOptions<Shape extends SchemaShape> = Omit<
   IndexDescription,
