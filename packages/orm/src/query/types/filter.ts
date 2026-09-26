@@ -28,11 +28,10 @@ export type SchemaFilter<DocumentShape extends Document, FieldShape extends obje
     [Path in NestedFilterKey<FieldShape>]: Condition<NestedFilterValue<FieldShape, Path>>;
   }> &
   Partial<
-    Pick<
-      RootFilterOperators<DocumentShape>,
-      '$comment' | '$expr' | '$jsonSchema' | '$text' | '$where'
-    >
+    Pick<RootFilterOperators<DocumentShape>, '$comment' | '$jsonSchema' | '$text' | '$where'>
   > & {
+    /** MongoDB aggregation expression; operator and field-path validation is handled by MongoDB. */
+    $expr?: Document;
     $and?: SchemaFilter<DocumentShape, FieldShape>[];
     $nor?: SchemaFilter<DocumentShape, FieldShape>[];
     $or?: SchemaFilter<DocumentShape, FieldShape>[];

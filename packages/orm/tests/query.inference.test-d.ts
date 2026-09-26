@@ -1,5 +1,6 @@
 import { describe, expectTypeOf, it } from 'vitest';
 
+import { ObjectId } from '../src/index.js';
 import type { createDatabase, ModelScopeName, ModelSoftDeleteEnabled } from '../src/index.js';
 import { orm } from '../src/index.js';
 
@@ -7,7 +8,9 @@ describe('query inference', () => {
   const userSchema = orm.schema({
     name: orm.string(),
     role: orm.enum(['admin', 'member']),
+    status: orm.enum(['backlog', 'todo', 'in-progress', 'blocked', 'done']),
     password: orm.string().hidden(),
+    profile: orm.object({ city: orm.string() }),
   });
 
   const registry = orm
@@ -80,5 +83,43 @@ describe('query inference', () => {
       // @ts-expect-error Filters reject undeclared fields.
       unknown: true,
     });
+  });
+
+  it('accepts native MongoDB aggregation expressions in $expr filters', () => {
+    const status = 'todo' as const;
+    const transitionFilter = {
+      $expr: {
+        $in: [
+          '$status',
+          {
+            $switch: {
+              branches: [
+                {
+                  case: { $eq: [{ $literal: status }, 'todo'] },
+                  then: ['backlog', 'in-progress', 'blocked'],
+                },
+                {
+                  case: { $eq: [{ $literal: status }, 'in-progress'] },
+                  then: ['todo', 'blocked', 'done'],
+                },
+                {
+                  case: { $eq: [{ $literal: status }, 'blocked'] },
+                  then: ['todo', 'in-progress'],
+                },
+                {
+                  case: { $eq: [{ $literal: status }, 'done'] },
+                  then: ['in-progress'],
+                },
+              ],
+              default: [],
+            },
+          },
+        ],
+      },
+    };
+    const transitionQuery = users.find(transitionFilter);
+    users.update({ _id: new ObjectId(), ...transitionFilter }, { status });
+
+    expectTypeOf(transitionQuery).not.toBeAny();
   });
 });

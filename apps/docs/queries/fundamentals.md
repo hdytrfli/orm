@@ -71,6 +71,28 @@ const usersWithPublicProfiles = await db.user.find({
 
 Filtering the parent field instead matches the embedded document as a whole, so use dot notation when other nested fields should remain unconstrained.
 
+## Aggregation Expressions in Filters
+
+Use `$expr` when a filter needs to compare fields or calculate a condition. Field references are checked against the schema, including nested paths:
+
+```ts
+const users = await db.user.find({
+  $expr: {
+    $and: [{ $eq: ['$profile.location.city', '$name'] }],
+  },
+});
+```
+
+String constants inside expressions must use `$literal`, so MongoDB does not interpret a value beginning with `$` as a field reference:
+
+```ts
+const admins = await db.user.find({
+  $expr: { $eq: ['$role', { $literal: 'admin' }] },
+});
+```
+
+`$expr` intentionally uses MongoDB's open expression document type rather than a hand-maintained operator list, so newer and less common operators such as `$switch` remain usable. TypeScript does not validate field paths or operator-specific operands inside the expression; MongoDB validates those when the query runs.
+
 ## Empty Filters
 
 An omitted or empty filter matches every document:
