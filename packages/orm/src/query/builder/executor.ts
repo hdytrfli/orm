@@ -99,8 +99,7 @@ export const executeQuery = async <
 >(
   context: QueryExecutionContext<Shape, Relations>,
 ): Promise<Result[]> => {
-  const documents = await createFindCursor(context).toArray();
-  return context.population.apply(documents as unknown as Result[], context.populateSpecs);
+  return executeFindResults<Shape, Result, Relations>(context);
 };
 
 /** Execute a query for its first matching document. */
@@ -111,10 +110,22 @@ export const executeFirst = async <
 >(
   context: QueryExecutionContext<Shape, Relations>,
 ): Promise<Result | null> => {
-  const documents = await createFindCursor(context).limit(1).toArray();
-  const results = documents as unknown as Result[];
-  const populated = await context.population.apply(results, context.populateSpecs);
+  const populated = await executeFindResults<Shape, Result, Relations>(context, 1);
   return populated[0] ?? null;
+};
+
+const executeFindResults = async <
+  Shape extends SchemaShape,
+  Result extends object,
+  Relations extends SchemaRelationMap,
+>(
+  context: QueryExecutionContext<Shape, Relations>,
+  limit?: number,
+): Promise<Result[]> => {
+  let cursor = createFindCursor(context);
+  if (limit !== undefined) cursor = cursor.limit(limit);
+  const documents = (await cursor.toArray()) as unknown as Result[];
+  return context.population.apply(documents, context.populateSpecs);
 };
 
 const createFindCursor = <Shape extends SchemaShape, Relations extends SchemaRelationMap>(

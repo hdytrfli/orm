@@ -1,6 +1,6 @@
 import type { Db } from '../../connection/database.js';
 import type { SchemaRelationMap, SchemaVirtualMap } from '../../relations/definitions.js';
-import { normalizeProjectionFields } from '../projection/runtime.js';
+import { populateProjectionFor } from './projection.js';
 
 export type RuntimePopulateSpec =
   | {
@@ -84,15 +84,13 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
 
       const nestedRelations = target.relationMap as SchemaRelationMap;
       const nestedVirtuals = target.virtualMap as SchemaVirtualMap;
-      const projectionFields = [...(spec.select ?? target.fields)];
-      for (const nested of nestedSpecs) {
-        const nestedRef = 'ref' in nested ? nested.ref : nested.virtual;
-        const nestedMeta = 'ref' in nested ? nestedRelations[nestedRef] : nestedVirtuals[nestedRef];
-        if (nestedMeta) projectionFields.push(nestedMeta.localField);
-      }
-      projectionFields.push(...(spec.show ?? []));
-      const normalizedFields = normalizeProjectionFields([...new Set(projectionFields)]);
-      const projection = Object.fromEntries(normalizedFields.map((field) => [field, 1]));
+      const projection = populateProjectionFor(
+        spec.select ?? target.fields,
+        spec.show,
+        nestedSpecs,
+        nestedRelations,
+        nestedVirtuals,
+      );
       const foreignValue = Array.isArray(localValue) ? { $in: localValue } : localValue;
       const related = await this.db
         .collectionFor(target)
@@ -114,18 +112,14 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
     const hiddenTargetFields = new Set(target.hiddenFields);
     const selectedFields =
       spec.select ?? target.fields.filter((field) => !hiddenTargetFields.has(field));
-    const projectionFields = [...new Set(selectedFields)];
     const nestedSpecs = spec.populate ?? [];
-    for (const nested of nestedSpecs) {
-      const nestedRef = 'ref' in nested ? nested.ref : nested.virtual;
-      const nestedMeta =
-        'ref' in nested ? targetRelations[nestedRef] : target.virtualMap[nestedRef];
-      if (nestedMeta) projectionFields.push(nestedMeta.localField);
-    }
-    projectionFields.push(...(spec.show ?? []));
-
-    const normalizedFields = normalizeProjectionFields(projectionFields);
-    const projection = Object.fromEntries(normalizedFields.map((field) => [field, 1]));
+    const projection = populateProjectionFor(
+      selectedFields,
+      spec.show,
+      nestedSpecs,
+      targetRelations,
+      target.virtualMap as SchemaVirtualMap,
+    );
     const related = value
       ? await this.db
           .collectionFor(target)
