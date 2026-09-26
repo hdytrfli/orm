@@ -29,7 +29,12 @@ import {
   type AggregatePipeline,
   type ModelAggregateOptions,
 } from './aggregate.js';
-import { prepareDocument } from './document.js';
+import {
+  prepareDocument,
+  prepareSoftDeletePatch,
+  prepareUpdatePatch,
+  splitUpsertDocument,
+} from './document.js';
 import { createModelFeatures, type ModelFeaturesOf } from './features.js';
 import { applySoftDeleteFilter } from './soft-delete.js';
 import type {
@@ -190,12 +195,7 @@ export class Model<
     filter: ModelFilter<Shape>,
     patch: UpdateInput<Shape, Options>,
   ): Promise<ModelResult<Shape, Relations, Scopes, Options> | null> {
-    const parsedPatch = this.schema.parsePartial(patch) as Record<string, unknown>;
-    const managedFields = new Set(['createdAt', 'updatedAt', 'deletedAt']);
-    for (const field of managedFields) {
-      delete parsedPatch[field];
-    }
-    if (this.schema.optionsConfig.timestamps) parsedPatch.updatedAt = new Date();
+    const parsedPatch = prepareUpdatePatch(this.schema, patch);
     return (await this.collection.findOneAndUpdate(
       this.activeFilter(filter) as MongoFilter<StoredDocument<Shape>>,
       { $set: parsedPatch } as unknown as UpdateFilter<StoredDocument<Shape>>,
@@ -213,20 +213,15 @@ export class Model<
       { ...filter, ...data } as CreateInput<Shape, Options>,
       false,
     );
-    const insert: Record<string, unknown> = {};
-    if (this.schema.optionsConfig.timestamps) insert.createdAt = document.createdAt;
-    if (hasSoftDelete(this.schema.optionsConfig)) insert.deletedAt = document.deletedAt;
-    if (this.schema.optionsConfig.timestamps) delete document.createdAt;
-    if (hasSoftDelete(this.schema.optionsConfig)) delete document.deletedAt;
-    for (const field of Object.keys(filter)) delete document[field];
+    const { set, setOnInsert } = splitUpsertDocument(this.schema, document, filter);
 
     return (await this.collection.findOneAndUpdate(
       this.activeFilter(filter as unknown as ModelFilter<Shape>) as MongoFilter<
         StoredDocument<Shape>
       >,
       {
-        $set: document,
-        $setOnInsert: insert,
+        $set: set,
+        $setOnInsert: setOnInsert,
       } as unknown as UpdateFilter<StoredDocument<Shape>>,
       { returnDocument: 'after', upsert: true },
     )) as unknown as ModelResult<Shape, Relations, Scopes, Options>;
@@ -241,8 +236,7 @@ export class Model<
         'Cannot restore documents because soft deletion is disabled. Enable it with schema.options({ softdelete: true }).',
       );
     }
-    const patch: Record<string, unknown> = { deletedAt: null };
-    if (this.schema.optionsConfig.timestamps) patch.updatedAt = new Date();
+    const patch = prepareSoftDeletePatch(this.schema, null);
     return (await this.collection.findOneAndUpdate(
       applySoftDeleteFilter(filter, 'deleted') as MongoFilter<StoredDocument<Shape>>,
       { $set: patch } as UpdateFilter<StoredDocument<Shape>>,
@@ -261,8 +255,7 @@ export class Model<
       return this.collection.deleteMany(filter as MongoFilter<StoredDocument<Shape>>);
     }
 
-    const patch: Record<string, unknown> = { deletedAt: new Date() };
-    if (this.schema.optionsConfig.timestamps) patch.updatedAt = new Date();
+    const patch = prepareSoftDeletePatch(this.schema, new Date());
     const result = await this.collection.updateMany(
       applySoftDeleteFilter(filter, 'active') as MongoFilter<StoredDocument<Shape>>,
       { $set: patch } as UpdateFilter<StoredDocument<Shape>>,
