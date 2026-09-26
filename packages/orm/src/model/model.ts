@@ -24,11 +24,8 @@ import type {
   ScopeDefinitions,
 } from '../schema/index.js';
 import { SchemaConfigurationError } from '../validation/errors.js';
-import {
-  prepareAggregatePipeline,
-  type AggregatePipeline,
-  type ModelAggregateOptions,
-} from './aggregate.js';
+import { prepareAggregatePipeline } from './aggregate-runtime.js';
+import { type AggregatePipeline, type ModelAggregateOptions } from './aggregate.js';
 import {
   prepareDocument,
   prepareSoftDeletePatch,
