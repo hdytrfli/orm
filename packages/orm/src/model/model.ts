@@ -76,35 +76,36 @@ export class Model<
     private readonly schema: Schema<Shape, Relations, Scopes, Options, Indexes, Virtuals>,
   ) {
     this.features = createModelFeatures(schema);
-    Object.defineProperty(this, 'bulk', {
-      configurable: false,
-      enumerable: false,
-      value: {
-        create: (inputs: readonly CreateInput<Shape, Options>[]) => this.bulkCreate(inputs),
+    const descriptors: PropertyDescriptorMap = {
+      bulk: {
+        configurable: false,
+        enumerable: false,
+        value: {
+          create: (inputs: readonly CreateInput<Shape, Options>[]) => this.bulkCreate(inputs),
+        },
       },
-    });
-    Object.defineProperty(this, 'index', {
-      configurable: false,
-      enumerable: false,
-      value: {
-        drop: (names: readonly IndexNames<Indexes>[]) => this.dropIndexes(names),
-        purge: () => this.collection.dropIndexes(),
+      index: {
+        configurable: false,
+        enumerable: false,
+        value: {
+          drop: (names: readonly IndexNames<Indexes>[]) => this.dropIndexes(names),
+          purge: () => this.collection.dropIndexes(),
+        },
       },
-    });
+    };
     if (hasSoftDelete(schema.optionsConfig)) {
-      Object.defineProperties(this, {
-        restore: {
-          configurable: false,
-          enumerable: false,
-          value: (filter: ModelFilter<Shape>) => this.restoreDocument(filter),
-        },
-        purge: {
-          configurable: false,
-          enumerable: false,
-          value: (filter: ModelFilter<Shape>) => this.purgeDocuments(filter),
-        },
-      });
+      descriptors.restore = {
+        configurable: false,
+        enumerable: false,
+        value: (filter: ModelFilter<Shape>) => this.restoreDocument(filter),
+      };
+      descriptors.purge = {
+        configurable: false,
+        enumerable: false,
+        value: (filter: ModelFilter<Shape>) => this.purgeDocuments(filter),
+      };
     }
+    Object.defineProperties(this, descriptors);
   }
 
   private get collection(): Collection<StoredDocument<Shape>> {
