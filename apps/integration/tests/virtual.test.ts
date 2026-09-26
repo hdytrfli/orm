@@ -143,6 +143,42 @@ describe('virtual population integration scenarios', () => {
     expect(firstProject).not.toHaveProperty('internalNotes');
   });
 
+  it('omits hidden virtual fields by default and includes them when shown', async () => {
+    const research = await createDepartment('Research');
+    const person = await createPerson('Ada Lovelace', research._id);
+
+    await projects.create({
+      company: new ObjectId(),
+      key: 'ADA-HIDDEN-FIELDS',
+      owner: person._id,
+      department: research._id,
+      title: 'Hidden field behavior',
+      status: 'active',
+      internalNotes: 'Only visible when explicitly shown',
+    });
+
+    const defaultResult = await people
+      .find({ _id: person._id })
+      .populate([{ virtual: 'projects' }])
+      .first();
+
+    const [defaultProject] = defaultResult?.projects ?? [];
+
+    expect(defaultProject?.title).toBe('Hidden field behavior');
+    expect(defaultProject).not.toHaveProperty('internalNotes');
+
+    const shownResult = await people
+      .find({ _id: person._id })
+      .populate([{ virtual: 'projects', select: ['title'], show: ['internalNotes'] }])
+      .first();
+
+    const [shownProject] = shownResult?.projects ?? [];
+
+    expect(shownProject?.title).toBe('Hidden field behavior');
+    expect(shownProject?.internalNotes).toBe('Only visible when explicitly shown');
+    expect(shownProject).not.toHaveProperty('status');
+  });
+
   it('negative: returns an empty array when the person has no projects', async () => {
     const research = await createDepartment('Research');
     const person = await createPerson('Alan Turing', research._id);

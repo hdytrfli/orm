@@ -55,8 +55,14 @@ export const registry = orm
         { ref: 'owner', select: ['firstName', 'lastName', 'email', 'jobTitle'] },
         {
           virtual: 'tasks',
+          show: ['updatedAt'],
           select: ['title', 'description', 'status', 'priority', 'dueAt', 'estimateMinutes'],
-          populate: [{ ref: 'assignee', select: ['firstName', 'lastName', 'email'] }],
+          populate: [
+            {
+              ref: 'assignee',
+              select: ['firstName', 'lastName', 'email'],
+            },
+          ],
         },
       ],
     },
@@ -69,7 +75,12 @@ export const registry = orm
         {
           ref: 'project',
           select: ['key', 'name', 'status', 'description', 'targetAt'],
-          populate: [{ ref: 'owner', select: ['firstName', 'lastName', 'email'] }],
+          populate: [
+            {
+              ref: 'owner',
+              select: ['firstName', 'lastName', 'email'],
+            },
+          ],
         },
         { ref: 'reporter', select: ['firstName', 'lastName', 'email'] },
         { ref: 'assignee', select: ['firstName', 'lastName', 'email', 'jobTitle'] },
