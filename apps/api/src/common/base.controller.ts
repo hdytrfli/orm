@@ -1,18 +1,15 @@
-import type { AnyModel, CrudSchemaOf } from '@mongorm/orm';
+import type { AnyModel, ZodSchemaOf } from '@mongorm/orm';
 
 import type { BaseService } from '@/common/base.service';
 import type { ApiHandler } from '@/libraries/response';
 import { paramsSchema } from '@/libraries/schemas';
 import { paginationSchema } from '@/libraries/schemas';
 
-export class BaseController<
-  Model extends AnyModel,
-  Service extends BaseService<Model> = BaseService<Model>,
-> {
+export class BaseController<Model extends AnyModel, Service extends BaseService<Model>> {
   protected readonly service: Service;
-  private readonly schema: CrudSchemaOf<Model>;
+  private readonly schema: ZodSchemaOf<Model>;
 
-  constructor({ service, schema }: { service: Service; schema: CrudSchemaOf<Model> }) {
+  constructor({ service, schema }: { service: Service; schema: ZodSchemaOf<Model> }) {
     this.service = service;
     this.schema = schema;
   }

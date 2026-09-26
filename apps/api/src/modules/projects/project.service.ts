@@ -6,7 +6,7 @@ export class ProjectService extends BaseService<typeof db.projects> {
     super({
       name: 'Project',
       model: db.projects,
-      softDelete: db.projects.features.softDelete,
+      softdelete: db.projects.features.softdelete,
       scopes: {
         list: 'list',
         detail: 'detail',

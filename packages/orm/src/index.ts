@@ -41,7 +41,6 @@ export { Model } from './model/model.js';
 export type {
   AnyModel,
   CreateInputOf,
-  CrudSchemaOf,
   FilterOf,
   IndexesOf,
   ModelScopeName,
@@ -53,6 +52,7 @@ export type {
   ShapeOf,
   UpdateInputOf,
   VirtualsOf,
+  ZodSchemaOf,
 } from './model/model.js';
 export type { CreateInput, UpdateInput } from './model/types.js';
 export type {

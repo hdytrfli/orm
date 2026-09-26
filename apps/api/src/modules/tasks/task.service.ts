@@ -12,7 +12,7 @@ export class TaskService extends BaseService<typeof db.tasks> {
     super({
       name: 'Task',
       model: db.tasks,
-      softDelete: db.tasks.features.softDelete,
+      softdelete: db.tasks.features.softdelete,
       scopes: {
         list: 'list',
         detail: 'detail',

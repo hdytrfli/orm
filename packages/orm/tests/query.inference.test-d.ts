@@ -22,14 +22,14 @@ describe('query inference', () => {
     const scopeNames = expectTypeOf<UserScope>();
     const softDeleteSupport = expectTypeOf<SupportsSoftDelete>();
     const availableScopes: readonly UserScope[] = users.features.scopes;
-    const softDeleteEnabled: false = users.features.softDelete;
+    const softDeleteEnabled: false = users.features.softdelete;
     const softDeleteSchema = orm.schema({ name: orm.string() }).options({ softdelete: true });
     const softDeleteDatabase = {} as ReturnType<
       typeof createDatabase<{ users: typeof softDeleteSchema }>
     >;
     type SoftDeletedModel = typeof softDeleteDatabase.users;
     type SoftDeleted = ModelSoftDeleteEnabled<SoftDeletedModel>;
-    const softDeleteModelFeature: true = softDeleteDatabase.users.features.softDelete;
+    const softDeleteModelFeature: true = softDeleteDatabase.users.features.softdelete;
     const softDeletedType = expectTypeOf<SoftDeleted>();
 
     void availableScopes;

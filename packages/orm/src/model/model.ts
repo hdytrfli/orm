@@ -56,8 +56,12 @@ export class Model<
   Virtuals extends SchemaVirtualMap = {},
 > {
   readonly features: {
-    readonly softDelete: SoftDeleteEnabled<Options>;
+    readonly timestamps: Options['timestamps'] extends true ? true : false;
+    readonly softdelete: SoftDeleteEnabled<Options>;
+    readonly relations: readonly Extract<keyof Relations, string>[];
     readonly scopes: readonly Extract<keyof Scopes, string>[];
+    readonly virtuals: readonly Extract<keyof Virtuals, string>[];
+    readonly indexes: readonly Indexes[number][];
   };
   declare readonly index: IndexManager<Indexes>;
   declare readonly bulk: {
@@ -79,8 +83,16 @@ export class Model<
     private readonly schema: Schema<Shape, Relations, Scopes, Options, Indexes, Virtuals>,
   ) {
     this.features = Object.freeze({
-      softDelete: hasSoftDelete(schema.optionsConfig) as SoftDeleteEnabled<Options>,
+      timestamps: (schema.optionsConfig.timestamps === true) as Options['timestamps'] extends true
+        ? true
+        : false,
+      softdelete: hasSoftDelete(schema.optionsConfig) as SoftDeleteEnabled<Options>,
+      relations: Object.freeze(
+        Object.keys(schema.relationMap) as Extract<keyof Relations, string>[],
+      ),
       scopes: Object.freeze(Object.keys(schema.scopeMap) as Extract<keyof Scopes, string>[]),
+      virtuals: Object.freeze(Object.keys(schema.virtualMap) as Extract<keyof Virtuals, string>[]),
+      indexes: Object.freeze([...schema.indexDefinitions]) as readonly Indexes[number][],
     });
     Object.defineProperty(this, 'bulk', {
       configurable: false,
@@ -315,7 +327,7 @@ export type CreateInputOf<T> = CreateInput<ShapeOf<T>, OptionsOf<T>>;
 /** An update input derived from a model. */
 export type UpdateInputOf<T> = UpdateInput<ShapeOf<T>, OptionsOf<T>>;
 /** A model's create schema with a matching partial-update schema operation. */
-export type CrudSchemaOf<T extends AnyModel> = ZodType<CreateInputOf<T>> & {
+export type ZodSchemaOf<T extends AnyModel> = ZodType<CreateInputOf<T>> & {
   partial: () => ZodType<UpdateInputOf<T>>;
 };
 /** Valid population instructions derived from a model's relations and virtuals. */

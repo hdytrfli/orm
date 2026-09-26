@@ -13,24 +13,24 @@ export interface ServiceScopes<TModel extends AnyModel> {
 export class BaseService<TModel extends AnyModel> {
   private readonly name: string;
   protected readonly model: TModel;
-  private readonly softDelete: boolean;
+  private readonly softdelete: boolean;
   private readonly scopes: ServiceScopes<TModel>;
 
   constructor({
     name,
     model,
     scopes,
-    softDelete,
+    softdelete,
   }: {
     name: string;
     model: TModel;
     scopes: ServiceScopes<TModel>;
-    softDelete: boolean;
+    softdelete: boolean;
   }) {
     this.name = name;
     this.model = model;
     this.scopes = scopes;
-    this.softDelete = softDelete;
+    this.softdelete = softdelete;
   }
 
   async list(options: z.infer<typeof paginationSchema>, filter: FilterOf<TModel> = {}) {
@@ -69,7 +69,7 @@ export class BaseService<TModel extends AnyModel> {
   }
 
   async restoreById(id: ObjectId) {
-    if (!this.softDelete) throw new ConflictError(this.name + ' does not support soft deletion');
+    if (!this.softdelete) throw new ConflictError(this.name + ' does not support soft deletion');
     const restored = await this.model.restoreById(id);
     if (!restored) throw new NotFoundError(this.name);
     return restored;

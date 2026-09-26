@@ -6,7 +6,7 @@ export class UserService extends BaseService<typeof db.users> {
     super({
       name: 'User',
       model: db.users,
-      softDelete: db.users.features.softDelete,
+      softdelete: db.users.features.softdelete,
       scopes: {
         list: 'list',
         detail: 'detail',
