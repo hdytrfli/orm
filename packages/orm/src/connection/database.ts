@@ -127,9 +127,10 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
     const synchronized: Record<string, string[]> = {};
     for (const [schema, name] of this.schemaCollections) {
       const definitions = (schema.indexDefinitions ?? []) as readonly SchemaIndex<any>[];
-      if (options.dropIndexes) await this.collectionFor(schema).dropIndexes();
+      const collection = this.collectionFor(schema);
+      if (options.dropIndexes) await collection.dropIndexes();
       synchronized[name] = definitions.length
-        ? await this.collectionFor(schema).createIndexes(
+        ? await collection.createIndexes(
             definitions.map(({ fields, options: indexOptions }) => ({
               ...(indexOptions as object),
               key: fields,
