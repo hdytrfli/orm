@@ -7,17 +7,11 @@ import {
   type ObjectId,
   type UpdateFilter,
 } from 'mongodb';
-import type { ZodType } from 'zod';
 
 import type { Db } from '../connection/database.js';
 import { createAggregateQuery, type AggregateQuery } from '../query/aggregate/query.js';
 import { ModelQuery } from '../query/index.js';
-import type {
-  ModelFilter,
-  PopulateSpecs,
-  StoredDocument,
-  VisibleDocument,
-} from '../query/index.js';
+import type { ModelFilter, StoredDocument, VisibleDocument } from '../query/index.js';
 import { hasSoftDelete } from '../schema/index.js';
 import type {
   Schema,
@@ -36,6 +30,7 @@ import {
   type ModelAggregateOptions,
 } from './aggregate.js';
 import { prepareDocument } from './document.js';
+import { createModelFeatures, type ModelFeaturesOf } from './features.js';
 import { applySoftDeleteFilter } from './soft-delete.js';
 import type {
   CreateInput,
@@ -55,14 +50,7 @@ export class Model<
   Indexes extends readonly SchemaIndex<any>[] = [],
   Virtuals extends SchemaVirtualMap = {},
 > {
-  readonly features: {
-    readonly timestamps: Options['timestamps'] extends true ? true : false;
-    readonly softdelete: SoftDeleteEnabled<Options>;
-    readonly relations: readonly Extract<keyof Relations, string>[];
-    readonly scopes: readonly Extract<keyof Scopes, string>[];
-    readonly virtuals: readonly Extract<keyof Virtuals, string>[];
-    readonly indexes: readonly Indexes[number][];
-  };
+  readonly features: ModelFeaturesOf<Schema<Shape, Relations, Scopes, Options, Indexes, Virtuals>>;
   declare readonly index: IndexManager<Indexes>;
   declare readonly bulk: {
     create: (
@@ -82,18 +70,7 @@ export class Model<
     readonly name: string,
     private readonly schema: Schema<Shape, Relations, Scopes, Options, Indexes, Virtuals>,
   ) {
-    this.features = Object.freeze({
-      timestamps: (schema.optionsConfig.timestamps === true) as Options['timestamps'] extends true
-        ? true
-        : false,
-      softdelete: hasSoftDelete(schema.optionsConfig) as SoftDeleteEnabled<Options>,
-      relations: Object.freeze(
-        Object.keys(schema.relationMap) as Extract<keyof Relations, string>[],
-      ),
-      scopes: Object.freeze(Object.keys(schema.scopeMap) as Extract<keyof Scopes, string>[]),
-      virtuals: Object.freeze(Object.keys(schema.virtualMap) as Extract<keyof Virtuals, string>[]),
-      indexes: Object.freeze([...schema.indexDefinitions]) as readonly Indexes[number][],
-    });
+    this.features = createModelFeatures(schema);
     Object.defineProperty(this, 'bulk', {
       configurable: false,
       enumerable: false,
@@ -301,38 +278,3 @@ export class Model<
     return this.collection.deleteMany(filter as MongoFilter<StoredDocument<Shape>>);
   }
 }
-
-/** Extract the schema shape registered on a Mongorm model. */
-export type AnyModel = Model<any, any, any, any, any, any>;
-
-export type ShapeOf<T> = T extends Model<infer Shape, any, any, any, any, any> ? Shape : never;
-/** Extract the relation map registered on a Mongorm model. */
-export type RelationsOf<T> =
-  T extends Model<any, infer Relations, any, any, any, any> ? Relations : never;
-/** Extract the scope map registered on a Mongorm model. */
-export type ScopesOf<T> = T extends Model<any, any, infer Scopes, any, any, any> ? Scopes : never;
-/** Extract the schema options registered on a Mongorm model. */
-export type OptionsOf<T> =
-  T extends Model<any, any, any, infer Options, any, any> ? Options : never;
-/** Extract the indexes registered on a Mongorm model. */
-export type IndexesOf<T> =
-  T extends Model<any, any, any, any, infer Indexes, any> ? Indexes : never;
-/** Extract the virtual map registered on a Mongorm model. */
-export type VirtualsOf<T> =
-  T extends Model<any, any, any, any, any, infer Virtuals> ? Virtuals : never;
-/** A schema filter type derived from a model. */
-export type FilterOf<T> = ModelFilter<ShapeOf<T>>;
-/** A create input derived from a model. */
-export type CreateInputOf<T> = CreateInput<ShapeOf<T>, OptionsOf<T>>;
-/** An update input derived from a model. */
-export type UpdateInputOf<T> = UpdateInput<ShapeOf<T>, OptionsOf<T>>;
-/** A model's create schema with a matching partial-update schema operation. */
-export type ZodSchemaOf<T extends AnyModel> = ZodType<CreateInputOf<T>> & {
-  partial: () => ZodType<UpdateInputOf<T>>;
-};
-/** Valid population instructions derived from a model's relations and virtuals. */
-export type PopulateOf<T> = PopulateSpecs<RelationsOf<T>, VirtualsOf<T>>;
-/** The names of registry-defined scopes available on a model type. */
-export type ModelScopeName<T> = Extract<keyof ScopesOf<T>, string>;
-/** Whether a model type supports soft deletion. */
-export type ModelSoftDeleteEnabled<T> = SoftDeleteEnabled<OptionsOf<T>>;

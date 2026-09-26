@@ -53,7 +53,7 @@ export type {
   UpdateInputOf,
   VirtualsOf,
   ZodSchemaOf,
-} from './model/model.js';
+} from './model/extractors.js';
 export type { CreateInput, UpdateInput } from './model/types.js';
 export type {
   AggregatePipeline,
