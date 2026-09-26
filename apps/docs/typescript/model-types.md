@@ -1,0 +1,91 @@
+---
+order: 2
+---
+
+# Model-Derived Types
+
+Mongorm exports type helpers for cases where a type needs to be named or passed across a generic boundary. Each helper takes a registered model type, typically `typeof db.user`. These are compile-time types; they do not create runtime values or replace schema validation.
+
+```ts
+import type { CreateInputOf, FilterOf, PopulateOf, ShapeOf, UpdateInputOf } from '@mongorm/orm';
+
+type UserShape = ShapeOf<typeof db.user>;
+type NewUser = CreateInputOf<typeof db.user>;
+type UserUpdate = UpdateInputOf<typeof db.user>;
+type UserFilter = FilterOf<typeof db.user>;
+type UserPopulation = PopulateOf<typeof db.user>;
+```
+
+## Schema and operation types
+
+| Helper                 | Derived type                                                                                                           |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `AnyModel`             | Any Mongorm `Model` type; useful as a generic constraint.                                                              |
+| `ShapeOf<Model>`       | The field shape registered on the model.                                                                               |
+| `CreateInputOf<Model>` | The validated input accepted by that model's `create()`.                                                               |
+| `UpdateInputOf<Model>` | The partial update input accepted by that model's update operation.                                                    |
+| `FilterOf<Model>`      | A schema-aware MongoDB filter for the model, including a direct `_id: ObjectId` lookup form.                           |
+| `ZodSchemaOf<Model>`   | A Zod schema compatible with the model's create input and with a `.partial()` schema compatible with its update input. |
+
+Create and update inputs account for the model's schema options. For example, managed fields and generated `_id` are not ordinary caller-supplied create fields. Prefer these helpers over manually rebuilding input types from the schema shape.
+
+`ZodSchemaOf` is useful when an abstraction accepts one schema and uses it for both create and partial-update validation:
+
+```ts
+import type { AnyModel, ZodSchemaOf } from '@mongorm/orm';
+
+function registerCrudSchema<Model extends AnyModel>(schema: ZodSchemaOf<Model>) {
+  const createValidator = schema;
+  const updateValidator = schema.partial();
+  return { createValidator, updateValidator };
+}
+```
+
+The model type is explicit in that generic example. In regular application code, use the concrete schema directly and let TypeScript infer inputs from the model methods.
+
+## Relations, scopes, and population
+
+| Helper                  | Derived type                                                            |
+| ----------------------- | ----------------------------------------------------------------------- |
+| `RelationsOf<Model>`    | The model's declared relation map.                                      |
+| `VirtualsOf<Model>`     | The model's declared virtual-relation map.                              |
+| `ScopesOf<Model>`       | The model's named population scopes.                                    |
+| `PopulateOf<Model>`     | Valid population specifications for the model's relations and virtuals. |
+| `ModelScopeName<Model>` | The string names of scopes available on the model.                      |
+
+For example, a reusable helper can accept only population specifications valid for its model:
+
+```ts
+import type { PopulateOf } from '@mongorm/orm';
+
+function loadUsers(populate: PopulateOf<typeof db.user>) {
+  return db.user.find({}).populate(populate);
+}
+```
+
+These types describe declared capabilities. Relations and scopes are still loaded only when a query explicitly calls `.populate()` or `.with()`.
+
+## Schema configuration and results
+
+| Helper                          | Derived type                                                                       |
+| ------------------------------- | ---------------------------------------------------------------------------------- |
+| `OptionsOf<Model>`              | The model's schema options, including managed-field and soft-delete configuration. |
+| `IndexesOf<Model>`              | The index definitions registered on the model.                                     |
+| `ModelSoftDeleteEnabled<Model>` | Whether the model's schema enables soft deletion.                                  |
+| `ModelFilter<Shape>`            | A schema-aware MongoDB filter parameterized by a schema shape.                     |
+| `ModelSort<Shape>`              | Sort fields and directions supported by the model shape.                           |
+| `SelectedDocument<...>`         | A selected query-result shape.                                                     |
+| `VisibleDocument<...>`          | The model's default visible query-result shape.                                    |
+| `StoredDocument<...>`           | The document shape stored in MongoDB, including managed fields.                    |
+| `PopulatedResult<...>`          | A result shape after population instructions are applied.                          |
+
+Result helpers have more type parameters because they represent intermediate query states. Most consumers should use the type inferred from a query rather than naming these types manually. See [Typed Query Composition](/typescript/query-types) for how selection and population affect inferred results.
+
+## Choosing the right helper
+
+- Use `CreateInputOf<Model>` or `UpdateInputOf<Model>` when a function accepts model operation input.
+- Use `FilterOf<Model>` when a reusable function accepts filters for one model.
+- Use `PopulateOf<Model>` when a function accepts relation-loading instructions.
+- Use `ShapeOf<Model>` and the relation/scope extractors when building generic libraries around model metadata.
+- Prefer inferred query results for ordinary reads; avoid widening them to `VisibleDocument` or another broad type unless a shared API truly needs that abstraction.
+- For runtime schema capability metadata, see [`Model.features`](/reference/models#model-features).

@@ -35,6 +35,25 @@ Native operations bypass Mongorm's model-level validation, default projections, 
 
 Creates a model bound to a collection name and schema. Registered schemas are normally accessed through generated model properties instead.
 
+## `Model.features`
+
+Every model exposes a frozen `features` object describing capabilities and declarations from its schema:
+
+```ts
+const features = db.users.features;
+
+features.timestamps; // whether managed timestamps are enabled
+features.softdelete; // whether soft deletion is enabled
+features.relations; // declared relation names
+features.scopes; // declared population scope names
+features.virtuals; // declared virtual relation names
+features.indexes; // declared index definitions
+```
+
+The flags are `true` or `false`. The names in `relations`, `scopes`, and `virtuals` preserve their schema-derived literal types. `indexes` contains the declared index definitions, including definitions without an explicit name. These values describe schema configuration; they do not connect to MongoDB or report which indexes currently exist in the database.
+
+Use `features.indexes` to inspect declared index metadata (`fields` and optional MongoDB index options). Use `model.index.drop()` and `model.index.purge()` to perform index operations. See [Schema Indexes](/schemas/indexes) for declaration and synchronization details.
+
 ## `Model.create(input)`
 
 Parses a complete input, generates `_id`, inserts one document, and returns the created document.
