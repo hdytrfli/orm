@@ -1,6 +1,6 @@
 import { describe, expectTypeOf, it } from 'vitest';
 
-import type { createDatabase } from '../src/index.js';
+import type { createDatabase, ModelScopeName, ModelSoftDeleteEnabled } from '../src/index.js';
 import { orm } from '../src/index.js';
 
 describe('query inference', () => {
@@ -10,12 +10,35 @@ describe('query inference', () => {
     password: orm.string().hidden(),
   });
 
-  const database = {} as ReturnType<
-    typeof createDatabase<{
-      users: typeof userSchema;
-    }>
-  >;
+  const registry = orm
+    .defineSchemas({ users: userSchema })
+    .defineScopes({ users: { list: [], detail: [] } });
+  const database = {} as ReturnType<typeof createDatabase<typeof registry>>;
   const users = database.users;
+
+  it('exposes scope names and soft-delete support through model features', () => {
+    type UserScope = ModelScopeName<typeof users>;
+    type SupportsSoftDelete = ModelSoftDeleteEnabled<typeof users>;
+    const scopeNames = expectTypeOf<UserScope>();
+    const softDeleteSupport = expectTypeOf<SupportsSoftDelete>();
+    const availableScopes: readonly UserScope[] = users.features.scopes;
+    const softDeleteEnabled: false = users.features.softDelete;
+    const softDeleteSchema = orm.schema({ name: orm.string() }).options({ softdelete: true });
+    const softDeleteDatabase = {} as ReturnType<
+      typeof createDatabase<{ users: typeof softDeleteSchema }>
+    >;
+    type SoftDeletedModel = typeof softDeleteDatabase.users;
+    type SoftDeleted = ModelSoftDeleteEnabled<SoftDeletedModel>;
+    const softDeleteModelFeature: true = softDeleteDatabase.users.features.softDelete;
+    const softDeletedType = expectTypeOf<SoftDeleted>();
+
+    void availableScopes;
+    void softDeleteEnabled;
+    void softDeleteModelFeature;
+    scopeNames.toEqualTypeOf<'list' | 'detail'>();
+    softDeleteSupport.toEqualTypeOf<false>();
+    softDeletedType.toEqualTypeOf<true>();
+  });
 
   it('narrows result fields to the selected fields', async () => {
     const selectedUsers = await users.find().select(['name']);

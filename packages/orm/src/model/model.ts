@@ -48,6 +48,10 @@ export class Model<
   Indexes extends readonly SchemaIndex<any>[] = [],
   Virtuals extends SchemaVirtualMap = {},
 > {
+  readonly features: {
+    readonly softDelete: SoftDeleteEnabled<Options>;
+    readonly scopes: readonly Extract<keyof Scopes, string>[];
+  };
   declare readonly index: IndexManager<Indexes>;
   declare readonly bulk: {
     create: (
@@ -67,6 +71,10 @@ export class Model<
     readonly name: string,
     private readonly schema: Schema<Shape, Relations, Scopes, Options, Indexes, Virtuals>,
   ) {
+    this.features = Object.freeze({
+      softDelete: hasSoftDelete(schema.optionsConfig) as SoftDeleteEnabled<Options>,
+      scopes: Object.freeze(Object.keys(schema.scopeMap) as Extract<keyof Scopes, string>[]),
+    });
     Object.defineProperty(this, 'bulk', {
       configurable: false,
       enumerable: false,
@@ -269,3 +277,15 @@ export class Model<
     return this.collection.deleteMany(filter as MongoFilter<StoredDocument<Shape>>);
   }
 }
+
+/** The names of registry-defined scopes available on a model type. */
+export type ModelScopeName<ModelType> =
+  ModelType extends Model<any, any, infer Scopes, any, any, any>
+    ? Extract<keyof Scopes, string>
+    : never;
+
+/** Whether a model type supports soft deletion. */
+export type ModelSoftDeleteEnabled<ModelType> =
+  ModelType extends Model<any, any, any, infer Options, any, any>
+    ? SoftDeleteEnabled<Options>
+    : never;

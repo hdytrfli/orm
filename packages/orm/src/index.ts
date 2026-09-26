@@ -38,6 +38,7 @@ export {
 } from './validation/errors.js';
 export type { OrmErrorCode } from './validation/errors.js';
 export { Model } from './model/model.js';
+export type { ModelScopeName, ModelSoftDeleteEnabled } from './model/model.js';
 export type {
   AggregatePipeline,
   AggregateStage,
