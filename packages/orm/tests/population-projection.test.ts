@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { populateProjectionFor } from '../src/query/population/projection.js';
+import {
+  populateProjectionFor,
+  selectedPopulationFields,
+} from '../src/query/population/projection.js';
 import type { SchemaRelationMap, SchemaVirtualMap } from '../src/relations/definitions.js';
 
 describe('population projections', () => {
@@ -11,6 +14,13 @@ describe('population projections', () => {
   const virtuals = {
     projects: { localField: '_id' },
   } as unknown as SchemaVirtualMap;
+
+  it('omits hidden fields by default but honors explicit selections', () => {
+    expect(selectedPopulationFields(['name', 'password'], ['password'])).toEqual(['name']);
+    expect(selectedPopulationFields(['name', 'password'], ['password'], ['name'])).toEqual([
+      'name',
+    ]);
+  });
 
   it('includes selected fields, nested relation keys, and shown fields', () => {
     const projection = populateProjectionFor(
