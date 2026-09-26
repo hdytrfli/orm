@@ -12,7 +12,7 @@ describe('population projections', () => {
     group: { localField: 'profile.groupId' },
   } as unknown as SchemaRelationMap;
   const virtuals = {
-    projects: { localField: '_id' },
+    projects: { local: '_id' },
   } as unknown as SchemaVirtualMap;
 
   it('omits hidden fields by default but honors explicit selections', () => {

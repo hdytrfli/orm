@@ -17,7 +17,12 @@ const schemas = orm
   .defineRelations({ entries: { owner: 'owners' } })
   .defineVirtual({
     owners: {
-      entries: { ref: 'entries', localField: '_id', foreignField: 'owner' },
+      entries: {
+        ref: 'entries',
+        local: '_id',
+        foreign: 'owner',
+        type: 'many',
+      },
     },
   })
   .defineScopes({ entries: { detail: [{ ref: 'owner', select: ['name'] }] } });

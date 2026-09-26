@@ -12,6 +12,7 @@ export type { SelectableKey, SelectedDocument } from './types/selection.js';
 export type {
   PopulateSpec,
   PopulateSpecs,
+  ValidatePopulateSpecs,
   PopulatedResult,
   PopulationMode,
   ScopeName,

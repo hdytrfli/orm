@@ -26,8 +26,9 @@ const schemas = orm
       company: orm.objectId(),
       key: orm.string(),
       owner: orm.objectId(),
-      department: orm.objectId().optional(),
       title: orm.string(),
+      score: orm.number().optional(),
+      department: orm.objectId().optional(),
       status: orm.enum(['active', 'complete']),
       internalNotes: orm.string().hidden(),
     }),
@@ -46,13 +47,69 @@ const schemas = orm
     people: {
       projects: {
         ref: 'projects',
-        localField: '_id',
-        foreignField: 'owner',
+        local: '_id',
+        foreign: 'owner',
+        type: 'many',
+        select: ['title', 'status'],
       },
       departmentProjects: {
         ref: 'projects',
-        localField: 'profile.department',
-        foreignField: 'department',
+        local: 'profile.department',
+        foreign: 'department',
+        type: 'many',
+        select: ['title'],
+      },
+      activeProjects: {
+        ref: 'projects',
+        local: '_id',
+        foreign: 'owner',
+        type: 'many',
+        match: { status: 'active' },
+        select: ['title'],
+      },
+      projectsWithNotes: {
+        ref: 'projects',
+        local: '_id',
+        foreign: 'owner',
+        type: 'many',
+        select: ['title'],
+        show: ['internalNotes'],
+      },
+      projectCount: {
+        ref: 'projects',
+        local: '_id',
+        foreign: 'owner',
+        type: 'many',
+        aggregate: { field: 'score', type: 'count' },
+      },
+      totalScore: {
+        ref: 'projects',
+        local: '_id',
+        foreign: 'owner',
+        type: 'many',
+        aggregate: { field: 'score', type: 'sum' },
+      },
+      averageScore: {
+        ref: 'projects',
+        local: '_id',
+        foreign: 'owner',
+        type: 'many',
+        aggregate: { field: 'score', type: 'average' },
+      },
+      activeScore: {
+        ref: 'projects',
+        local: '_id',
+        foreign: 'owner',
+        type: 'many',
+        match: { status: 'active' },
+        aggregate: { field: 'score', type: 'sum' },
+      },
+      featuredProject: {
+        ref: 'projects',
+        local: '_id',
+        foreign: 'owner',
+        type: 'first',
+        select: ['title'],
       },
     },
   })
@@ -61,8 +118,14 @@ const schemas = orm
       projectSummary: [
         {
           virtual: 'projects',
-          select: ['title', 'status'],
         },
+      ],
+      complete: [
+        { ref: 'profile.department' },
+        { virtual: 'projects' },
+        { virtual: 'projectCount' },
+        { virtual: 'totalScore' },
+        { virtual: 'averageScore' },
       ],
     },
   });
@@ -131,7 +194,6 @@ describe('virtual population integration scenarios', () => {
       .populate([
         {
           virtual: 'projects',
-          select: ['title', 'status'],
         },
       ])
       .first();
@@ -169,10 +231,10 @@ describe('virtual population integration scenarios', () => {
 
     const shownResult = await people
       .find({ _id: person._id })
-      .populate([{ virtual: 'projects', select: ['title'], show: ['internalNotes'] }])
+      .populate([{ virtual: 'projectsWithNotes' }])
       .first();
 
-    const [shownProject] = shownResult?.projects ?? [];
+    const [shownProject] = shownResult?.projectsWithNotes ?? [];
 
     expect(shownProject?.title).toBe('Hidden field behavior');
     expect(shownProject?.internalNotes).toBe('Only visible when explicitly shown');
@@ -197,6 +259,34 @@ describe('virtual population integration scenarios', () => {
     expect(result?.projects).toEqual([]);
   });
 
+  it('applies a typed definition-level match to many virtual results', async () => {
+    const research = await createDepartment('Research');
+    const person = await createPerson('Ada Lovelace', research._id);
+    await projects.create({
+      company: new ObjectId(),
+      key: 'ADA-ACTIVE-MATCH',
+      owner: person._id,
+      title: 'Active work',
+      status: 'active',
+      internalNotes: 'active',
+    });
+    await projects.create({
+      company: new ObjectId(),
+      key: 'ADA-COMPLETE-MATCH',
+      owner: person._id,
+      title: 'Completed work',
+      status: 'complete',
+      internalNotes: 'complete',
+    });
+
+    const result = await people
+      .find({ _id: person._id })
+      .populate([{ virtual: 'activeProjects' }])
+      .first();
+
+    expect(result?.activeProjects.map((project) => project.title)).toEqual(['Active work']);
+  });
+
   it('edge case: an outer projection retains the virtual join key', async () => {
     const research = await createDepartment('Research');
     const person = await createPerson('Katherine Johnson', research._id);
@@ -219,7 +309,6 @@ describe('virtual population integration scenarios', () => {
       .populate([
         {
           virtual: 'projects',
-          select: ['title'],
         },
       ])
       .first();
@@ -275,7 +364,7 @@ describe('virtual population integration scenarios', () => {
 
     const result = await people
       .find({ _id: person._id })
-      .populate([{ virtual: 'departmentProjects', select: ['title'] }])
+      .populate([{ virtual: 'departmentProjects' }])
       .first();
     const [firstProject] = result?.departmentProjects ?? [];
 
@@ -325,7 +414,6 @@ describe('virtual population integration scenarios', () => {
       .populate([
         {
           virtual: 'projects',
-          select: ['title'],
         },
       ]);
     const [adaResult, graceResult] = results;
@@ -336,12 +424,13 @@ describe('virtual population integration scenarios', () => {
       'Analytical Engine',
       'Computing Notes',
     ]);
+
     expect(graceResult?.projects.map((project) => project.title)).toEqual(['Compiler Validation']);
-    expect(firstAdaProject).not.toHaveProperty('status');
+    expect(firstAdaProject?.status).toBe('active');
     expect(firstAdaProject).not.toHaveProperty('internalNotes');
   });
 
-  it('complex: applies a virtual scope and populates each project owner', async () => {
+  it('applies a virtual scope and returns a single-document virtual', async () => {
     const platform = await createDepartment('Platform');
     const person = await createPerson('Grace Hopper', platform._id);
     const company = new ObjectId();
@@ -361,32 +450,60 @@ describe('virtual population integration scenarios', () => {
       })
       .with('projectSummary')
       .first();
+
     const [scopedProject] = scoped?.projects ?? [];
+
     expect(scoped?.projects).toHaveLength(1);
     expect(scopedProject?.title).toBe('Compiler Validation');
     expect(scopedProject?.status).toBe('active');
     expect(scopedProject).not.toHaveProperty('internalNotes');
 
-    const nested = await people
-      .find({
-        _id: person._id,
-      })
-      .populate([
-        {
-          virtual: 'projects',
-          select: ['title', 'owner'],
-          populate: [
-            {
-              ref: 'owner',
-              select: ['name'],
-            },
-          ],
-        },
-      ]);
-    const [nestedPerson] = nested;
-    const [nestedProject] = nestedPerson?.projects ?? [];
+    const first = await people
+      .find({ _id: person._id })
+      .populate([{ virtual: 'featuredProject' }])
+      .first();
 
-    expect(nestedProject?.owner?.name).toBe('Grace Hopper');
+    expect(first?.featuredProject?.title).toBe('Compiler Validation');
+  });
+
+  it('returns a count for an aggregate virtual', async () => {
+    const research = await createDepartment('Research');
+    const person = await createPerson('Ada Lovelace', research._id);
+    await projects.create({
+      company: new ObjectId(),
+      key: 'ADA-COUNT-A',
+      owner: person._id,
+      title: 'One',
+      status: 'active',
+      score: 4,
+      internalNotes: 'a',
+    });
+    await projects.create({
+      company: new ObjectId(),
+      key: 'ADA-COUNT-B',
+      owner: person._id,
+      title: 'Two',
+      status: 'complete',
+      score: 7,
+      internalNotes: 'b',
+    });
+    const result = await people
+      .find({ _id: person._id })
+      .populate([
+        { virtual: 'projectCount' },
+        { virtual: 'totalScore' },
+        { virtual: 'averageScore' },
+        { virtual: 'activeScore' },
+      ])
+      .first();
+    const count: number | undefined = result?.projectCount;
+    const sum: number | undefined = result?.totalScore;
+    const average: number | null | undefined = result?.averageScore;
+    const activeScore: number | undefined = result?.activeScore;
+    expect(count).toBe(2);
+    expect(sum).toBe(11);
+    expect(average).toBe(5.5);
+    expect(activeScore).toBe(4);
   });
 
   it('real world: projects a tenant directory with each person’s active work', async () => {
@@ -441,7 +558,6 @@ describe('virtual population integration scenarios', () => {
         },
         {
           virtual: 'projects',
-          select: ['title', 'status'],
         },
       ]);
     const [researchAda, researchAlan] = directory;

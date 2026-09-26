@@ -11,9 +11,6 @@ export type RuntimePopulateSpec =
     }
   | {
       virtual: string;
-      select?: readonly string[];
-      show?: readonly string[];
-      populate?: readonly RuntimePopulateSpec[];
     };
 
 const valueAtPath = (document: Record<string, unknown>, path: string): unknown =>
@@ -74,33 +71,65 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
     if ('virtual' in spec) {
       const virtual = virtuals[spec.virtual];
       if (!virtual) return;
+      const aggregate = 'aggregate' in virtual ? virtual.aggregate : undefined;
       const target = virtual.resolve();
-      const localValue = valueAtPath(document, virtual.localField);
-      const nestedSpecs = spec.populate ?? [];
+      const virtualOptions = virtual as typeof virtual & {
+        select?: readonly string[];
+        show?: readonly string[];
+      };
+      const localValue = valueAtPath(document, virtual.local);
       if (localValue === undefined || localValue === null) {
-        setValueAtPath(document, spec.virtual, []);
+        const aggregateValue = aggregate
+          ? aggregate.type === 'count' || aggregate.type === 'sum'
+            ? 0
+            : null
+          : undefined;
+        setValueAtPath(
+          document,
+          spec.virtual,
+          aggregate ? aggregateValue : virtual.type === 'first' ? null : [],
+        );
         return;
       }
 
-      const nestedRelations = target.relationMap as SchemaRelationMap;
-      const nestedVirtuals = target.virtualMap as SchemaVirtualMap;
       const projection = populateProjectionFor(
-        selectedPopulationFields(target.fields, target.hiddenFields, spec.select),
-        spec.show,
-        nestedSpecs,
-        nestedRelations,
-        nestedVirtuals,
+        selectedPopulationFields(target.fields, target.hiddenFields, virtualOptions.select),
+        virtualOptions.show,
+        [],
+        target.relationMap as SchemaRelationMap,
+        target.virtualMap as SchemaVirtualMap,
       );
       const foreignValue = Array.isArray(localValue) ? { $in: localValue } : localValue;
-      const related = await this.db
-        .collectionFor(target)
-        .find({ [virtual.foreignField]: foreignValue }, { projection })
-        .toArray();
-      for (const relatedDocument of related) {
-        for (const nested of nestedSpecs) {
-          await this.populateDocument(relatedDocument, nested, nestedRelations, nestedVirtuals);
-        }
+      const joinFilter = { [virtual.foreign]: foreignValue };
+      const match = 'match' in virtual ? virtual.match : undefined;
+      const filter = match ? { $and: [joinFilter, match] } : joinFilter;
+      const collection = this.db.collectionFor(target);
+      if (aggregate) {
+        const operation =
+          aggregate.type === 'count'
+            ? '$sum'
+            : `$${aggregate.type === 'average' ? 'avg' : aggregate.type}`;
+        const expression =
+          aggregate.type === 'count'
+            ? { $cond: [{ $ne: [`$${aggregate.field}`, null] }, 1, 0] }
+            : `$${aggregate.field}`;
+        const [result] = await collection
+          .aggregate<{ value: number | null }>([
+            { $match: filter },
+            { $group: { _id: null, value: { [operation]: expression } } },
+          ])
+          .toArray();
+        const value =
+          result?.value ?? (aggregate.type === 'count' || aggregate.type === 'sum' ? 0 : null);
+        setValueAtPath(document, spec.virtual, value);
+        return;
       }
+      if (virtual.type === 'first') {
+        const first = await collection.findOne(filter, { projection });
+        setValueAtPath(document, spec.virtual, first);
+        return;
+      }
+      const related = await collection.find(filter, { projection }).toArray();
       setValueAtPath(document, spec.virtual, related);
       return;
     }

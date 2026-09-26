@@ -89,7 +89,16 @@ const attachMethods = <Registry extends Record<string, SchemaLike>>(
 
       for (const [virtualName, input] of Object.entries(virtuals ?? {}) as [
         string,
-        { ref: string; localField: string; foreignField: string },
+        {
+          ref: string;
+          local: string;
+          foreign: string;
+          type: 'many' | 'first';
+          aggregate?: { field: string; type: 'count' | 'sum' | 'average' | 'min' | 'max' };
+          select?: readonly string[];
+          show?: readonly string[];
+          match?: Record<string, unknown>;
+        },
       ][]) {
         const target = registry[input.ref];
         if (!target) {
@@ -97,31 +106,36 @@ const attachMethods = <Registry extends Record<string, SchemaLike>>(
             `Unknown virtual target "${input.ref}". Use a schema name registered with defineSchemas().`,
           );
         }
-        if (input.localField !== '_id' && !fieldSchemaAtPath(source, input.localField)) {
+        if (input.local !== '_id' && !fieldSchemaAtPath(source, input.local)) {
           throw new SchemaConfigurationError(
-            `Unknown local field "${name}.${input.localField}" in virtual "${virtualName}".`,
+            `Unknown local field "${name}.${input.local}" in virtual "${virtualName}".`,
           );
         }
-        if (input.localField !== '_id' && !isObjectIdField(source, input.localField)) {
+        if (input.local !== '_id' && !isObjectIdField(source, input.local)) {
           throw new SchemaConfigurationError(
-            `Virtual local field "${name}.${input.localField}" must be an ObjectId field.`,
+            `Virtual local field "${name}.${input.local}" must be an ObjectId field.`,
           );
         }
-        if (input.foreignField !== '_id' && !fieldSchemaAtPath(target, input.foreignField)) {
+        if (input.foreign !== '_id' && !fieldSchemaAtPath(target, input.foreign)) {
           throw new SchemaConfigurationError(
-            `Unknown foreign field "${input.ref}.${input.foreignField}" in virtual "${virtualName}".`,
+            `Unknown foreign field "${input.ref}.${input.foreign}" in virtual "${virtualName}".`,
           );
         }
-        if (input.foreignField !== '_id' && !isObjectIdField(target, input.foreignField)) {
+        if (input.foreign !== '_id' && !isObjectIdField(target, input.foreign)) {
           throw new SchemaConfigurationError(
-            `Virtual foreign field "${input.ref}.${input.foreignField}" must be an ObjectId field.`,
+            `Virtual foreign field "${input.ref}.${input.foreign}" must be an ObjectId field.`,
           );
         }
 
         source.virtualMap[virtualName] = {
           resolve: () => target,
-          localField: input.localField,
-          foreignField: input.foreignField,
+          local: input.local,
+          foreign: input.foreign,
+          type: input.type,
+          ...(input.type === 'many' && input.aggregate ? { aggregate: input.aggregate } : {}),
+          select: input.select,
+          show: input.show,
+          ...(input.type === 'many' && input.match ? { match: input.match } : {}),
         };
       }
     }

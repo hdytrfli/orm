@@ -46,33 +46,10 @@ export type PopulateSpec<Relations extends SchemaRelationMap> = {
   };
 }[Extract<keyof Relations, string>];
 
-type VirtualTarget<Virtual> = Virtual extends { resolve: () => infer Target } ? Target : never;
-type VirtualSelectField<Virtual> =
-  VirtualTarget<Virtual> extends Schema<infer Shape, any>
-    ? Exclude<SelectableKey<Shape>, '_id'>
-    : never;
-type VirtualHiddenField<Virtual> =
-  VirtualTarget<Virtual> extends Schema<infer Shape, any> ? HiddenDocumentKey<Shape> : never;
-type VirtualRelations<Virtual> =
-  VirtualTarget<Virtual> extends {
-    readonly relationMap: infer Relations extends SchemaRelationMap;
-  }
-    ? Relations
-    : {};
-type VirtualsOfTarget<Virtual> =
-  VirtualTarget<Virtual> extends {
-    readonly virtualMap: infer Virtuals extends SchemaVirtualMap;
-  }
-    ? Virtuals
-    : {};
-
 /** A typed instruction for populating a declared virtual relation. */
 type VirtualPopulateSpec<Virtuals extends SchemaVirtualMap> = {
   [Name in Extract<keyof Virtuals, string>]: {
     virtual: Name;
-    select?: readonly VirtualSelectField<Virtuals[Name]>[];
-    show?: readonly VirtualHiddenField<Virtuals[Name]>[];
-    populate?: PopulateSpecs<VirtualRelations<Virtuals[Name]>, VirtualsOfTarget<Virtuals[Name]>>;
   };
 }[Extract<keyof Virtuals, string>];
 
@@ -81,3 +58,12 @@ export type PopulateSpecs<
   Relations extends SchemaRelationMap,
   Virtuals extends SchemaVirtualMap = {},
 > = readonly (PopulateSpec<Relations> | VirtualPopulateSpec<Virtuals>)[];
+
+/** Reject virtual-query options now that they belong on the virtual definition. */
+export type ValidatePopulateSpecs<Specs extends readonly unknown[]> = {
+  [Index in keyof Specs]: Specs[Index] extends { virtual: string }
+    ? Exclude<keyof Specs[Index], 'virtual'> extends never
+      ? Specs[Index]
+      : never
+    : Specs[Index];
+};

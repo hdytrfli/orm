@@ -24,9 +24,13 @@ export const populateProjectionFor = (
 ): Record<string, 1> => {
   const fields = [...selectedFields];
   for (const nested of nestedSpecs) {
-    const name = 'ref' in nested ? nested.ref : nested.virtual;
-    const metadata = 'ref' in nested ? relations[name] : virtuals[name];
-    if (metadata) fields.push(metadata.localField);
+    if ('ref' in nested) {
+      const relation = relations[nested.ref];
+      if (relation) fields.push(relation.localField);
+    } else {
+      const virtual = virtuals[nested.virtual];
+      if (virtual) fields.push(virtual.local);
+    }
   }
   fields.push(...(shownFields ?? []));
 

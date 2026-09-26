@@ -66,14 +66,59 @@ const schemas = connected.defineVirtual({
   people: {
     departmentProjects: {
       ref: 'projects',
-      localField: 'profile.department',
-      foreignField: 'department',
+      local: 'profile.department',
+      foreign: 'department',
+      type: 'many',
+      select: ['title'],
     },
   },
 });
 
 const people = await db.people.find().populate([{ virtual: 'departmentProjects' }]);
 ```
+
+Virtual cardinality and projection are part of the definition, so each virtual has one stable result shape and query-time `populate` only names it. `type: 'many'` returns an array; `type: 'first'` returns one document or `null`. `select` and `show` are type-checked against the target schema and are only available for document-returning virtuals. Hidden target fields remain excluded unless listed in `show`.
+
+`match` is also definition-level and only available for `type: 'many'`. It is checked against the target schema and is combined with the virtual join condition, so it cannot override the join.
+
+```ts
+const registry = schemas.defineVirtual({
+  people: {
+    activeProjects: {
+      ref: 'projects',
+      local: '_id',
+      foreign: 'owner',
+      type: 'many',
+      match: { status: 'active' },
+      select: ['title', 'status'],
+    },
+    featuredProject: {
+      ref: 'projects',
+      local: '_id',
+      foreign: 'owner',
+      type: 'first',
+      select: ['title'],
+    },
+    projectCount: {
+      ref: 'projects',
+      local: '_id',
+      foreign: 'owner',
+      type: 'many',
+      aggregate: { field: 'score', type: 'count' },
+    },
+  },
+});
+
+const peopleWithProjects = await db.people
+  .find()
+  .populate([
+    { virtual: 'activeProjects' },
+    { virtual: 'featuredProject' },
+    { virtual: 'projectCount' },
+  ]);
+```
+
+An aggregate virtual returns a number instead of related documents. `aggregate.field` is required and type-checked as a numeric target field for every operation. `count` counts related documents with a non-null value for that field; `sum`, `average`, `min`, and `max` calculate that field's statistic. Aggregates are only valid with `type: 'many'` and may be combined with `match`, but not `select` or `show`. Virtual populations intentionally do not support nested `populate`; declare/populate a regular relation separately when needed.
 
 ## Relations Are Opt-In
 

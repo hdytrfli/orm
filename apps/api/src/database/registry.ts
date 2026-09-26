@@ -20,11 +20,30 @@ export const registry = orm
   })
   .defineVirtual({
     users: {
-      ownedProjects: { ref: 'projects', localField: '_id', foreignField: 'owner' },
-      assignedTasks: { ref: 'tasks', localField: '_id', foreignField: 'assignee' },
+      ownedProjects: {
+        ref: 'projects',
+        local: '_id',
+        foreign: 'owner',
+        type: 'many',
+        select: ['key', 'name', 'status', 'description'],
+      },
+      assignedTasks: {
+        ref: 'tasks',
+        local: '_id',
+        foreign: 'assignee',
+        type: 'many',
+        select: ['title', 'status', 'priority', 'dueAt'],
+      },
     },
     projects: {
-      tasks: { ref: 'tasks', localField: '_id', foreignField: 'project' },
+      tasks: {
+        ref: 'tasks',
+        local: '_id',
+        foreign: 'project',
+        type: 'many',
+        select: ['title', 'description', 'status', 'priority', 'dueAt', 'estimateMinutes'],
+        show: ['updatedAt'],
+      },
     },
   })
   .defineScopes({
@@ -32,37 +51,23 @@ export const registry = orm
       list: [
         {
           virtual: 'ownedProjects',
-          select: ['key', 'name', 'status'],
         },
       ],
       detail: [
         {
           virtual: 'ownedProjects',
-          select: ['key', 'name', 'status', 'description'],
         },
         {
           virtual: 'assignedTasks',
-          select: ['title', 'status', 'priority', 'dueAt'],
         },
       ],
     },
     projects: {
-      list: [
-        { ref: 'owner', select: ['firstName', 'lastName'] },
-        { virtual: 'tasks', select: ['title', 'status', 'priority'] },
-      ],
+      list: [{ ref: 'owner', select: ['firstName', 'lastName'] }, { virtual: 'tasks' }],
       detail: [
         { ref: 'owner', select: ['firstName', 'lastName', 'email', 'jobTitle'] },
         {
           virtual: 'tasks',
-          show: ['updatedAt'],
-          select: ['title', 'description', 'status', 'priority', 'dueAt', 'estimateMinutes'],
-          populate: [
-            {
-              ref: 'assignee',
-              select: ['firstName', 'lastName', 'email'],
-            },
-          ],
         },
       ],
     },

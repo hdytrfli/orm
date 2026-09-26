@@ -18,6 +18,7 @@ import type {
   ModelSort,
   ModelDocument,
   PopulateSpecs,
+  ValidatePopulateSpecs,
   PopulatedResult,
   PopulationMode,
   ScopeName,
@@ -267,6 +268,7 @@ export class ModelQuery<
   /** Populate declared one-way relations, including nested relation arrays. */
   populate<const Specs extends PopulateSpecs<Relations, Virtuals>>(
     specs: Specs &
+      ValidatePopulateSpecs<Specs> &
       (Mode extends 'scope'
         ? QueryModeDiagnostic<'Cannot call populate() after with(); choose one population mode.'>
         : unknown),

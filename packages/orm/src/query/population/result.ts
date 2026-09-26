@@ -1,5 +1,6 @@
 import type { Infer, Schema, SchemaRelationMap, SchemaVirtualMap } from '../../schema/index.js';
 import type { HiddenDocumentKey, VisibleDocument } from '../types/document.js';
+import type { SelectableKey, SelectedDocument } from '../types/selection.js';
 import type { Simplify } from '../types/utils.js';
 import type { PopulateSpecs } from './spec.js';
 
@@ -16,6 +17,7 @@ type RelationMapOf<Relation> = Relation extends { readonly __targetRelations?: i
     : {};
 
 type ShownFields<Spec> = Spec extends { show?: readonly (infer Fields)[] } ? Fields : never;
+type SelectedFields<Spec> = Spec extends { select?: readonly (infer Fields)[] } ? Fields : never;
 
 type VisibleRelationDocument<Relation, Spec> =
   RelationDocument<Relation> extends infer Document extends object
@@ -36,7 +38,7 @@ export type PopulatedResult<
     [Spec in VirtualSpec<Specs[number]> as Spec['virtual']]: PopulatedVirtual<
       Virtuals[Spec['virtual']],
       Spec
-    >[];
+    >;
   }
 >;
 
@@ -92,24 +94,22 @@ type VirtualMapOf<Virtual> = Virtual extends { resolve: () => infer Target }
     : {}
   : {};
 
-type PopulatedVirtual<Virtual, Spec> = Virtual extends { resolve: () => infer Target }
-  ? Spec extends {
-      populate: infer Nested extends PopulateSpecs<
-        Target extends { readonly relationMap: infer Relations extends SchemaRelationMap }
-          ? Relations
-          : {},
-        VirtualMapOf<Virtual>
-      >;
-    }
-    ? VisibleRelationDocument<Virtual, Spec> extends infer Document extends object
-      ? PopulatedResult<
-          Document,
-          Target extends { readonly relationMap: infer Relations extends SchemaRelationMap }
-            ? Relations
-            : {},
-          Nested,
-          VirtualMapOf<Virtual>
-        >
-      : never
-    : VisibleRelationDocument<Virtual, Spec>
-  : never;
+type PopulatedVirtual<Virtual, _Spec> = Virtual extends {
+  aggregate: { type: infer AggregateType };
+}
+  ? AggregateType extends 'average' | 'min' | 'max'
+    ? number | null
+    : number
+  : Virtual extends { type: 'first' }
+    ? VisibleVirtualDocument<Virtual> | null
+    : VisibleVirtualDocument<Virtual>[];
+
+type VisibleVirtualDocument<Virtual> =
+  RelationDocument<Virtual> extends infer Document extends object
+    ? RelationTarget<Virtual> extends Schema<infer Shape, any>
+      ? (Virtual extends { select: readonly unknown[] }
+          ? SelectedDocument<Shape, Extract<SelectedFields<Virtual>, SelectableKey<Shape>>>
+          : Omit<VisibleDocument<Shape> & Document, HiddenDocumentKey<Shape>>) &
+          Pick<Document, Extract<ShownFields<Virtual>, keyof Document>>
+      : Document
+    : never;

@@ -19,19 +19,48 @@ export interface SchemaRelation<
 
 export type SchemaRelationMap = Record<string, SchemaRelation>;
 
+export type VirtualAggregate<Numeric extends string = string> = {
+  readonly field: Numeric;
+  readonly type: 'count' | 'sum' | 'average' | 'min' | 'max';
+};
+
+export type VirtualDefinitionOptions<
+  Select extends string = string,
+  Show extends string = string,
+  Numeric extends string = string,
+  Match = Record<string, unknown>,
+> =
+  | {
+      readonly type: 'many';
+      readonly aggregate: VirtualAggregate<Numeric>;
+      readonly match?: Match;
+    }
+  | {
+      readonly type: 'many';
+      readonly select?: readonly Select[];
+      readonly show?: readonly Show[];
+      readonly match?: Match;
+    }
+  | {
+      readonly type: 'first';
+      readonly select?: readonly Select[];
+      readonly show?: readonly Show[];
+    };
+
 /** Metadata for a reverse/virtual relation populated from a target collection. */
-export interface SchemaVirtual<
+export type SchemaVirtual<
   Target extends SchemaLike = SchemaLike,
   LocalField extends string = string,
   ForeignField extends string = string,
-> {
+  Options extends VirtualDefinitionOptions = VirtualDefinitionOptions,
+> = Options & {
   readonly resolve: () => Target;
-  readonly localField: LocalField;
-  readonly foreignField: ForeignField;
+  readonly local: LocalField;
+  readonly foreign: ForeignField;
   /** Target relations are carried separately to avoid recursively wrapping its schema type. */
   readonly __targetRelations?: Target extends { readonly relationMap: infer Relations }
     ? Relations
     : {};
-}
+};
 
 export type SchemaVirtualMap = Record<string, SchemaVirtual>;
