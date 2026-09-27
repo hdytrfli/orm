@@ -99,11 +99,11 @@ export class ModelQuery<
     private readonly filterSpec: ModelFilter<Shape>,
     private readonly schemaFields: readonly string[],
     private readonly hiddenSchemaFields: readonly string[],
-    private readonly db: Db,
-    private readonly relations: Relations,
+    db: Db,
+    relations: Relations,
     private readonly scopes: Scopes,
-    private readonly virtuals: Virtuals,
-    private readonly softdeleteEnabled: boolean,
+    virtuals: Virtuals,
+    softdeleteEnabled: boolean,
   ) {
     this.softDelete = new SoftDeleteState(softdeleteEnabled);
     this.population = new PopulationExecutor(db, relations, virtuals);
