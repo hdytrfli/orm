@@ -20,8 +20,7 @@ export interface QueryExecutionContext<
   effectiveFilter: ModelFilter<Shape>;
   fields: readonly string[];
   hiddenFields: readonly string[];
-  selectedFields: readonly string[] | undefined;
-  shownFields: readonly string[];
+  fieldSelection: readonly string[] | undefined;
   sortSpec: ModelSort<Shape> | undefined;
   skipCount: number | undefined;
   limitCount: number | undefined;
@@ -76,12 +75,7 @@ export const createCursorPage = <
       .sort({ _id: 1 });
     if (pageSize === undefined) cursor = cursor.batchSize(MODEL_CURSOR_BATCH_SIZE);
     else cursor = cursor.limit(pageSize + 1);
-    const projection = projectionFor(
-      context.fields,
-      context.hiddenFields,
-      context.selectedFields,
-      context.shownFields,
-    );
+    const projection = projectionFor(context.fields, context.hiddenFields, context.fieldSelection);
     if (projection) cursor = cursor.project(projection);
     return cursor;
   };
@@ -143,12 +137,7 @@ const createFindCursor = <Shape extends SchemaShape, Relations extends SchemaRel
   const limitCount = context.limitCount;
   if (limitCount !== undefined) cursor = cursor.limit(limitCount);
 
-  const projection = projectionFor(
-    context.fields,
-    context.hiddenFields,
-    context.selectedFields,
-    context.shownFields,
-  );
+  const projection = projectionFor(context.fields, context.hiddenFields, context.fieldSelection);
 
   if (projection) cursor = cursor.project(projection);
   return cursor;

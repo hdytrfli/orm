@@ -9,22 +9,23 @@ import type {
 import type { InferShape } from '../../schema/inference.js';
 import type { FieldSelection } from '../types/selection.js';
 
-type RelationTarget<Relation> = Relation extends { resolve: () => infer Target } ? Target : never;
-type NestedRelations<Relation> = Relation extends { readonly __targetRelations?: infer Relations }
+export type RelationTargetOf<Relation> = Relation extends { resolve: () => infer Target }
+  ? Target
+  : never;
+export type RelationMapOf<Relation> = Relation extends {
+  readonly __targetRelations?: infer Relations;
+}
   ? NonNullable<Relations> extends SchemaRelationMap
     ? NonNullable<Relations>
     : {}
-  : RelationTarget<Relation> extends { readonly relationMap: infer Relations }
+  : RelationTargetOf<Relation> extends { readonly relationMap: infer Relations }
     ? Relations extends SchemaRelationMap
       ? Relations
       : {}
     : {};
 type PopulationField<Relation> =
-  RelationTarget<Relation> extends Schema<infer Shape, any> ? FieldSelection<Shape> : never;
-type NumericTarget<Relation> =
-  RelationTarget<Relation> extends infer Target
-    ? Extract<NumericKeys<InferShape<Target>>, string>
-    : never;
+  RelationTargetOf<Relation> extends Schema<infer Shape, any> ? FieldSelection<Shape> : never;
+type NumericTarget<Relation> = Extract<NumericKeys<InferShape<RelationTargetOf<Relation>>>, string>;
 type NumericKeys<Value, Prefix extends string = ''> = Value extends object
   ? {
       [Key in Extract<keyof Value, string>]-?: NonNullable<Value[Key]> extends number
@@ -44,7 +45,7 @@ export type PopulateSpec<Relations extends SchemaRelationMap> = {
   [Name in Extract<keyof Relations, string>]: {
     ref: Name;
     fields?: readonly PopulationField<Relations[Name]>[];
-    populate?: PopulateSpecs<NestedRelations<Relations[Name]>, {}>;
+    populate?: PopulateSpecs<RelationMapOf<Relations[Name]>, {}>;
   };
 }[Extract<keyof Relations, string>];
 
@@ -77,25 +78,19 @@ export type PopulateSpecs<
 export type PopulateSpecsOnly<Relations extends SchemaRelationMap> =
   readonly PopulateSpec<Relations>[];
 export type VirtualSpecs<Virtuals extends SchemaVirtualMap> = readonly VirtualSpec<Virtuals>[];
+type WithoutExtraKeys<Spec, Allowed extends string> =
+  Exclude<keyof Spec, Allowed> extends never ? Spec : never;
+
 export type ValidatePopulateSpecs<Specs extends readonly unknown[]> = {
-  [Index in keyof Specs]: Specs[Index] extends { ref: string }
-    ? Exclude<keyof Specs[Index], 'ref' | 'fields' | 'populate'> extends never
-      ? Specs[Index]
-      : never
-    : never;
+  [Index in keyof Specs]: WithoutExtraKeys<Specs[Index], 'ref' | 'fields' | 'populate'>;
 };
+
 export type ValidateVirtualSpecs<Specs extends readonly unknown[]> = {
   [Index in keyof Specs]: Specs[Index] extends { virtual: string; type: 'many'; aggregate: object }
-    ? Exclude<keyof Specs[Index], 'virtual' | 'type' | 'aggregate'> extends never
-      ? Specs[Index]
-      : never
+    ? WithoutExtraKeys<Specs[Index], 'virtual' | 'type' | 'aggregate'>
     : Specs[Index] extends { virtual: string; type: 'many'; aggregate?: never }
-      ? Exclude<keyof Specs[Index], 'virtual' | 'type' | 'fields' | 'aggregate'> extends never
-        ? Specs[Index]
-        : never
+      ? WithoutExtraKeys<Specs[Index], 'virtual' | 'type' | 'fields' | 'aggregate'>
       : Specs[Index] extends { virtual: string; type: 'first' }
-        ? Exclude<keyof Specs[Index], 'virtual' | 'type' | 'fields'> extends never
-          ? Specs[Index]
-          : never
+        ? WithoutExtraKeys<Specs[Index], 'virtual' | 'type' | 'fields'>
         : never;
 };

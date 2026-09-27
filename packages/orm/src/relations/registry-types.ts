@@ -30,18 +30,106 @@ type RelationInput<Registry extends Record<string, SchemaLike>> = {
   [Target in Extract<keyof Registry, string>]: { readonly ref: Target; readonly inverse?: string };
 }[Extract<keyof Registry, string>];
 
-type ValidateRelationDefinitions<Definitions> = {
-  [Source in keyof Definitions]: Definitions[Source] extends object
-    ? {
-        [Field in keyof Definitions[Source]]: Definitions[Source][Field] extends {
-          ref: string;
-          inverse?: string;
-        }
-          ? Definitions[Source][Field]
-          : never;
-      }
+type InvalidRelationFields<Registry extends Record<string, SchemaLike>, Definitions> = {
+  [Source in keyof Definitions]: Source extends keyof Registry
+    ? `${Extract<Source, string>}.${Exclude<
+        Extract<keyof NonNullable<Definitions[Source]>, string>,
+        Extract<ObjectIdPathsOfSchema<Registry[Source]>, string>
+      > &
+        string}`
+    : `${Extract<Source, string>}.${Extract<keyof NonNullable<Definitions[Source]>, string>}`;
+}[keyof Definitions];
+
+type ValidRelationFields<Registry extends Record<string, SchemaLike>, Definitions> = [
+  InvalidRelationFields<Registry, Definitions>,
+] extends [never]
+  ? unknown
+  : {
+      readonly [
+        Message in `Invalid relation path "${InvalidRelationFields<Registry, Definitions>}". Use an ObjectId field declared on that source schema.`
+      ]: never;
+    };
+
+type InverseEntry<Definitions> = {
+  [Source in keyof Definitions]: NonNullable<Definitions[Source]> extends infer Relations
+    ? Relations extends object
+      ? {
+          [Field in keyof Relations]: Relations[Field] extends {
+            ref: infer Target extends string;
+            inverse: infer Inverse extends string;
+          }
+            ? readonly [Source, Field, Target, Inverse]
+            : never;
+        }[keyof Relations]
+      : never
     : never;
-};
+}[keyof Definitions];
+
+type InversePaths<Definitions, Target extends string, Name extends string> = {
+  [Source in keyof Definitions]: NonNullable<Definitions[Source]> extends infer Relations
+    ? Relations extends object
+      ? {
+          [Field in keyof Relations]: Relations[Field] extends {
+            ref: Target;
+            inverse: Name;
+          }
+            ? `${Extract<Source, string>}.${Extract<Field, string>}`
+            : never;
+        }[keyof Relations]
+      : never
+    : never;
+}[keyof Definitions];
+
+type IsUnion<Value, Whole = Value> = Value extends Whole
+  ? [Whole] extends [Value]
+    ? false
+    : true
+  : never;
+
+type DuplicateInverseName<Entry, Definitions> = Entry extends readonly [
+  unknown,
+  unknown,
+  infer Target extends string,
+  infer Name extends string,
+]
+  ? IsUnion<InversePaths<Definitions, Target, Name>> extends true
+    ? `${Target & string}.${Name}`
+    : never
+  : never;
+
+type DuplicateInverseNames<Definitions> = DuplicateInverseName<
+  InverseEntry<Definitions>,
+  Definitions
+>;
+
+type ExistingInverseConflict<
+  Entry,
+  Registry extends Record<string, SchemaLike>,
+> = Entry extends readonly [
+  unknown,
+  unknown,
+  infer Target extends keyof Registry,
+  infer Name extends string,
+]
+  ? Name extends keyof SchemaVirtualsOf<Registry[Target]>
+    ? `${Extract<Target, string>}.${Name}`
+    : never
+  : never;
+
+type ExistingInverseConflicts<
+  Registry extends Record<string, SchemaLike>,
+  Definitions,
+> = ExistingInverseConflict<InverseEntry<Definitions>, Registry>;
+
+type UniqueInverseNames<Registry extends Record<string, SchemaLike>, Definitions> = [
+  DuplicateInverseNames<Definitions> | ExistingInverseConflicts<Registry, Definitions>,
+] extends [never]
+  ? unknown
+  : {
+      readonly [
+        Message in `Duplicate inverse name "${DuplicateInverseNames<Definitions> | ExistingInverseConflicts<Registry, Definitions>}". Use a unique inverse name for each relation targeting the same schema.`
+      ]: never;
+    };
 
 export type RelationDefinitions<Registry extends Record<string, SchemaLike>> = {
   [Name in keyof Registry]?: Partial<
@@ -131,8 +219,9 @@ type RegistryWithScopes<
 export type SchemaRegistryBuilder<Registry extends Record<string, SchemaLike>> = Registry & {
   readonly __registry?: Registry;
   defineRelations<const Definitions extends RelationDefinitions<Registry>>(
-    definitions: Definitions,
-    ..._validation: [Definitions] extends [ValidateRelationDefinitions<Definitions>] ? [] : [never]
+    definitions: Definitions &
+      ValidRelationFields<Registry, Definitions> &
+      UniqueInverseNames<Registry, Definitions>,
   ): SchemaRegistryBuilder<RegistryWithRelations<Registry, Definitions>>;
   defineScopes<const Definitions extends ScopeDefinitionsBySchema<Registry>>(
     definitions: Definitions,

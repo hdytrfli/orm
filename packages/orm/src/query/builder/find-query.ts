@@ -10,7 +10,6 @@ import type {
 import { InvalidQueryError } from '../../validation/errors.js';
 import type { ModelCursor } from '../cursor/cursor.js';
 import { PopulationExecutor } from '../population/executor.js';
-import { shownPopulationFields } from '../population/projection.js';
 import { SoftDeleteState } from '../soft-delete/state.js';
 import type {
   CursorMethod,
@@ -84,8 +83,7 @@ export class ModelQuery<
   private sortSpec: ModelSort<Shape> | undefined;
   private skipCount: number | undefined;
   private limitCount: number | undefined;
-  private selectedFields: readonly string[] | undefined;
-  private shownFields: readonly string[] = [];
+  private fieldSelection: readonly string[] | undefined;
   private populateSpecs: PopulateSpecs<Relations, Virtuals> = [];
   private populationMode: PopulationMode = 'none';
   private readonly softDelete: SoftDeleteState<Shape>;
@@ -101,11 +99,11 @@ export class ModelQuery<
     private readonly filterSpec: ModelFilter<Shape>,
     private readonly schemaFields: readonly string[],
     private readonly hiddenSchemaFields: readonly string[],
-    private readonly db: Db,
-    private readonly relations: Relations,
+    db: Db,
+    relations: Relations,
     private readonly scopes: Scopes,
-    private readonly virtuals: Virtuals,
-    private readonly softdeleteEnabled: boolean,
+    virtuals: Virtuals,
+    softdeleteEnabled: boolean,
   ) {
     this.softDelete = new SoftDeleteState(softdeleteEnabled);
     this.population = new PopulationExecutor(db, relations, virtuals);
@@ -132,8 +130,7 @@ export class ModelQuery<
 
   private executionContext(): QueryExecutionContext<Shape, Relations> {
     const getEffectiveFilter = () => this.effectiveFilter();
-    const getSelectedFields = () => this.selectedFields;
-    const getShownFields = () => this.shownFields;
+    const getFieldSelection = () => this.fieldSelection;
     const getSortSpec = () => this.sortSpec;
     const getSkipCount = () => this.skipCount;
     const getLimitCount = () => this.limitCount;
@@ -146,11 +143,8 @@ export class ModelQuery<
       },
       fields: this.schemaFields,
       hiddenFields: this.hiddenSchemaFields,
-      get selectedFields() {
-        return getSelectedFields();
-      },
-      get shownFields() {
-        return getShownFields();
+      get fieldSelection() {
+        return getFieldSelection();
       },
       get sortSpec() {
         return getSortSpec();
@@ -228,10 +222,7 @@ export class ModelQuery<
     SoftDelete,
     Virtuals
   > {
-    this.selectedFields = fields.includes('$all')
-      ? undefined
-      : fields.filter((field) => field !== '$all' && !field.startsWith('+'));
-    this.shownFields = shownPopulationFields(fields);
+    this.fieldSelection = fields;
     return this as unknown as ModelQuery<
       Shape,
       FieldsDocument<Shape, Selection>,

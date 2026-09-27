@@ -3,13 +3,13 @@ import { type Condition, type Document, type ObjectId, type RootFilterOperators 
 import type { SchemaShape } from '../../schema/contracts.js';
 import type { ModelDocument, StoredDocument } from './document.js';
 
-export type NestedFilterKey<Value, Prefix extends string = ''> = Value extends object
+export type NestedFilterKey<Value> = Value extends object
   ? Value extends ObjectId | Date | readonly unknown[]
     ? never
     : {
         [Key in Extract<keyof Value, string>]: NonNullable<Value[Key]> extends object
-          ? `${Prefix}${Key}` | `${Prefix}${Key}.${NestedFilterKey<NonNullable<Value[Key]>>}`
-          : `${Prefix}${Key}`;
+          ? Key | `${Key}.${NestedFilterKey<NonNullable<Value[Key]>>}`
+          : Key;
       }[Extract<keyof Value, string>]
   : never;
 
@@ -39,12 +39,13 @@ export type SchemaFilter<DocumentShape extends Document, FieldShape extends obje
   };
 
 /** Schema-checked MongoDB filters, including nested dot-notation paths. */
-export type ModelFilter<Shape extends SchemaShape> =
-  | SchemaFilter<StoredDocument<Shape>, ModelDocument<Shape>>
-  | { _id: ObjectId };
+export type ModelFilter<Shape extends SchemaShape> = SchemaFilter<
+  StoredDocument<Shape>,
+  ModelDocument<Shape>
+>;
 
 /** MongoDB sort directions supported by the model query API. */
-export type SortDirection = 'asc' | 'desc';
+type SortDirection = 'asc' | 'desc';
 
 /** Schema-checked sort specifications. */
 export type ModelSort<Shape extends SchemaShape> = Partial<

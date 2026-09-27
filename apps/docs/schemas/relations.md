@@ -27,11 +27,11 @@ const connected = schemas.defineRelations({
 });
 ```
 
-Each relation key is the local ObjectId field name. Its required `ref` names the target schema; the target key is `_id`. An optional `inverse` declares a reverse virtual name on that target schema. Omitting `inverse` leaves a forward-only relation. Every entry uses the explicit object form.
+Each relation key is the local ObjectId field name. Its required `ref` names the target schema; the target key is `_id`. An optional `inverse` declares a reverse virtual name on that target schema. Inverse names must be unique per target schema; duplicate names are rejected by TypeScript during editing and checked again at runtime. Omitting `inverse` leaves a forward-only relation. Every entry uses the explicit object form.
 
 ## Relation Requirements
 
-The relation field must exist on the source schema and use an ObjectId type. Top-level fields and nested paths are supported; nested paths use dot notation and remain type-hinted. Unknown schema names, non-ObjectId fields, and unknown relation paths fail during registry construction.
+The relation key must be an existing ObjectId field on the source schema. Top-level fields and nested paths are supported; nested paths use dot notation, and the editor suggests valid ObjectId paths. Unknown relation keys and non-ObjectId fields are rejected by TypeScript, with runtime validation retained as a safeguard. The `ref` value is likewise checked against registered schema names.
 
 ```ts
 const post = orm.schema({

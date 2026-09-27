@@ -58,6 +58,11 @@ describe('query inference', () => {
     users.find().fields(['+name']);
     // @ts-expect-error Field selectors are checked against the schema.
     users.find().fields(['notAUserField']);
+
+    const arraySchema = orm.schema({ tags: orm.array(orm.string()) });
+    const arrayDatabase = {} as ReturnType<typeof createDatabase<{ arrays: typeof arraySchema }>>;
+    // @ts-expect-error Array implementation properties are not document field paths.
+    arrayDatabase.arrays.find().fields(['tags.length']);
   });
 
   it('omits hidden fields unless explicitly selected with a plus prefix', async () => {
