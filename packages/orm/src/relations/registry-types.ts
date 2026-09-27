@@ -32,11 +32,12 @@ type RelationInput<Registry extends Record<string, SchemaLike>> = {
 
 type InvalidRelationFields<Registry extends Record<string, SchemaLike>, Definitions> = {
   [Source in keyof Definitions]: Source extends keyof Registry
-    ? Exclude<
+    ? `${Extract<Source, string>}.${Exclude<
         Extract<keyof NonNullable<Definitions[Source]>, string>,
         Extract<ObjectIdPathsOfSchema<Registry[Source]>, string>
-      >
-    : Extract<keyof NonNullable<Definitions[Source]>, string>;
+      > &
+        string}`
+    : `${Extract<Source, string>}.${Extract<keyof NonNullable<Definitions[Source]>, string>}`;
 }[keyof Definitions];
 
 type ValidRelationFields<Registry extends Record<string, SchemaLike>, Definitions> = [
@@ -45,7 +46,7 @@ type ValidRelationFields<Registry extends Record<string, SchemaLike>, Definition
   ? unknown
   : {
       readonly [
-        Message in `Invalid relation field "${InvalidRelationFields<Registry, Definitions>}". Relation keys must be declared ObjectId fields on the source schema.`
+        Message in `Invalid relation path "${InvalidRelationFields<Registry, Definitions>}". Use an ObjectId field declared on that source schema.`
       ]: never;
     };
 
@@ -92,7 +93,7 @@ type DuplicateInverseName<Entry, Definitions> = Entry extends readonly [
   infer Name extends string,
 ]
   ? IsUnion<InversePaths<Definitions, Target, Name>> extends true
-    ? Name
+    ? `${Target & string}.${Name}`
     : never
   : never;
 
@@ -111,7 +112,7 @@ type ExistingInverseConflict<
   infer Name extends string,
 ]
   ? Name extends keyof SchemaVirtualsOf<Registry[Target]>
-    ? Name
+    ? `${Extract<Target, string>}.${Name}`
     : never
   : never;
 
