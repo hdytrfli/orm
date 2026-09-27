@@ -153,7 +153,7 @@ const LondonUsers = await db.users.find({ 'profile.location.city': 'London' });
 
 The path and value are checked against the schema. For a whole embedded-document comparison, filter the parent field instead; that has MongoDB's embedded-document equality semantics.
 
-## 7. Show a hidden field intentionally
+## 7. Include a hidden field intentionally
 
 When a query genuinely needs a hidden field, request it explicitly and keep the result narrowly scoped:
 

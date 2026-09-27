@@ -15,8 +15,7 @@ Use [`Model.aggregate<Result>()`](/queries/aggregation) when MongoDB pipeline st
 | `sort(spec)`         | list query        | Directions are `asc` or `desc`.                                                                |
 | `skip(count)`        | list query        | Non-negative integer; incompatible with cursor pagination.                                     |
 | `limit(count)`       | list query        | Non-negative integer.                                                                          |
-| `select(fields)`     | narrowed query    | Retains `_id`; accepts nested paths.                                                           |
-| `show(fields)`       | expanded query    | Explicitly includes hidden fields.                                                             |
+| `fields(fields)`     | narrowed query    | Retains `_id`; accepts nested paths, `'$all'`, and `+hiddenField` selectors.                   |
 | `populate(specs)`    | populated query   | Loads declared relations.                                                                      |
 | `with(name)`         | scoped query      | Applies a named population scope.                                                              |
 | `deleted('only')`    | query             | Restricts results to soft-deleted documents.                                                   |
@@ -29,13 +28,14 @@ Use [`Model.aggregate<Result>()`](/queries/aggregation) when MongoDB pipeline st
 
 `first()` is terminal and resolves to `Result | null`. It cannot be followed by list methods such as `sort()`, `skip()`, `limit()`, or `cursor()`.
 
-## `select(fields)`
+## `fields(fields)`
 
-Selects visible top-level or nested document paths. `_id` is retained automatically.
-
-## `show(fields)`
-
-Adds hidden fields to the projection. The field names must be declared as hidden in the schema.
+Selects visible top-level or nested document paths, retaining `_id` automatically. Hidden fields
+must be prefixed with `+`; `'$all'` includes all normally visible fields but never hidden fields,
+and `fields([])` returns only `_id`. An ordinary field next to `'$all'` is redundant because it is
+already included, but selectors are still checked against the schema. For example, use
+`fields(['$all', '+passwordHash'])` to include visible fields and explicitly opt in to a hidden
+field. The same selector syntax is used by population specs.
 
 ## `populate(specs)`
 

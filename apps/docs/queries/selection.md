@@ -32,7 +32,7 @@ Nested selections are normalized so a parent path does not conflict with one of 
 const user = await db.user.find({ _id: id }).fields(['$all', '+passwordHash']);
 ```
 
-Prefix a schema-hidden field with `+`. `'$all'` selects all normally visible fields, so it can be combined with a hidden field. Without `'$all'`, the list is an explicit selection; for example, `fields(['+passwordHash'])` returns only `_id` and the hidden password hash.
+Prefix a schema-hidden field with `+`. `'$all'` selects every normally visible field; it does **not** include hidden fields. Combine it with a `+` selector to opt specific hidden fields in. Without `'$all'`, the list is an explicit selection; for example, `fields(['+passwordHash'])` returns only `_id` and the hidden password hash.
 
 ## `fields` Selector Reference
 
@@ -46,9 +46,11 @@ The same selector syntax is used by query-level `.fields()` and by population sp
 | `['name', '+passwordHash']` | `_id`, `name`, and the hidden `passwordHash`                               |
 | `['$all']`                  | All normally visible fields (equivalent to the default visible projection) |
 | `['$all', '+passwordHash']` | All normally visible fields and `passwordHash`                             |
+| `['$all', 'name']`          | All normally visible fields; `'name'` is redundant                         |
 | `['+passwordHash']`         | `_id` and `passwordHash` only                                              |
 
-Field names and `+`-prefixed hidden fields are checked against the relevant schema. `'$all'` is a
+Field names and `+`-prefixed hidden fields are checked against the relevant schema, even when
+`'$all'` is present. Thus `'$all'` does not make an invalid field selector valid. `'$all'` is a
 reserved selector, not a schema field name.
 
 ## Selection and Population

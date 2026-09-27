@@ -57,10 +57,9 @@ describe('query integration scenarios', () => {
     });
 
     const users = await db.users
-      .find({
-        'profile.location.city': 'Seattle',
-      })
+      .find({ 'profile.location.city': 'Seattle' })
       .fields(['name', 'profile.location.city']);
+
     const [firstUser] = users;
 
     expect(users).toHaveLength(1);
