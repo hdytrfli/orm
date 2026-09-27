@@ -11,7 +11,7 @@ export const normalizeProjectionFields = (fields: readonly string[]): string[] =
   });
 };
 
-export type ResolvedFieldSelection = {
+type ResolvedFieldSelection = {
   readonly visibleFields: readonly string[];
   readonly includedHiddenFields: readonly string[];
 };
