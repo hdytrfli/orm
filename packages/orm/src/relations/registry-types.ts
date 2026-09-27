@@ -30,19 +30,6 @@ type RelationInput<Registry extends Record<string, SchemaLike>> = {
   [Target in Extract<keyof Registry, string>]: { readonly ref: Target; readonly inverse?: string };
 }[Extract<keyof Registry, string>];
 
-type ValidateRelationDefinitions<Definitions> = {
-  [Source in keyof Definitions]: Definitions[Source] extends object
-    ? {
-        [Field in keyof Definitions[Source]]: Definitions[Source][Field] extends {
-          ref: string;
-          inverse?: string;
-        }
-          ? Definitions[Source][Field]
-          : never;
-      }
-    : never;
-};
-
 type InvalidRelationFields<Registry extends Record<string, SchemaLike>, Definitions> = {
   [Source in keyof Definitions]: Source extends keyof Registry
     ? Exclude<
@@ -234,7 +221,6 @@ export type SchemaRegistryBuilder<Registry extends Record<string, SchemaLike>> =
     definitions: Definitions &
       ValidRelationFields<Registry, Definitions> &
       UniqueInverseNames<Registry, Definitions>,
-    ..._validation: [Definitions] extends [ValidateRelationDefinitions<Definitions>] ? [] : [never]
   ): SchemaRegistryBuilder<RegistryWithRelations<Registry, Definitions>>;
   defineScopes<const Definitions extends ScopeDefinitionsBySchema<Registry>>(
     definitions: Definitions,
