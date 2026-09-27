@@ -39,9 +39,10 @@ export type SchemaFilter<DocumentShape extends Document, FieldShape extends obje
   };
 
 /** Schema-checked MongoDB filters, including nested dot-notation paths. */
-export type ModelFilter<Shape extends SchemaShape> =
-  | SchemaFilter<StoredDocument<Shape>, ModelDocument<Shape>>
-  | { _id: ObjectId };
+export type ModelFilter<Shape extends SchemaShape> = SchemaFilter<
+  StoredDocument<Shape>,
+  ModelDocument<Shape>
+>;
 
 /** MongoDB sort directions supported by the model query API. */
 type SortDirection = 'asc' | 'desc';
