@@ -15,12 +15,12 @@ type ManagedSchema<
   Options extends SchemaOptions,
 > = Options['hideManaged'] extends true ? HiddenSchema<Field> : Field;
 
-export type TimestampShape<Options extends SchemaOptions> = {
+type TimestampShape<Options extends SchemaOptions> = {
   createdAt: ManagedSchema<z.ZodDefault<z.ZodDate>, Options>;
   updatedAt: ManagedSchema<z.ZodDefault<z.ZodDate>, Options>;
 };
 
-export type SoftDeleteShape<Options extends SchemaOptions> = {
+type SoftDeleteShape<Options extends SchemaOptions> = {
   deletedAt: ManagedSchema<z.ZodDefault<z.ZodNullable<z.ZodDate>>, Options>;
 };
 

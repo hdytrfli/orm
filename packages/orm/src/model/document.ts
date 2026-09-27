@@ -3,7 +3,7 @@ import { ObjectId } from 'mongodb';
 import { hasSoftDelete, type SchemaOptions } from '../schema/index.js';
 
 /** Minimum schema contract needed to prepare a persisted document. */
-export interface DocumentSchema {
+interface DocumentSchema {
   readonly optionsConfig: SchemaOptions;
   parse(input: unknown): unknown;
 }
