@@ -2,12 +2,11 @@
 export type {
   CursorMethod,
   HiddenDocumentKey,
-  HiddenKey,
   ModelDocument,
   StoredDocument,
   VisibleDocument,
 } from './types/document.js';
-export type { ModelFilter, ModelSort, SortDirection } from './types/filter.js';
+export type { ModelFilter, ModelSort } from './types/filter.js';
 export type {
   FieldSelection,
   FieldsDocument,

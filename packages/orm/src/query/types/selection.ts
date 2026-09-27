@@ -1,7 +1,7 @@
 import type { ObjectId } from 'mongodb';
 
 import type { SchemaShape } from '../../schema/contracts.js';
-import type { HiddenDocumentKey, HiddenKey, ModelDocument, VisibleDocument } from './document.js';
+import type { HiddenDocumentKey, ModelDocument, VisibleDocument } from './document.js';
 import type { Simplify, UnionToIntersection } from './utils.js';
 
 type NestedDocumentKeys<Value> = Value extends object
@@ -75,5 +75,3 @@ export type FieldsDocument<
       : SelectedDocument<Shape, Extract<VisibleFieldValues<Fields>, SelectableKey<Shape>>>) &
     Pick<ModelDocument<Shape>, Extract<HiddenFieldValues<Fields>, keyof ModelDocument<Shape>>>
 >;
-
-export type { HiddenDocumentKey, HiddenKey, VisibleDocument };

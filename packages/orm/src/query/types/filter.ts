@@ -44,7 +44,7 @@ export type ModelFilter<Shape extends SchemaShape> =
   | { _id: ObjectId };
 
 /** MongoDB sort directions supported by the model query API. */
-export type SortDirection = 'asc' | 'desc';
+type SortDirection = 'asc' | 'desc';
 
 /** Schema-checked sort specifications. */
 export type ModelSort<Shape extends SchemaShape> = Partial<
