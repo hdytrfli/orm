@@ -51,7 +51,7 @@ const postSchema = orm
   ]);
 ```
 
-`hideManaged` omits `createdAt`, `updatedAt`, and `deletedAt` from default query results; use `.show()` to include them. It does not change mutation results. `.hidden()` omits `passwordHash` from default query results, but does not hash or encrypt it.
+`hideManaged` omits `createdAt`, `updatedAt`, and `deletedAt` from default query results; use `.fields(['$all', '+createdAt'])` to include them. It does not change mutation results. `.hidden()` omits `passwordHash` from default query results, but does not hash or encrypt it.
 
 The user email index applies only when `deletedAt` is `null`. A soft-deleted account releases its email for reuse. If deleted accounts should continue reserving email addresses, omit the partial filter. See [Schema Indexes](/schemas/indexes) before adapting this policy.
 
@@ -62,10 +62,10 @@ Register both schemas, then map the post's `author` ObjectId field to the `users
 ```ts
 const schemas = orm
   .defineSchemas({ users: userSchema, posts: postSchema })
-  .defineRelations({ posts: { author: 'users' } })
+  .defineRelations({ posts: { author: { ref: 'users' } } })
   .defineScopes({
     posts: {
-      detail: [{ ref: 'author', select: ['name', 'email'] }],
+      detail: [{ ref: 'author', fields: ['name', 'email'] }],
     },
   });
 ```
@@ -123,7 +123,7 @@ const posts = await db.posts
   .find({ published: true })
   .sort({ createdAt: 'desc' })
   .limit(10)
-  .select(['title'])
+  .fields(['title'])
   .with('detail');
 
 const firstPost = posts[0];
@@ -160,7 +160,7 @@ When a query genuinely needs a hidden field, request it explicitly and keep the 
 ```ts
 const userForPasswordVerification = await db.users
   .find({ _id: ada._id })
-  .show(['passwordHash'])
+  .fields(['$all', '+passwordHash'])
   .first();
 
 userForPasswordVerification?.passwordHash;

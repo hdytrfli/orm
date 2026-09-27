@@ -3,7 +3,6 @@ import type { AggregateOptions, Condition, Document } from 'mongodb';
 import type { ModelDocument } from '../query/types/document.js';
 import type { ModelFilter, NestedFilterKey } from '../query/types/filter.js';
 import type { SchemaShape } from '../schema/contracts.js';
-import { InvalidQueryError } from '../validation/errors.js';
 
 type SourceField<Shape extends SchemaShape> =
   | Extract<keyof Shape, string>
@@ -107,44 +106,3 @@ export type ModelAggregateOptions<
   /** Schema-checked filter applied to source documents before pipeline transformations. */
   filter?: ModelFilter<Shape>;
 } & (SoftDelete extends true ? { includeDeleted?: boolean } : { includeDeleted?: never });
-
-const FIRST_STAGE_ONLY_STAGES = new Set(['$geoNear', '$search', '$vectorSearch']);
-const STAGES_WITHOUT_MODEL_DOCUMENTS = new Set([
-  '$changeStream',
-  '$collStats',
-  '$indexStats',
-  '$planCacheStats',
-  '$searchMeta',
-  '$documents',
-]);
-
-/** Add the model's default soft-delete match without invalidating first-stage-only operators. */
-export const prepareAggregatePipeline = <Shape extends SchemaShape>(
-  pipeline: readonly Document[],
-  softDeleteEnabled: boolean,
-  includeDeleted = false,
-  filter?: ModelFilter<Shape>,
-): Document[] => {
-  const stages = [...pipeline];
-  const shouldApplySoftDelete = softDeleteEnabled && !includeDeleted;
-  const hasUserFilter = filter !== undefined && Object.keys(filter).length > 0;
-  if (!shouldApplySoftDelete && !hasUserFilter) return stages;
-
-  const firstStageName = stages[0] ? Object.keys(stages[0])[0] : undefined;
-  if (firstStageName && STAGES_WITHOUT_MODEL_DOCUMENTS.has(firstStageName)) {
-    throw new InvalidQueryError(
-      `Aggregation stage "${firstStageName}" does not produce model documents for filtering. Remove the filter or use the native MongoDB API for this stage.`,
-    );
-  }
-
-  const filterConditions: Document[] = [];
-  if (hasUserFilter && filter) filterConditions.push(filter);
-  if (shouldApplySoftDelete) filterConditions.push({ deletedAt: null });
-
-  const [onlyFilter] = filterConditions;
-  const matchFilter = filterConditions.length === 1 ? onlyFilter : { $and: filterConditions };
-  const modelMatchStage: Document = { $match: matchFilter };
-  const insertionIndex = firstStageName && FIRST_STAGE_ONLY_STAGES.has(firstStageName) ? 1 : 0;
-  stages.splice(insertionIndex, 0, modelMatchStage);
-  return stages;
-};

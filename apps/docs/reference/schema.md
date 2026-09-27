@@ -32,7 +32,7 @@ Creates a Zod field for MongoDB `ObjectId` values.
 
 ## `.hidden()`
 
-Marks a field as excluded from default model projections. Hidden fields can be requested explicitly with `.show()`.
+Marks a field as excluded from default model projections. Hidden fields can be requested explicitly with a `+` selector in `.fields()`.
 
 ## `schema.options(options)`
 
@@ -48,7 +48,7 @@ const user = orm.schema({ name: orm.string() }).options({
 
 - `timestamps` manages `createdAt` and `updatedAt`.
 - `softdelete` manages nullable `deletedAt` and filters deleted documents from normal reads.
-- `hideManaged` hides whichever managed fields are enabled from default query results. Use `.show()` to include them explicitly. It affects query projections; mutation methods such as `create()` and `update()` still return the full document.
+- `hideManaged` hides whichever managed fields are enabled from default query results. Use a `+` selector in `.fields()` to include them explicitly. It affects query projections; mutation methods such as `create()` and `update()` still return the full document.
 
 ## `orm.defineSchemas(registry)`
 
@@ -63,7 +63,7 @@ const schemas = orm.defineSchemas({ user, post });
 Adds relation metadata to a registry. Each source field maps to a target registry key:
 
 ```ts
-schemas.defineRelations({ post: { author: 'user' } });
+schemas.defineRelations({ post: { author: { ref: 'user' } } });
 ```
 
 ## `.defineScopes(definitions)`
@@ -72,6 +72,6 @@ Adds named population specifications to registry schemas:
 
 ```ts
 schemas.defineScopes({
-  post: { detail: [{ ref: 'author', select: ['name'] }] },
+  post: { detail: [{ ref: 'author', fields: ['name'] }] },
 });
 ```

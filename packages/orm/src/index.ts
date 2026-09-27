@@ -3,7 +3,7 @@ export { orm } from './api.js';
 export type { OrmApi } from './api.js';
 export { Schema } from './schema/index.js';
 export type { Infer, InferInput, InferShape } from './schema/index.js';
-export type { SchemaDefinition, SchemaShape } from './schema/index.js';
+export type { SchemaDefinition, SchemaShape, ScopeDefinitions } from './schema/index.js';
 export type {
   ManagedField,
   SchemaIndex,
@@ -18,6 +18,7 @@ export type {
   SchemaRelationMap,
   SchemaVirtual,
   SchemaVirtualMap,
+  VirtualAggregate,
 } from './schema/index.js';
 export { createDatabase, Db } from './connection/database.js';
 export type { UnsafePurgeOptions } from './connection/database.js';
@@ -25,7 +26,6 @@ export type {
   RelationDefinitions,
   SchemaRegistryBuilder,
   ScopeDefinitionsBySchema,
-  VirtualDefinitions,
 } from './relations/registry.js';
 export {
   CursorQueryError,
@@ -39,6 +39,23 @@ export {
 export type { OrmErrorCode } from './validation/errors.js';
 export { Model } from './model/model.js';
 export type {
+  AnyModel,
+  CreateInputOf,
+  FilterOf,
+  IndexesOf,
+  ModelScopeName,
+  ModelSoftDeleteEnabled,
+  OptionsOf,
+  PopulateOf,
+  RelationsOf,
+  ScopesOf,
+  ShapeOf,
+  UpdateInputOf,
+  VirtualsOf,
+  ZodSchemaOf,
+} from './model/extractors.js';
+export type { CreateInput, UpdateInput } from './model/types.js';
+export type {
   AggregatePipeline,
   AggregateStage,
   ModelAggregateOptions,
@@ -47,6 +64,8 @@ export type { AggregateQuery } from './query/aggregate/query.js';
 export { ModelCursor, ModelQuery } from './query/index.js';
 export type {
   HiddenDocumentKey,
+  FieldSelection,
+  FieldsDocument,
   ModelFilter,
   ModelSort,
   PopulateSpec,

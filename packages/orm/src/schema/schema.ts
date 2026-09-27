@@ -19,6 +19,7 @@ export class Schema<
 > {
   /** The underlying Zod object for advanced validation use cases. */
   readonly definition: SchemaDefinition<Shape>;
+  private partialDefinition: { parse(input: unknown): unknown } | undefined;
 
   /** One-way relation metadata declared for this schema. */
   readonly relationMap: Relations;
@@ -147,7 +148,12 @@ export class Schema<
 
   /** Parse a partial document for update operations. */
   parsePartial(input: unknown): Partial<InferShape<this>> {
-    return this.definition.partial().parse(input) as Partial<InferShape<this>>;
+    let definition = this.partialDefinition;
+    if (!definition) {
+      definition = this.definition.partial();
+      this.partialDefinition = definition;
+    }
+    return definition.parse(input) as Partial<InferShape<this>>;
   }
 
   /** Parse unknown input without throwing on validation failure. */

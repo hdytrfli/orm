@@ -66,7 +66,7 @@ const db = createDatabase({
 });
 await db.connect();
 
-const admins = await db.user.find({ email: { $regex: '@example.com$' } }).select(['email', 'name']);
+const admins = await db.user.find({ email: { $regex: '@example.com$' } }).fields(['email', 'name']);
 ```
 
 ## Follow the Documentation

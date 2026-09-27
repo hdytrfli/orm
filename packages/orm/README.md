@@ -45,7 +45,7 @@ const user = await db.users.create({
 });
 
 const users = await db.users
-  .select(['name', 'email'])
+  .fields(['name', 'email'])
   .find({ role: 'admin' })
   .sort({ name: 'asc' })
   .limit(20);
@@ -67,7 +67,7 @@ const user = await db.users
   .populate([
     {
       ref: 'company',
-      select: ['name'. 'address'],
+      fields: ['name', 'address'],
     },
   ])
   .first();
@@ -131,7 +131,7 @@ await db.users.bulk.create([
 
 const user = await db.users
   .find({ email: 'alan@example.com', role: 'admin' })
-  .show(['password'])
+  .fields(['$all', '+password'])
   .first();
 
 if (!user) throw new Error('User not found');

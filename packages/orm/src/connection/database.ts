@@ -6,6 +6,7 @@ import {
   type Db as MongoDatabase,
 } from 'mongodb';
 
+import type { ModelFromSchema } from '../model/extractors.js';
 import { Model } from '../model/model.js';
 import type {
   Schema,
@@ -56,16 +57,7 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
     this.client = new MongoClient(options.uri, options.clientOptions);
     for (const [name, schema] of Object.entries(options.schemas)) {
       this.registerSchema(schema, name);
-      let model:
-        | Model<
-            SchemaShape,
-            SchemaRelationMap,
-            ScopeDefinitions,
-            any,
-            readonly SchemaIndex<any>[],
-            SchemaVirtualMap
-          >
-        | undefined;
+      let model: ModelFromSchema<SchemaLike> | undefined;
       Object.defineProperty(this, name, {
         configurable: false,
         enumerable: true,
@@ -135,9 +127,10 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
     const synchronized: Record<string, string[]> = {};
     for (const [schema, name] of this.schemaCollections) {
       const definitions = (schema.indexDefinitions ?? []) as readonly SchemaIndex<any>[];
-      if (options.dropIndexes) await this.collectionFor(schema).dropIndexes();
+      const collection = this.collectionFor(schema);
+      if (options.dropIndexes) await collection.dropIndexes();
       synchronized[name] = definitions.length
-        ? await this.collectionFor(schema).createIndexes(
+        ? await collection.createIndexes(
             definitions.map(({ fields, options: indexOptions }) => ({
               ...(indexOptions as object),
               key: fields,

@@ -35,7 +35,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "test": "vitest run --typecheck.only --typecheck.tsconfig tsconfig.json",
+    "test": "vitest run --typecheck.only --typecheck.tsconfig tsconfig.json && vitest run",
     "typecheck": "pnpm build && tsc --noEmit",
     "version:bump": "bumpp"
   },

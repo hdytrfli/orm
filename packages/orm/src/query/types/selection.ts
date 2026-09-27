@@ -22,7 +22,7 @@ type NestedSelectableKey<Shape extends SchemaShape> = {
     : never;
 }[Extract<keyof Shape, string>];
 
-/** Field paths accepted by `.select()`. */
+/** Visible field paths accepted by `.fields()`. */
 export type SelectableKey<Shape extends SchemaShape> =
   | Exclude<Extract<keyof ModelDocument<Shape>, string>, '_id' | HiddenDocumentKey<Shape>>
   | NestedSelectableKey<Shape>;
@@ -44,5 +44,36 @@ export type SelectedDocument<Shape extends SchemaShape, Key extends SelectableKe
       Pick<ModelDocument<Shape>, '_id'> &
         UnionToIntersection<PathSelection<ModelDocument<Shape>, Extract<Key, string>>>
     >;
+
+/** Field directives accepted by query and population projections. */
+export type FieldSelection<Shape extends SchemaShape> =
+  | SelectableKey<Shape>
+  | '$all'
+  | `+${Extract<HiddenDocumentKey<Shape>, string>}`;
+
+type FieldValues<Fields extends readonly unknown[]> = Fields[number];
+type VisibleFieldValues<Fields extends readonly unknown[]> = Exclude<
+  FieldValues<Fields>,
+  '$all' | `+${string}`
+>;
+type HiddenFieldValues<Fields extends readonly unknown[]> =
+  FieldValues<Fields> extends infer Field
+    ? Field extends `+${infer Hidden}`
+      ? Hidden
+      : never
+    : never;
+
+/** Infer a result document from the unified `fields` selector syntax. */
+export type FieldsDocument<
+  Shape extends SchemaShape,
+  Fields extends readonly FieldSelection<Shape>[],
+> = Simplify<
+  ('$all' extends FieldValues<Fields>
+    ? VisibleDocument<Shape>
+    : [VisibleFieldValues<Fields>] extends [never]
+      ? Pick<ModelDocument<Shape>, '_id'>
+      : SelectedDocument<Shape, Extract<VisibleFieldValues<Fields>, SelectableKey<Shape>>>) &
+    Pick<ModelDocument<Shape>, Extract<HiddenFieldValues<Fields>, keyof ModelDocument<Shape>>>
+>;
 
 export type { HiddenDocumentKey, HiddenKey, VisibleDocument };

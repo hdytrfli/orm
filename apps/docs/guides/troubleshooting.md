@@ -26,7 +26,7 @@ For bounded cursor pages, set a positive limit. Omit the limit to stream all mat
 
 ## A Field Is Missing
 
-Check whether it is hidden, whether `.select()` omitted it, or whether a population specification selected a narrower related document. Also verify that the stored document actually contains the field.
+Check whether it is hidden, whether `.fields()` omitted it, or whether a population specification selected a narrower related document. Also verify that the stored document actually contains the field.
 
 ## Existing Data Fails Assumptions
 

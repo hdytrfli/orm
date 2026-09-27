@@ -46,8 +46,8 @@ The returned document includes `_id`. An update input is partial and excludes `_
 ## Hidden Field Inference
 
 ```ts
-const account = await db.user.find({ _id: id }).show(['passwordHash']);
+const account = await db.user.find({ _id: id }).fields(['$all', '+passwordHash']);
 account?.passwordHash;
 ```
 
-`.show()` explicitly expands the result type. This makes sensitive access visible during code review and in editor tooling.
+`.fields()` explicitly opts hidden values into the result type with `+`. This makes sensitive access visible during code review and in editor tooling.

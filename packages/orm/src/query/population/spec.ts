@@ -1,17 +1,15 @@
-import type { Schema, SchemaRelationMap, SchemaVirtualMap } from '../../schema/index.js';
-import type { HiddenDocumentKey } from '../types/document.js';
-import type { SelectableKey } from '../types/selection.js';
+import type { ObjectId } from 'mongodb';
+
+import type {
+  Schema,
+  SchemaRelationMap,
+  SchemaVirtualMap,
+  VirtualAggregate,
+} from '../../schema/index.js';
+import type { InferShape } from '../../schema/inference.js';
+import type { FieldSelection } from '../types/selection.js';
 
 type RelationTarget<Relation> = Relation extends { resolve: () => infer Target } ? Target : never;
-type TargetVirtuals<Relation> =
-  RelationTarget<Relation> extends {
-    readonly virtualMap: infer Virtuals;
-  }
-    ? Virtuals extends SchemaVirtualMap
-      ? Virtuals
-      : {}
-    : {};
-
 type NestedRelations<Relation> = Relation extends { readonly __targetRelations?: infer Relations }
   ? NonNullable<Relations> extends SchemaRelationMap
     ? NonNullable<Relations>
@@ -21,63 +19,83 @@ type NestedRelations<Relation> = Relation extends { readonly __targetRelations?:
       ? Relations
       : {}
     : {};
-
-type SelectableRelationField<Relation> =
-  RelationTarget<Relation> extends Schema<infer Shape, any>
-    ? Exclude<SelectableKey<Shape>, '_id'>
+type PopulationField<Relation> =
+  RelationTarget<Relation> extends Schema<infer Shape, any> ? FieldSelection<Shape> : never;
+type NumericTarget<Relation> =
+  RelationTarget<Relation> extends infer Target
+    ? Extract<NumericKeys<InferShape<Target>>, string>
     : never;
+type NumericKeys<Value, Prefix extends string = ''> = Value extends object
+  ? {
+      [Key in Extract<keyof Value, string>]-?: NonNullable<Value[Key]> extends number
+        ? `${Prefix}${Key}`
+        : NonNullable<Value[Key]> extends ObjectId | Date | readonly unknown[]
+          ? never
+          : NonNullable<Value[Key]> extends object
+            ? NumericKeys<NonNullable<Value[Key]>, `${Prefix}${Key}.`>
+            : never;
+    }[Extract<keyof Value, string>]
+  : never;
 
-type HiddenRelationField<Relation> =
-  RelationTarget<Relation> extends Schema<infer Shape, any> ? HiddenDocumentKey<Shape> : never;
-
-/** A named population scope available on a query. */
 export type ScopeName<Scopes> = Extract<keyof Scopes, string>;
+export type PopulationMode = 'none' | 'populate' | 'virtual' | 'scope';
 
-/** Tracks which query population API has been used. */
-export type PopulationMode = 'none' | 'populate' | 'scope';
-
-/** A typed instruction for populating one declared relation. */
 export type PopulateSpec<Relations extends SchemaRelationMap> = {
   [Name in Extract<keyof Relations, string>]: {
     ref: Name;
-    select?: readonly SelectableRelationField<Relations[Name]>[];
-    show?: readonly HiddenRelationField<Relations[Name]>[];
-    populate?: PopulateSpecs<NestedRelations<Relations[Name]>, TargetVirtuals<Relations[Name]>>;
+    fields?: readonly PopulationField<Relations[Name]>[];
+    populate?: PopulateSpecs<NestedRelations<Relations[Name]>, {}>;
   };
 }[Extract<keyof Relations, string>];
 
-type VirtualTarget<Virtual> = Virtual extends { resolve: () => infer Target } ? Target : never;
-type VirtualSelectField<Virtual> =
-  VirtualTarget<Virtual> extends Schema<infer Shape, any>
-    ? Exclude<SelectableKey<Shape>, '_id'>
-    : never;
-type VirtualHiddenField<Virtual> =
-  VirtualTarget<Virtual> extends Schema<infer Shape, any> ? HiddenDocumentKey<Shape> : never;
-type VirtualRelations<Virtual> =
-  VirtualTarget<Virtual> extends {
-    readonly relationMap: infer Relations extends SchemaRelationMap;
-  }
-    ? Relations
-    : {};
-type VirtualsOfTarget<Virtual> =
-  VirtualTarget<Virtual> extends {
-    readonly virtualMap: infer Virtuals extends SchemaVirtualMap;
-  }
-    ? Virtuals
-    : {};
-
-/** A typed instruction for populating a declared virtual relation. */
-type VirtualPopulateSpec<Virtuals extends SchemaVirtualMap> = {
-  [Name in Extract<keyof Virtuals, string>]: {
-    virtual: Name;
-    select?: readonly VirtualSelectField<Virtuals[Name]>[];
-    show?: readonly VirtualHiddenField<Virtuals[Name]>[];
-    populate?: PopulateSpecs<VirtualRelations<Virtuals[Name]>, VirtualsOfTarget<Virtuals[Name]>>;
-  };
+export type VirtualSpec<Virtuals extends SchemaVirtualMap> = {
+  [Name in Extract<keyof Virtuals, string>]:
+    | ({
+        virtual: Name;
+        type: 'many';
+      } & (
+        | {
+            aggregate: VirtualAggregate<NumericTarget<Virtuals[Name]>>;
+            fields?: never;
+          }
+        | {
+            aggregate?: never;
+            fields?: readonly PopulationField<Virtuals[Name]>[];
+          }
+      ))
+    | {
+        virtual: Name;
+        type: 'first';
+        fields?: readonly PopulationField<Virtuals[Name]>[];
+      };
 }[Extract<keyof Virtuals, string>];
 
-/** A typed list of population instructions. */
 export type PopulateSpecs<
   Relations extends SchemaRelationMap,
   Virtuals extends SchemaVirtualMap = {},
-> = readonly (PopulateSpec<Relations> | VirtualPopulateSpec<Virtuals>)[];
+> = readonly (PopulateSpec<Relations> | VirtualSpec<Virtuals>)[];
+export type PopulateSpecsOnly<Relations extends SchemaRelationMap> =
+  readonly PopulateSpec<Relations>[];
+export type VirtualSpecs<Virtuals extends SchemaVirtualMap> = readonly VirtualSpec<Virtuals>[];
+export type ValidatePopulateSpecs<Specs extends readonly unknown[]> = {
+  [Index in keyof Specs]: Specs[Index] extends { ref: string }
+    ? Exclude<keyof Specs[Index], 'ref' | 'fields' | 'populate'> extends never
+      ? Specs[Index]
+      : never
+    : never;
+};
+export type ValidateVirtualSpecs<Specs extends readonly unknown[]> = {
+  [Index in keyof Specs]: Specs[Index] extends { virtual: string; type: 'many'; aggregate: object }
+    ? Exclude<keyof Specs[Index], 'virtual' | 'type' | 'aggregate'> extends never
+      ? Specs[Index]
+      : never
+    : Specs[Index] extends { virtual: string; type: 'many'; aggregate?: never }
+      ? Exclude<keyof Specs[Index], 'virtual' | 'type' | 'fields' | 'aggregate'> extends never
+        ? Specs[Index]
+        : never
+      : Specs[Index] extends { virtual: string; type: 'first' }
+        ? Exclude<keyof Specs[Index], 'virtual' | 'type' | 'fields'> extends never
+          ? Specs[Index]
+          : never
+        : never;
+};

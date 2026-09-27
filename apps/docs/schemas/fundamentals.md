@@ -39,7 +39,7 @@ const user = orm
   .options({ timestamps: true, softdelete: true, hideManaged: true });
 
 const users = await db.users.find(); // createdAt, updatedAt, deletedAt are omitted
-const withLifecycle = await db.users.find().show(['createdAt', 'deletedAt']);
+const withLifecycle = await db.users.find().fields(['$all', '+createdAt', '+deletedAt']);
 ```
 
 `hideManaged` only changes default query projections. `create()`, `update()`, and `restore()` return the full document because they do not have a projection chain.

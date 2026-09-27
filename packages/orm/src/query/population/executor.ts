@@ -1,19 +1,23 @@
 import type { Db } from '../../connection/database.js';
 import type { SchemaRelationMap, SchemaVirtualMap } from '../../relations/definitions.js';
-import { normalizeProjectionFields } from '../projection/runtime.js';
+import type { VirtualAggregate } from '../../relations/definitions.js';
+import {
+  populateProjectionFor,
+  selectedPopulationFields,
+  shownPopulationFields,
+} from './projection.js';
 
 export type RuntimePopulateSpec =
   | {
       ref: string;
-      select?: readonly string[];
-      show?: readonly string[];
+      fields?: readonly string[];
       populate?: readonly RuntimePopulateSpec[];
     }
   | {
       virtual: string;
-      select?: readonly string[];
-      show?: readonly string[];
-      populate?: readonly RuntimePopulateSpec[];
+      type: 'many' | 'first';
+      aggregate?: VirtualAggregate;
+      fields?: readonly string[];
     };
 
 const valueAtPath = (document: Record<string, unknown>, path: string): unknown =>
@@ -74,35 +78,61 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
     if ('virtual' in spec) {
       const virtual = virtuals[spec.virtual];
       if (!virtual) return;
+      const aggregate = spec.aggregate;
       const target = virtual.resolve();
-      const localValue = valueAtPath(document, virtual.localField);
-      const nestedSpecs = spec.populate ?? [];
+      const virtualOptions = spec;
+      const localValue = valueAtPath(document, virtual.local);
       if (localValue === undefined || localValue === null) {
-        setValueAtPath(document, spec.virtual, []);
+        const aggregateValue = aggregate
+          ? aggregate.type === 'count' || aggregate.type === 'sum'
+            ? 0
+            : null
+          : undefined;
+        setValueAtPath(
+          document,
+          spec.virtual,
+          aggregate ? aggregateValue : spec.type === 'first' ? null : [],
+        );
         return;
       }
 
-      const nestedRelations = target.relationMap as SchemaRelationMap;
-      const nestedVirtuals = target.virtualMap as SchemaVirtualMap;
-      const projectionFields = [...(spec.select ?? target.fields)];
-      for (const nested of nestedSpecs) {
-        const nestedRef = 'ref' in nested ? nested.ref : nested.virtual;
-        const nestedMeta = 'ref' in nested ? nestedRelations[nestedRef] : nestedVirtuals[nestedRef];
-        if (nestedMeta) projectionFields.push(nestedMeta.localField);
-      }
-      projectionFields.push(...(spec.show ?? []));
-      const normalizedFields = normalizeProjectionFields([...new Set(projectionFields)]);
-      const projection = Object.fromEntries(normalizedFields.map((field) => [field, 1]));
+      const projection = populateProjectionFor(
+        selectedPopulationFields(target.fields, target.hiddenFields, virtualOptions.fields),
+        shownPopulationFields(virtualOptions.fields),
+        [],
+        target.relationMap as SchemaRelationMap,
+        target.virtualMap as SchemaVirtualMap,
+      );
       const foreignValue = Array.isArray(localValue) ? { $in: localValue } : localValue;
-      const related = await this.db
-        .collectionFor(target)
-        .find({ [virtual.foreignField]: foreignValue }, { projection })
-        .toArray();
-      for (const relatedDocument of related) {
-        for (const nested of nestedSpecs) {
-          await this.populateDocument(relatedDocument, nested, nestedRelations, nestedVirtuals);
-        }
+      const joinFilter = { [virtual.foreign]: foreignValue };
+      const filter = joinFilter;
+      const collection = this.db.collectionFor(target);
+      if (aggregate) {
+        const operation =
+          aggregate.type === 'count'
+            ? '$sum'
+            : `$${aggregate.type === 'average' ? 'avg' : aggregate.type}`;
+        const expression =
+          aggregate.type === 'count'
+            ? { $cond: [{ $ne: [`$${aggregate.field}`, null] }, 1, 0] }
+            : `$${aggregate.field}`;
+        const [result] = await collection
+          .aggregate<{ value: number | null }>([
+            { $match: filter },
+            { $group: { _id: null, value: { [operation]: expression } } },
+          ])
+          .toArray();
+        const value =
+          result?.value ?? (aggregate.type === 'count' || aggregate.type === 'sum' ? 0 : null);
+        setValueAtPath(document, spec.virtual, value);
+        return;
       }
+      if (spec.type === 'first') {
+        const first = await collection.findOne(filter, { projection });
+        setValueAtPath(document, spec.virtual, first);
+        return;
+      }
+      const related = await collection.find(filter, { projection }).toArray();
       setValueAtPath(document, spec.virtual, related);
       return;
     }
@@ -111,21 +141,19 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
     const target = relation.resolve();
     const value = valueAtPath(document, relation.localField);
     const targetRelations = target.relationMap as SchemaRelationMap;
-    const hiddenTargetFields = new Set(target.hiddenFields);
-    const selectedFields =
-      spec.select ?? target.fields.filter((field) => !hiddenTargetFields.has(field));
-    const projectionFields = [...new Set(selectedFields)];
+    const selectedFields = selectedPopulationFields(
+      target.fields,
+      target.hiddenFields,
+      spec.fields,
+    );
     const nestedSpecs = spec.populate ?? [];
-    for (const nested of nestedSpecs) {
-      const nestedRef = 'ref' in nested ? nested.ref : nested.virtual;
-      const nestedMeta =
-        'ref' in nested ? targetRelations[nestedRef] : target.virtualMap[nestedRef];
-      if (nestedMeta) projectionFields.push(nestedMeta.localField);
-    }
-    projectionFields.push(...(spec.show ?? []));
-
-    const normalizedFields = normalizeProjectionFields(projectionFields);
-    const projection = Object.fromEntries(normalizedFields.map((field) => [field, 1]));
+    const projection = populateProjectionFor(
+      selectedFields,
+      shownPopulationFields(spec.fields),
+      nestedSpecs,
+      targetRelations,
+      target.virtualMap as SchemaVirtualMap,
+    );
     const related = value
       ? await this.db
           .collectionFor(target)

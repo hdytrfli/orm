@@ -21,7 +21,7 @@ type NestedFilterValue<Value, Path extends string> = Path extends `${infer Head}
     ? Value[Path]
     : never;
 
-type FilterForDocument<DocumentShape extends Document, FieldShape extends object> = Partial<{
+export type SchemaFilter<DocumentShape extends Document, FieldShape extends object> = Partial<{
   [Key in keyof FieldShape]: Condition<FieldShape[Key]>;
 }> &
   Partial<{
@@ -33,16 +33,15 @@ type FilterForDocument<DocumentShape extends Document, FieldShape extends object
       '$comment' | '$expr' | '$jsonSchema' | '$text' | '$where'
     >
   > & {
-    $and?: FilterForDocument<DocumentShape, FieldShape>[];
-    $nor?: FilterForDocument<DocumentShape, FieldShape>[];
-    $or?: FilterForDocument<DocumentShape, FieldShape>[];
+    $and?: SchemaFilter<DocumentShape, FieldShape>[];
+    $nor?: SchemaFilter<DocumentShape, FieldShape>[];
+    $or?: SchemaFilter<DocumentShape, FieldShape>[];
   };
 
 /** Schema-checked MongoDB filters, including nested dot-notation paths. */
-export type ModelFilter<Shape extends SchemaShape> = FilterForDocument<
-  StoredDocument<Shape>,
-  ModelDocument<Shape>
->;
+export type ModelFilter<Shape extends SchemaShape> =
+  | SchemaFilter<StoredDocument<Shape>, ModelDocument<Shape>>
+  | { _id: ObjectId };
 
 /** MongoDB sort directions supported by the model query API. */
 export type SortDirection = 'asc' | 'desc';

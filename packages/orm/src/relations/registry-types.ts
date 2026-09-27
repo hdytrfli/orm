@@ -2,15 +2,22 @@ import type { ObjectId } from 'mongodb';
 
 import type { PopulateSpecs } from '../query/index.js';
 import type { ScopeDefinitions } from '../schema/contracts.js';
+import type {
+  SchemaRelationsOf,
+  SchemaVirtualsOf,
+  WithSchemaRelations,
+  WithSchemaScopes,
+  WithSchemaVirtuals,
+} from '../schema/extractors.js';
 import type { InferShape } from '../schema/inference.js';
 import type { Schema } from '../schema/schema.js';
-import type { SchemaRelation, SchemaLike, SchemaVirtual } from './definitions.js';
+import type { SchemaLike, SchemaRelation, SchemaVirtual } from './definitions.js';
 
 type ObjectIdPathKeys<Value, Prefix extends string = ''> = Value extends object
   ? {
       [Key in Extract<keyof Value, string>]-?: NonNullable<Value[Key]> extends ObjectId
         ? `${Prefix}${Key}`
-        : NonNullable<Value[Key]> extends Date | readonly unknown[]
+        : NonNullable<Value[Key]> extends ObjectId | Date | readonly unknown[]
           ? never
           : NonNullable<Value[Key]> extends object
             ? ObjectIdPathKeys<NonNullable<Value[Key]>, `${Prefix}${Key}.`>
@@ -19,132 +26,95 @@ type ObjectIdPathKeys<Value, Prefix extends string = ''> = Value extends object
   : never;
 
 type ObjectIdPathsOfSchema<Value> = ObjectIdPathKeys<InferShape<Value>>;
+type RelationInput<Registry extends Record<string, SchemaLike>> = {
+  [Target in Extract<keyof Registry, string>]: { readonly ref: Target; readonly inverse?: string };
+}[Extract<keyof Registry, string>];
 
-type SchemaVirtuals<Value> =
-  Value extends Schema<any, any, any, any, any, infer Virtuals> ? Virtuals : {};
+type ValidateRelationDefinitions<Definitions> = {
+  [Source in keyof Definitions]: Definitions[Source] extends object
+    ? {
+        [Field in keyof Definitions[Source]]: Definitions[Source][Field] extends {
+          ref: string;
+          inverse?: string;
+        }
+          ? Definitions[Source][Field]
+          : never;
+      }
+    : never;
+};
 
-/** Valid local ObjectId fields and targets accepted by `defineRelations`. */
 export type RelationDefinitions<Registry extends Record<string, SchemaLike>> = {
-  [Name in keyof Registry]?: Registry[Name] extends Schema<any, any, any, any>
-    ? Partial<
-        Record<
-          Extract<ObjectIdPathsOfSchema<Registry[Name]>, string>,
-          Extract<keyof Registry, string>
+  [Name in keyof Registry]?: Partial<
+    Record<Extract<ObjectIdPathsOfSchema<Registry[Name]>, string>, RelationInput<Registry>>
+  >;
+};
+
+type RelationsFor<Registry extends Record<string, SchemaLike>, AllDefinitions, Config> = {
+  [Field in keyof Config & string]: Config[Field] extends {
+    ref: infer Target extends keyof Registry;
+  }
+    ? SchemaRelation<
+        Registry[Target],
+        Field,
+        '_id',
+        RelationsFor<
+          Registry,
+          AllDefinitions,
+          NonNullable<AllDefinitions[Target & keyof AllDefinitions]>
         >
       >
     : never;
 };
 
-type ObjectIdDocumentPath<Value> =
-  Value extends Schema<any, any, any, any>
-    ? Extract<ObjectIdPathsOfSchema<Value>, string> | '_id'
-    : '_id';
-
-type VirtualTargetInput<
+type InverseVirtuals<
   Registry extends Record<string, SchemaLike>,
+  Definitions,
   Source extends keyof Registry,
 > = {
-  [Target in Extract<keyof Registry, string>]: {
-    ref: Target;
-    localField: ObjectIdDocumentPath<Registry[Source]>;
-    foreignField: ObjectIdDocumentPath<Registry[Target]>;
-  };
-}[Extract<keyof Registry, string>];
+  [Owner in keyof Definitions]: Definitions[Owner] extends object
+    ? {
+        [
+          Field in keyof Definitions[Owner] as Definitions[Owner][Field] extends {
+            ref: Source;
+            inverse: infer Inverse extends string;
+          }
+            ? Inverse
+            : never
+        ]: Definitions[Owner][Field] extends { ref: Source }
+          ? SchemaVirtual<Registry[Extract<Owner, keyof Registry>], '_id', Extract<Field, string>>
+          : never;
+      }
+    : {};
+}[keyof Definitions] extends infer Maps
+  ? UnionToIntersection<Maps>
+  : {};
 
-/** Virtual relations map a local document field to a foreign target field. */
-export type VirtualDefinitions<Registry extends Record<string, SchemaLike>> = {
-  [Name in keyof Registry]?: Record<string, VirtualTargetInput<Registry, Name>>;
-};
-
-type VirtualsFor<
-  Registry extends Record<string, SchemaLike>,
-  Definitions,
-  Name extends keyof Registry,
-> = {
-  [
-    VirtualName in keyof (Name extends keyof Definitions ? NonNullable<Definitions[Name]> : {})
-  ]: (Name extends keyof Definitions ? NonNullable<Definitions[Name]> : {})[VirtualName] extends {
-    ref: infer Target extends keyof Registry;
-    localField: infer Local extends string;
-    foreignField: infer Foreign extends string;
-  }
-    ? SchemaVirtual<Registry[Target], Local, Foreign>
-    : never;
-};
-
-type RegistryWithVirtuals<
-  Registry extends Record<string, SchemaLike>,
-  Definitions extends VirtualDefinitions<Registry>,
-> = {
-  [Name in keyof Registry]: Registry[Name] extends Schema<
-    infer Shape,
-    infer Relations,
-    infer Scopes,
-    infer Options,
-    infer Indexes,
-    infer Existing
-  >
-    ? Schema<
-        Shape,
-        Relations,
-        Scopes,
-        Options,
-        Indexes,
-        Existing & VirtualsFor<Registry, Definitions, Name>
-      >
-    : Registry[Name];
-};
-
-type RelationsFor<
-  Registry extends Record<string, SchemaLike>,
-  AllDefinitions extends RelationDefinitions<Registry>,
-  Definitions,
-> = {
-  [Field in keyof Definitions & string]: Definitions[Field] extends keyof Registry
-    ? SchemaRelation<
-        Registry[Definitions[Field]],
-        Field,
-        '_id',
-        RelationsFor<Registry, AllDefinitions, NonNullable<AllDefinitions[Definitions[Field]]>>
-      >
-    : never;
-};
+type UnionToIntersection<Union> = (Union extends unknown ? (value: Union) => void : never) extends (
+  value: infer Intersection,
+) => void
+  ? Intersection
+  : {};
 
 type RegistryWithRelations<
   Registry extends Record<string, SchemaLike>,
   Definitions extends RelationDefinitions<Registry>,
 > = {
-  [Name in keyof Registry]: Registry[Name] extends Schema<
-    infer Shape,
-    infer Relations,
-    infer Scopes,
-    infer Options,
-    infer Indexes,
-    infer Virtuals
-  >
-    ? Schema<
-        Shape,
-        Relations & RelationsFor<Registry, Definitions, NonNullable<Definitions[Name]>>,
-        Scopes,
-        Options,
-        Indexes,
-        Virtuals
-      >
-    : Registry[Name];
+  [Name in keyof Registry]: WithSchemaVirtuals<
+    WithSchemaRelations<
+      Registry[Name],
+      RelationsFor<Registry, Definitions, NonNullable<Definitions[Name]>>
+    >,
+    InverseVirtuals<Registry, Definitions, Name>
+  >;
 };
 
 type RelationMapOf<Value> =
-  Value extends SchemaRelation<any, any, any, infer Relations>
-    ? Relations
-    : Value extends Schema<any, infer Relations, any, any>
-      ? Relations
-      : {};
+  Value extends Schema<any, infer Relations, any, any> ? Relations : SchemaRelationsOf<Value>;
 
-/** Scope declarations accepted for each registered model. */
 export type ScopeDefinitionsBySchema<Registry extends Record<string, SchemaLike>> = {
   [Name in keyof Registry]?: Record<
     string,
-    PopulateSpecs<RelationMapOf<Registry[Name]>, SchemaVirtuals<Registry[Name]>>
+    PopulateSpecs<RelationMapOf<Registry[Name]>, SchemaVirtualsOf<Registry[Name]>>
   >;
 };
 
@@ -152,34 +122,18 @@ type RegistryWithScopes<
   Registry extends Record<string, SchemaLike>,
   Definitions extends ScopeDefinitionsBySchema<Registry>,
 > = {
-  [Name in keyof Registry]: Registry[Name] extends Schema<
-    infer Shape,
-    infer Relations,
-    infer Scopes,
-    infer Options,
-    infer Indexes,
-    infer Virtuals
-  >
-    ? Schema<
-        Shape,
-        Relations,
-        Scopes & (Definitions[Name] extends ScopeDefinitions ? Definitions[Name] : {}),
-        Options,
-        Indexes,
-        Virtuals
-      >
-    : Registry[Name];
+  [Name in keyof Registry]: WithSchemaScopes<
+    Registry[Name],
+    Definitions[Name] extends ScopeDefinitions ? Definitions[Name] : {}
+  >;
 };
 
-/** Typed registry builder API, with relations and scopes reflected in model types. */
 export type SchemaRegistryBuilder<Registry extends Record<string, SchemaLike>> = Registry & {
   readonly __registry?: Registry;
   defineRelations<const Definitions extends RelationDefinitions<Registry>>(
     definitions: Definitions,
+    ..._validation: [Definitions] extends [ValidateRelationDefinitions<Definitions>] ? [] : [never]
   ): SchemaRegistryBuilder<RegistryWithRelations<Registry, Definitions>>;
-  defineVirtual<const Definitions extends VirtualDefinitions<Registry>>(
-    definitions: Definitions,
-  ): SchemaRegistryBuilder<RegistryWithVirtuals<Registry, Definitions>>;
   defineScopes<const Definitions extends ScopeDefinitionsBySchema<Registry>>(
     definitions: Definitions,
   ): SchemaRegistryBuilder<RegistryWithScopes<Registry, Definitions>>;

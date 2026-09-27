@@ -8,7 +8,7 @@ Mongorm makes query intent visible, but MongoDB performance still depends on dat
 
 ## Project Early
 
-Use `.select()` for list endpoints and relation projections. Smaller documents reduce transfer and deserialization cost.
+Use `.fields()` for list endpoints and relation projections. Smaller documents reduce transfer and deserialization cost.
 
 ## Limit Lists
 

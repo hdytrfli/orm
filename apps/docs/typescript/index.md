@@ -9,13 +9,14 @@ Mongorm uses TypeScript to make schema and query behavior visible at compile tim
 ## Pages
 
 - [Inference Fundamentals](/typescript/inference): infer document, input, and visible-result types.
+- [Model-Derived Types](/typescript/model-types): reuse model schema, input, filter, relation, scope, and population types.
 - [Typed Query Composition](/typescript/query-types): how filters, selection, and population change result types.
 - [Compiler and Runtime Boundaries](/typescript/boundaries): what TypeScript catches and what runtime validation catches.
 
 ## The Core Principle
 
 ```ts
-const users = await db.user.find({ role: 'admin' }).select(['email', 'name']);
+const users = await db.user.find({ role: 'admin' }).fields(['email', 'name']);
 
 users[0].email; // string
 users[0].name; // string

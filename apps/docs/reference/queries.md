@@ -39,10 +39,10 @@ Adds hidden fields to the projection. The field names must be declared as hidden
 
 ## `populate(specs)`
 
-Each specification has a relation reference and optional `select` and nested `populate` values:
+Each specification has a relation reference and optional `fields` and nested `populate` values:
 
 ```ts
-[{ ref: 'author', select: ['name'], populate: [] }];
+[{ ref: 'author', fields: ['name'], populate: [] }];
 ```
 
 ## `with(name)`
