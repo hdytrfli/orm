@@ -78,25 +78,19 @@ export type PopulateSpecs<
 export type PopulateSpecsOnly<Relations extends SchemaRelationMap> =
   readonly PopulateSpec<Relations>[];
 export type VirtualSpecs<Virtuals extends SchemaVirtualMap> = readonly VirtualSpec<Virtuals>[];
+type WithoutExtraKeys<Spec, Allowed extends string> =
+  Exclude<keyof Spec, Allowed> extends never ? Spec : never;
+
 export type ValidatePopulateSpecs<Specs extends readonly unknown[]> = {
-  [Index in keyof Specs]: Specs[Index] extends { ref: string }
-    ? Exclude<keyof Specs[Index], 'ref' | 'fields' | 'populate'> extends never
-      ? Specs[Index]
-      : never
-    : never;
+  [Index in keyof Specs]: WithoutExtraKeys<Specs[Index], 'ref' | 'fields' | 'populate'>;
 };
+
 export type ValidateVirtualSpecs<Specs extends readonly unknown[]> = {
   [Index in keyof Specs]: Specs[Index] extends { virtual: string; type: 'many'; aggregate: object }
-    ? Exclude<keyof Specs[Index], 'virtual' | 'type' | 'aggregate'> extends never
-      ? Specs[Index]
-      : never
+    ? WithoutExtraKeys<Specs[Index], 'virtual' | 'type' | 'aggregate'>
     : Specs[Index] extends { virtual: string; type: 'many'; aggregate?: never }
-      ? Exclude<keyof Specs[Index], 'virtual' | 'type' | 'fields' | 'aggregate'> extends never
-        ? Specs[Index]
-        : never
+      ? WithoutExtraKeys<Specs[Index], 'virtual' | 'type' | 'fields' | 'aggregate'>
       : Specs[Index] extends { virtual: string; type: 'first' }
-        ? Exclude<keyof Specs[Index], 'virtual' | 'type' | 'fields'> extends never
-          ? Specs[Index]
-          : never
+        ? WithoutExtraKeys<Specs[Index], 'virtual' | 'type' | 'fields'>
         : never;
 };
