@@ -9,10 +9,6 @@ export class SoftDeleteState<Shape extends SchemaShape> {
 
   constructor(private readonly enabled: boolean) {}
 
-  includeDeleted(): void {
-    this.mode = 'all';
-  }
-
   deleted(mode: DeletedQueryMode): void {
     this.mode = mode === 'include' ? 'all' : 'deleted';
   }

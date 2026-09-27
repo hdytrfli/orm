@@ -57,14 +57,6 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
     return documents;
   }
 
-  async applyOne<Result extends object>(
-    document: Result,
-    specs: readonly RuntimePopulateSpec[],
-  ): Promise<Result> {
-    await this.apply([document], specs);
-    return document;
-  }
-
   private async populateDocument(
     document: Record<string, unknown>,
     spec: RuntimePopulateSpec,
