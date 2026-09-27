@@ -110,8 +110,12 @@ describe('relation graph inference', () => {
     const people = orm.schema({ name: orm.string(), department: orm.objectId() });
     const projects = orm.schema({ owner: orm.objectId(), title: orm.string() });
     const base = orm.defineSchemas({ people, projects });
+
     // @ts-expect-error Relation fields must be ObjectId paths.
     base.defineRelations({ people: { name: { ref: 'projects' } } });
+    // @ts-expect-error Relation keys must name fields declared on the source schema.
+    base.defineRelations({ people: { notAField: { ref: 'projects' } } });
+
     const registry = base
       .defineRelations({
         projects: { owner: { ref: 'people', inverse: 'projects' } },
@@ -127,5 +131,32 @@ describe('relation graph inference', () => {
       });
     const database = {} as ReturnType<typeof createDatabase<typeof registry>>;
     expectTypeOf(database.people.find().with('overview')).not.toBeNever();
+  });
+
+  it('rejects duplicate inverse names on the same target schema', () => {
+    const people = orm.schema({ name: orm.string() });
+    const projects = orm.schema({ owner: orm.objectId() });
+    const tasks = orm.schema({ assignee: orm.objectId() });
+    const base = orm.defineSchemas({ people, projects, tasks });
+
+    // @ts-expect-error Inverse names must be unique on their target schema.
+    base.defineRelations({
+      projects: { owner: { ref: 'people', inverse: 'work' } },
+      tasks: { assignee: { ref: 'people', inverse: 'work' } },
+    });
+
+    base.defineRelations({
+      projects: { owner: { ref: 'people', inverse: 'ownedProjects' } },
+      tasks: { assignee: { ref: 'people', inverse: 'assignedTasks' } },
+    });
+
+    const withProjectInverse = base.defineRelations({
+      projects: { owner: { ref: 'people', inverse: 'projects' } },
+    });
+    expectTypeOf(withProjectInverse.people.virtualMap.projects.foreign).toEqualTypeOf<'owner'>();
+    // @ts-expect-error Inverse names cannot collide across defineRelations calls either.
+    withProjectInverse.defineRelations({
+      tasks: { assignee: { ref: 'people', inverse: 'projects' } },
+    });
   });
 });

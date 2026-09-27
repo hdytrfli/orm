@@ -43,6 +43,106 @@ type ValidateRelationDefinitions<Definitions> = {
     : never;
 };
 
+type InvalidRelationFields<Registry extends Record<string, SchemaLike>, Definitions> = {
+  [Source in keyof Definitions]: Source extends keyof Registry
+    ? Exclude<
+        Extract<keyof NonNullable<Definitions[Source]>, string>,
+        Extract<ObjectIdPathsOfSchema<Registry[Source]>, string>
+      >
+    : Extract<keyof NonNullable<Definitions[Source]>, string>;
+}[keyof Definitions];
+
+type ValidRelationFields<Registry extends Record<string, SchemaLike>, Definitions> = [
+  InvalidRelationFields<Registry, Definitions>,
+] extends [never]
+  ? unknown
+  : {
+      readonly [
+        Message in `Invalid relation field "${InvalidRelationFields<Registry, Definitions>}". Relation keys must be declared ObjectId fields on the source schema.`
+      ]: never;
+    };
+
+type InverseEntry<Definitions> = {
+  [Source in keyof Definitions]: NonNullable<Definitions[Source]> extends infer Relations
+    ? Relations extends object
+      ? {
+          [Field in keyof Relations]: Relations[Field] extends {
+            ref: infer Target extends string;
+            inverse: infer Inverse extends string;
+          }
+            ? readonly [Source, Field, Target, Inverse]
+            : never;
+        }[keyof Relations]
+      : never
+    : never;
+}[keyof Definitions];
+
+type InversePaths<Definitions, Target extends string, Name extends string> = {
+  [Source in keyof Definitions]: NonNullable<Definitions[Source]> extends infer Relations
+    ? Relations extends object
+      ? {
+          [Field in keyof Relations]: Relations[Field] extends {
+            ref: Target;
+            inverse: Name;
+          }
+            ? `${Extract<Source, string>}.${Extract<Field, string>}`
+            : never;
+        }[keyof Relations]
+      : never
+    : never;
+}[keyof Definitions];
+
+type IsUnion<Value, Whole = Value> = Value extends Whole
+  ? [Whole] extends [Value]
+    ? false
+    : true
+  : never;
+
+type DuplicateInverseName<Entry, Definitions> = Entry extends readonly [
+  unknown,
+  unknown,
+  infer Target extends string,
+  infer Name extends string,
+]
+  ? IsUnion<InversePaths<Definitions, Target, Name>> extends true
+    ? Name
+    : never
+  : never;
+
+type DuplicateInverseNames<Definitions> = DuplicateInverseName<
+  InverseEntry<Definitions>,
+  Definitions
+>;
+
+type ExistingInverseConflict<
+  Entry,
+  Registry extends Record<string, SchemaLike>,
+> = Entry extends readonly [
+  unknown,
+  unknown,
+  infer Target extends keyof Registry,
+  infer Name extends string,
+]
+  ? Name extends keyof SchemaVirtualsOf<Registry[Target]>
+    ? Name
+    : never
+  : never;
+
+type ExistingInverseConflicts<
+  Registry extends Record<string, SchemaLike>,
+  Definitions,
+> = ExistingInverseConflict<InverseEntry<Definitions>, Registry>;
+
+type UniqueInverseNames<Registry extends Record<string, SchemaLike>, Definitions> = [
+  DuplicateInverseNames<Definitions> | ExistingInverseConflicts<Registry, Definitions>,
+] extends [never]
+  ? unknown
+  : {
+      readonly [
+        Message in `Duplicate inverse name "${DuplicateInverseNames<Definitions> | ExistingInverseConflicts<Registry, Definitions>}". Use a unique inverse name for each relation targeting the same schema.`
+      ]: never;
+    };
+
 export type RelationDefinitions<Registry extends Record<string, SchemaLike>> = {
   [Name in keyof Registry]?: Partial<
     Record<Extract<ObjectIdPathsOfSchema<Registry[Name]>, string>, RelationInput<Registry>>
@@ -131,7 +231,9 @@ type RegistryWithScopes<
 export type SchemaRegistryBuilder<Registry extends Record<string, SchemaLike>> = Registry & {
   readonly __registry?: Registry;
   defineRelations<const Definitions extends RelationDefinitions<Registry>>(
-    definitions: Definitions,
+    definitions: Definitions &
+      ValidRelationFields<Registry, Definitions> &
+      UniqueInverseNames<Registry, Definitions>,
     ..._validation: [Definitions] extends [ValidateRelationDefinitions<Definitions>] ? [] : [never]
   ): SchemaRegistryBuilder<RegistryWithRelations<Registry, Definitions>>;
   defineScopes<const Definitions extends ScopeDefinitionsBySchema<Registry>>(
