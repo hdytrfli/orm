@@ -3,16 +3,21 @@ import { normalizeProjectionFields } from '../projection/runtime.js';
 
 type NestedProjectionSpec = { readonly ref: string } | { readonly virtual: string };
 
-/** Use explicit selections when provided; otherwise omit hidden schema fields. */
+/** Resolve a `fields` selector into visible projection fields. `$all` means all public fields. */
 export const selectedPopulationFields = (
   fields: readonly string[],
   hiddenFields: readonly string[],
-  selectedFields?: readonly string[],
+  selection?: readonly string[],
 ): readonly string[] => {
-  if (selectedFields) return selectedFields;
   const hidden = new Set(hiddenFields);
+  if (selection?.includes('$all')) return fields.filter((field) => !hidden.has(field));
+  if (selection) return selection.filter((field) => field !== '$all' && !field.startsWith('+'));
   return fields.filter((field) => !hidden.has(field));
 };
+
+/** Resolve explicitly opted-in hidden fields from the same selector list. */
+export const shownPopulationFields = (selection?: readonly string[]): readonly string[] =>
+  selection?.filter((field) => field.startsWith('+')).map((field) => field.slice(1)) ?? [];
 
 /** Build a population projection, retaining keys needed by nested populations. */
 export const populateProjectionFor = (
@@ -22,7 +27,7 @@ export const populateProjectionFor = (
   relations: SchemaRelationMap,
   virtuals: SchemaVirtualMap,
 ): Record<string, 1> => {
-  const fields = [...selectedFields];
+  const fields = ['_id', ...selectedFields];
   for (const nested of nestedSpecs) {
     if ('ref' in nested) {
       const relation = relations[nested.ref];

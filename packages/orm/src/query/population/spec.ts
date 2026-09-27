@@ -7,8 +7,7 @@ import type {
   VirtualAggregate,
 } from '../../schema/index.js';
 import type { InferShape } from '../../schema/inference.js';
-import type { HiddenDocumentKey } from '../types/document.js';
-import type { SelectableKey } from '../types/selection.js';
+import type { FieldSelection } from '../types/selection.js';
 
 type RelationTarget<Relation> = Relation extends { resolve: () => infer Target } ? Target : never;
 type NestedRelations<Relation> = Relation extends { readonly __targetRelations?: infer Relations }
@@ -20,12 +19,8 @@ type NestedRelations<Relation> = Relation extends { readonly __targetRelations?:
       ? Relations
       : {}
     : {};
-type SelectableTarget<Relation> =
-  RelationTarget<Relation> extends Schema<infer Shape, any>
-    ? Exclude<SelectableKey<Shape>, '_id'>
-    : never;
-type HiddenTarget<Relation> =
-  RelationTarget<Relation> extends Schema<infer Shape, any> ? HiddenDocumentKey<Shape> : never;
+type PopulationField<Relation> =
+  RelationTarget<Relation> extends Schema<infer Shape, any> ? FieldSelection<Shape> : never;
 type NumericTarget<Relation> =
   RelationTarget<Relation> extends infer Target
     ? Extract<NumericKeys<InferShape<Target>>, string>
@@ -48,8 +43,7 @@ export type PopulationMode = 'none' | 'populate' | 'virtual' | 'scope';
 export type PopulateSpec<Relations extends SchemaRelationMap> = {
   [Name in Extract<keyof Relations, string>]: {
     ref: Name;
-    select?: readonly SelectableTarget<Relations[Name]>[];
-    show?: readonly HiddenTarget<Relations[Name]>[];
+    fields?: readonly PopulationField<Relations[Name]>[];
     populate?: PopulateSpecs<NestedRelations<Relations[Name]>, {}>;
   };
 }[Extract<keyof Relations, string>];
@@ -62,20 +56,17 @@ export type VirtualSpec<Virtuals extends SchemaVirtualMap> = {
       } & (
         | {
             aggregate: VirtualAggregate<NumericTarget<Virtuals[Name]>>;
-            select?: never;
-            show?: never;
+            fields?: never;
           }
         | {
             aggregate?: never;
-            select?: readonly SelectableTarget<Virtuals[Name]>[];
-            show?: readonly HiddenTarget<Virtuals[Name]>[];
+            fields?: readonly PopulationField<Virtuals[Name]>[];
           }
       ))
     | {
         virtual: Name;
         type: 'first';
-        select?: readonly SelectableTarget<Virtuals[Name]>[];
-        show?: readonly HiddenTarget<Virtuals[Name]>[];
+        fields?: readonly PopulationField<Virtuals[Name]>[];
       };
 }[Extract<keyof Virtuals, string>];
 
@@ -86,21 +77,24 @@ export type PopulateSpecs<
 export type PopulateSpecsOnly<Relations extends SchemaRelationMap> =
   readonly PopulateSpec<Relations>[];
 export type VirtualSpecs<Virtuals extends SchemaVirtualMap> = readonly VirtualSpec<Virtuals>[];
-export type ValidatePopulateSpecs<Specs extends readonly unknown[]> = Specs;
+export type ValidatePopulateSpecs<Specs extends readonly unknown[]> = {
+  [Index in keyof Specs]: Specs[Index] extends { ref: string }
+    ? Exclude<keyof Specs[Index], 'ref' | 'fields' | 'populate'> extends never
+      ? Specs[Index]
+      : never
+    : never;
+};
 export type ValidateVirtualSpecs<Specs extends readonly unknown[]> = {
   [Index in keyof Specs]: Specs[Index] extends { virtual: string; type: 'many'; aggregate: object }
     ? Exclude<keyof Specs[Index], 'virtual' | 'type' | 'aggregate'> extends never
       ? Specs[Index]
       : never
     : Specs[Index] extends { virtual: string; type: 'many'; aggregate?: never }
-      ? Exclude<
-          keyof Specs[Index],
-          'virtual' | 'type' | 'select' | 'show' | 'aggregate'
-        > extends never
+      ? Exclude<keyof Specs[Index], 'virtual' | 'type' | 'fields' | 'aggregate'> extends never
         ? Specs[Index]
         : never
       : Specs[Index] extends { virtual: string; type: 'first' }
-        ? Exclude<keyof Specs[Index], 'virtual' | 'type' | 'select' | 'show'> extends never
+        ? Exclude<keyof Specs[Index], 'virtual' | 'type' | 'fields'> extends never
           ? Specs[Index]
           : never
         : never;

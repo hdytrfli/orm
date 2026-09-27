@@ -56,7 +56,7 @@ describe('cursor integration scenarios', () => {
       .find({
         company: company._id,
       })
-      .select(['name'])
+      .fields(['name'])
       .cursor()) {
       streamed.push(user.name);
     }

@@ -24,60 +24,74 @@ export const registry = orm
         {
           virtual: 'ownedProjects',
           type: 'many',
-          select: ['key', 'name', 'status', 'description'],
+          fields: ['key', 'name', 'status', 'description'],
         },
       ],
       detail: [
         {
           type: 'many',
           virtual: 'ownedProjects',
-          select: ['key', 'name', 'status', 'description'],
+          fields: ['key', 'name', 'status', 'description'],
         },
         {
           type: 'many',
           virtual: 'assignedTasks',
-          select: ['title', 'status', 'priority', 'dueAt'],
+          fields: ['title', 'status', 'priority', 'dueAt'],
         },
       ],
     },
     projects: {
       list: [
-        { ref: 'owner', select: ['firstName', 'lastName'] },
+        { ref: 'owner', fields: ['firstName', 'lastName'] },
         {
           type: 'many',
           virtual: 'tasks',
-          show: ['updatedAt'],
-          select: ['title', 'description', 'status', 'priority', 'dueAt', 'estimateMinutes'],
+          fields: [
+            'title',
+            'description',
+            'status',
+            'priority',
+            'dueAt',
+            'estimateMinutes',
+            '+updatedAt',
+          ],
         },
       ],
       detail: [
-        { ref: 'owner', select: ['firstName', 'lastName', 'email', 'jobTitle'] },
+        { ref: 'owner', fields: ['firstName', 'lastName', 'email', 'jobTitle'] },
         {
           type: 'many',
           virtual: 'tasks',
-          show: ['updatedAt'],
-          select: ['title', 'description', 'status', 'priority', 'dueAt', 'estimateMinutes'],
+          fields: [
+            'title',
+            'description',
+            'status',
+            'priority',
+            'dueAt',
+            'estimateMinutes',
+            '+updatedAt',
+          ],
         },
       ],
     },
     tasks: {
       list: [
-        { ref: 'project', select: ['key', 'name', 'status'] },
-        { ref: 'assignee', select: ['firstName', 'lastName'] },
+        { ref: 'project', fields: ['key', 'name', 'status'] },
+        { ref: 'assignee', fields: ['firstName', 'lastName'] },
       ],
       detail: [
         {
           ref: 'project',
-          select: ['key', 'name', 'status', 'description', 'targetAt'],
+          fields: ['key', 'name', 'status', 'description', 'targetAt'],
           populate: [
             {
               ref: 'owner',
-              select: ['firstName', 'lastName', 'email'],
+              fields: ['firstName', 'lastName', 'email'],
             },
           ],
         },
-        { ref: 'reporter', select: ['firstName', 'lastName', 'email'] },
-        { ref: 'assignee', select: ['firstName', 'lastName', 'email', 'jobTitle'] },
+        { ref: 'reporter', fields: ['firstName', 'lastName', 'email'] },
+        { ref: 'assignee', fields: ['firstName', 'lastName', 'email', 'jobTitle'] },
       ],
     },
   });

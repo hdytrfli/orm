@@ -15,7 +15,7 @@ const entrySchema = orm.schema({ owner: orm.objectId(), title: orm.string() });
 const schemas = orm
   .defineSchemas({ owners: ownerSchema, entries: entrySchema })
   .defineRelations({ entries: { owner: { ref: 'owners', inverse: 'entries' } } })
-  .defineScopes({ entries: { detail: [{ ref: 'owner', select: ['name'] }] } });
+  .defineScopes({ entries: { detail: [{ ref: 'owner', fields: ['name'] }] } });
 
 const db = createDatabase({
   uri: 'mongodb://127.0.0.1:27017',

@@ -1,21 +1,23 @@
 import type { Db } from '../../connection/database.js';
 import type { SchemaRelationMap, SchemaVirtualMap } from '../../relations/definitions.js';
 import type { VirtualAggregate } from '../../relations/definitions.js';
-import { populateProjectionFor, selectedPopulationFields } from './projection.js';
+import {
+  populateProjectionFor,
+  selectedPopulationFields,
+  shownPopulationFields,
+} from './projection.js';
 
 export type RuntimePopulateSpec =
   | {
       ref: string;
-      select?: readonly string[];
-      show?: readonly string[];
+      fields?: readonly string[];
       populate?: readonly RuntimePopulateSpec[];
     }
   | {
       virtual: string;
       type: 'many' | 'first';
       aggregate?: VirtualAggregate;
-      select?: readonly string[];
-      show?: readonly string[];
+      fields?: readonly string[];
     };
 
 const valueAtPath = (document: Record<string, unknown>, path: string): unknown =>
@@ -95,8 +97,8 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
       }
 
       const projection = populateProjectionFor(
-        selectedPopulationFields(target.fields, target.hiddenFields, virtualOptions.select),
-        virtualOptions.show,
+        selectedPopulationFields(target.fields, target.hiddenFields, virtualOptions.fields),
+        shownPopulationFields(virtualOptions.fields),
         [],
         target.relationMap as SchemaRelationMap,
         target.virtualMap as SchemaVirtualMap,
@@ -142,12 +144,12 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
     const selectedFields = selectedPopulationFields(
       target.fields,
       target.hiddenFields,
-      spec.select,
+      spec.fields,
     );
     const nestedSpecs = spec.populate ?? [];
     const projection = populateProjectionFor(
       selectedFields,
-      spec.show,
+      shownPopulationFields(spec.fields),
       nestedSpecs,
       targetRelations,
       target.virtualMap as SchemaVirtualMap,

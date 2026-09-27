@@ -10,6 +10,7 @@ describe('relation graph inference', () => {
       owner: orm.objectId(),
       title: orm.string(),
       score: orm.number(),
+      internal: orm.string().hidden(),
     });
     const base = orm.defineSchemas({ people, projects });
     const registry = base.defineRelations({
@@ -17,8 +18,11 @@ describe('relation graph inference', () => {
     });
 
     const database = {} as ReturnType<typeof createDatabase<typeof registry>>;
-    const populated = await database.projects.find().populate([{ ref: 'owner', select: ['name'] }]);
+    const populated = await database.projects
+      .find()
+      .populate([{ ref: 'owner', fields: ['name', '+email'] }]);
     const personName: string | undefined = populated[0]!.owner?.name;
+    const personEmail: string | undefined = populated[0]!.owner?.email;
     const ownerId: ObjectId | undefined = populated[0]!.owner?._id;
     const localField =
       expectTypeOf<(typeof registry.projects.relationMap)['owner']['localField']>();
@@ -27,15 +31,45 @@ describe('relation graph inference', () => {
     localField.toEqualTypeOf<'owner'>();
     virtualForeign.toEqualTypeOf<'owner'>();
     void personName;
+    void personEmail;
     void ownerId;
+
+    // @ts-expect-error `+` only opts in schema fields marked hidden.
+    database.projects.find().populate([{ ref: 'owner', fields: ['+name'] }]);
+    // @ts-expect-error Selectors must exist on the target schema.
+    database.projects.find().populate([{ ref: 'owner', fields: ['missing'] }]);
+    // @ts-expect-error Population specs use `fields`, not `select`.
+    database.projects.find().populate([{ ref: 'owner', select: ['name'] }]);
 
     const projectsResult = await database.people
       .find()
-      .virtual([{ virtual: 'projects', type: 'many', select: ['title'] }]);
+      .virtual([{ virtual: 'projects', type: 'many', fields: ['title', '+internal'] }]);
     const title: string | undefined = projectsResult[0]!.projects[0]?.title;
+    const internal: string | undefined = projectsResult[0]!.projects[0]?.internal;
     // @ts-expect-error Only selected fields are exposed.
     void projectsResult[0]!.projects[0]?.score;
     void title;
+    void internal;
+
+    const allFields = await database.people
+      .find()
+      .virtual([{ virtual: 'projects', type: 'many', fields: ['$all', '+internal'] }]);
+    const score: number | undefined = allFields[0]!.projects[0]?.score;
+    void score;
+
+    // @ts-expect-error Population specs use `fields`, not separate `select`/`show` arrays.
+    database.people.find().virtual([{ virtual: 'projects', type: 'many', select: ['title'] }]);
+    database.people
+      .find()
+      // @ts-expect-error `$all` cannot be combined with a numeric aggregate.
+      .virtual([
+        {
+          virtual: 'projects',
+          type: 'many',
+          aggregate: { field: 'score', type: 'sum' },
+          fields: ['$all'],
+        },
+      ]);
 
     const aggregate = await database.people
       .find()
@@ -51,14 +85,18 @@ describe('relation graph inference', () => {
 
     // @ts-expect-error Relation declarations require explicit object form.
     registry.defineRelations({ projects: { owner: 'people' } });
-    database.people.find().virtual([
+    database.people
+      .find()
       // @ts-expect-error Non-numeric target fields cannot be aggregated.
-      { virtual: 'projects', type: 'many', aggregate: { field: 'title', type: 'count' } },
-    ]);
-    database.people.find().virtual([
+      .virtual([
+        { virtual: 'projects', type: 'many', aggregate: { field: 'title', type: 'count' } },
+      ]);
+    database.people
+      .find()
       // @ts-expect-error `first` does not support aggregates.
-      { virtual: 'projects', type: 'first', aggregate: { field: 'score', type: 'sum' } },
-    ]);
+      .virtual([
+        { virtual: 'projects', type: 'first', aggregate: { field: 'score', type: 'sum' } },
+      ]);
     // @ts-expect-error Virtual loading is not available through populate.
     database.people.find().populate([{ virtual: 'projects', type: 'many' }]);
     database.projects
@@ -83,7 +121,7 @@ describe('relation graph inference', () => {
         people: {
           overview: [
             { ref: 'department' },
-            { virtual: 'projects', type: 'many', select: ['title'] },
+            { virtual: 'projects', type: 'many', fields: ['title'] },
           ],
         },
       });

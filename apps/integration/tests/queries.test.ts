@@ -60,7 +60,7 @@ describe('query integration scenarios', () => {
       .find({
         'profile.location.city': 'Seattle',
       })
-      .select(['name', 'profile.location.city']);
+      .fields(['name', 'profile.location.city']);
     const [firstUser] = users;
 
     expect(users).toHaveLength(1);
@@ -91,7 +91,7 @@ describe('query integration scenarios', () => {
     expect(resultCount).toBe(0);
   });
 
-  it('edge case: explicitly shows hidden data only when requested', async () => {
+  it('edge case: hidden data is included only in the selected field projection', async () => {
     const { company, group } = await createDirectory();
     const user = await db.users.create({
       name: 'Hidden Field User',
@@ -119,11 +119,12 @@ describe('query integration scenarios', () => {
       .find({
         _id: user._id,
       })
-      .show(['password'])
+      .fields(['+password'])
       .first();
 
     expect(hiddenByDefault).not.toHaveProperty('password');
     expect(explicitlyShown?.password).toBe('visible-on-request');
+    expect(explicitlyShown).not.toHaveProperty('name');
   });
 
   it('edge case: filters optional fields that are absent rather than null', async () => {
@@ -326,7 +327,7 @@ describe('query integration scenarios', () => {
           $gte: 28,
         },
       })
-      .select(['name', 'age'])
+      .fields(['name', 'age'])
       .sort({
         name: 'asc',
       })

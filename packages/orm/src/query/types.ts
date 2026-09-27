@@ -8,7 +8,12 @@ export type {
   VisibleDocument,
 } from './types/document.js';
 export type { ModelFilter, ModelSort, SortDirection } from './types/filter.js';
-export type { SelectableKey, SelectedDocument } from './types/selection.js';
+export type {
+  FieldSelection,
+  FieldsDocument,
+  SelectableKey,
+  SelectedDocument,
+} from './types/selection.js';
 export type {
   PopulateSpec,
   PopulateSpecs,

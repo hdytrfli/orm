@@ -64,6 +64,8 @@ export type { AggregateQuery } from './query/aggregate/query.js';
 export { ModelCursor, ModelQuery } from './query/index.js';
 export type {
   HiddenDocumentKey,
+  FieldSelection,
+  FieldsDocument,
   ModelFilter,
   ModelSort,
   PopulateSpec,

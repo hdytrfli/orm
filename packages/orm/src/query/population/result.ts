@@ -1,5 +1,11 @@
-import type { Infer, Schema, SchemaRelationMap, SchemaVirtualMap } from '../../schema/index.js';
-import type { HiddenDocumentKey, VisibleDocument } from '../types/document.js';
+import type {
+  Infer,
+  Schema,
+  SchemaRelationMap,
+  SchemaShape,
+  SchemaVirtualMap,
+} from '../../schema/index.js';
+import type { HiddenDocumentKey, ModelDocument, VisibleDocument } from '../types/document.js';
 import type { SelectableKey, SelectedDocument } from '../types/selection.js';
 import type { Simplify } from '../types/utils.js';
 import type { PopulateSpecs } from './spec.js';
@@ -16,14 +22,32 @@ type RelationMapOf<Relation> = Relation extends { readonly __targetRelations?: i
       : {}
     : {};
 
-type ShownFields<Spec> = Spec extends { show?: readonly (infer Fields)[] } ? Fields : never;
-type SelectedFields<Spec> = Spec extends { select?: readonly (infer Fields)[] } ? Fields : never;
+type FieldSelectors<Spec> = Spec extends { fields?: readonly (infer Fields)[] } ? Fields : never;
+type SelectedFields<Spec> = Exclude<FieldSelectors<Spec>, '$all' | `+${string}`>;
+type ExplicitHiddenFields<Spec> =
+  FieldSelectors<Spec> extends infer Field
+    ? Field extends `+${infer Hidden}`
+      ? Hidden
+      : never
+    : never;
+type IncludesAllFields<Spec> = '$all' extends FieldSelectors<Spec> ? true : false;
+type NestedPopulateRefs<Spec> = Spec extends { populate?: readonly (infer Nested)[] }
+  ? Nested extends { ref: infer Name extends string }
+    ? Name
+    : never
+  : never;
+type NestedRelationFields<Shape extends SchemaShape, Spec> =
+  Extract<NestedPopulateRefs<Spec>, SelectableKey<Shape>> extends infer Keys extends
+    SelectableKey<Shape>
+    ? [Keys] extends [never]
+      ? {}
+      : SelectedDocument<Shape, Keys>
+    : {};
 
 type VisibleRelationDocument<Relation, Spec> =
   RelationDocument<Relation> extends infer Document extends object
     ? RelationTarget<Relation> extends Schema<infer Shape, any>
-      ? Omit<VisibleDocument<Shape> & Document, HiddenDocumentKey<Shape>> &
-          Pick<Document, Extract<ShownFields<Spec>, keyof Document>>
+      ? SelectedPopulationDocument<Shape, Document, Spec>
       : Document
     : never;
 
@@ -105,9 +129,20 @@ type PopulatedVirtual<Virtual, Spec> = Spec extends { aggregate: { type: infer A
 type VisibleVirtualDocument<Virtual, Spec> =
   RelationDocument<Virtual> extends infer Document extends object
     ? RelationTarget<Virtual> extends Schema<infer Shape, any>
-      ? (Spec extends { select: readonly unknown[] }
-          ? SelectedDocument<Shape, Extract<SelectedFields<Spec>, SelectableKey<Shape>>>
-          : Omit<VisibleDocument<Shape> & Document, HiddenDocumentKey<Shape>>) &
-          Pick<Document, Extract<ShownFields<Spec>, keyof Document>>
+      ? SelectedPopulationDocument<Shape, Document, Spec>
       : Document
     : never;
+
+type SelectedPopulationDocument<
+  Shape extends SchemaShape,
+  Document extends object,
+  Spec,
+> = (Spec extends { fields: readonly unknown[] }
+  ? IncludesAllFields<Spec> extends true
+    ? Omit<VisibleDocument<Shape> & Document, HiddenDocumentKey<Shape>>
+    : [SelectedFields<Spec>] extends [never]
+      ? Pick<ModelDocument<Shape>, '_id'>
+      : SelectedDocument<Shape, Extract<SelectedFields<Spec>, SelectableKey<Shape>>>
+  : Omit<VisibleDocument<Shape> & Document, HiddenDocumentKey<Shape>>) &
+  Pick<Document, Extract<ExplicitHiddenFields<Spec>, keyof Document>> &
+  NestedRelationFields<Shape, Spec>;

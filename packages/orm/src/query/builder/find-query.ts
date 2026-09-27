@@ -10,13 +10,12 @@ import type {
 import { InvalidQueryError } from '../../validation/errors.js';
 import type { ModelCursor } from '../cursor/cursor.js';
 import { PopulationExecutor } from '../population/executor.js';
+import { shownPopulationFields } from '../population/projection.js';
 import { SoftDeleteState } from '../soft-delete/state.js';
 import type {
   CursorMethod,
-  HiddenDocumentKey,
   ModelFilter,
   ModelSort,
-  ModelDocument,
   PopulateSpecs,
   PopulateSpecsOnly,
   VirtualSpecs,
@@ -25,8 +24,8 @@ import type {
   PopulatedResult,
   PopulationMode,
   ScopeName,
-  SelectedDocument,
-  SelectableKey,
+  FieldSelection,
+  FieldsDocument,
   StoredDocument,
   VisibleDocument,
 } from '../types.js';
@@ -100,8 +99,8 @@ export class ModelQuery<
   constructor(
     private readonly collection: Collection<StoredDocument<Shape>>,
     private readonly filterSpec: ModelFilter<Shape>,
-    private readonly fields: readonly string[],
-    private readonly hiddenFields: readonly string[],
+    private readonly schemaFields: readonly string[],
+    private readonly hiddenSchemaFields: readonly string[],
     private readonly db: Db,
     private readonly relations: Relations,
     private readonly scopes: Scopes,
@@ -145,8 +144,8 @@ export class ModelQuery<
       get effectiveFilter() {
         return getEffectiveFilter();
       },
-      fields: this.fields,
-      hiddenFields: this.hiddenFields,
+      fields: this.schemaFields,
+      hiddenFields: this.hiddenSchemaFields,
       get selectedFields() {
         return getSelectedFields();
       },
@@ -216,12 +215,12 @@ export class ModelQuery<
     return this;
   }
 
-  /** Return only selected fields, while retaining MongoDB's default `_id`. */
-  select<Keys extends SelectableKey<Shape> = never>(
-    fields: readonly Keys[] = [],
+  /** Select visible and hidden fields with schema-checked selectors. */
+  fields<const Selection extends readonly FieldSelection<Shape>[]>(
+    fields: Selection,
   ): ModelQuery<
     Shape,
-    SelectedDocument<Shape, Keys>,
+    FieldsDocument<Shape, Selection>,
     CursorReady,
     Relations,
     Scopes,
@@ -229,36 +228,13 @@ export class ModelQuery<
     SoftDelete,
     Virtuals
   > {
-    this.selectedFields = fields;
+    this.selectedFields = fields.includes('$all')
+      ? undefined
+      : fields.filter((field) => field !== '$all' && !field.startsWith('+'));
+    this.shownFields = shownPopulationFields(fields);
     return this as unknown as ModelQuery<
       Shape,
-      SelectedDocument<Shape, Keys>,
-      CursorReady,
-      Relations,
-      Scopes,
-      Mode,
-      SoftDelete,
-      Virtuals
-    >;
-  }
-
-  /** Include hidden fields in the query result. */
-  show<Keys extends HiddenDocumentKey<Shape>>(
-    fields: readonly Keys[],
-  ): ModelQuery<
-    Shape,
-    Result & Pick<ModelDocument<Shape>, Keys>,
-    CursorReady,
-    Relations,
-    Scopes,
-    Mode,
-    SoftDelete,
-    Virtuals
-  > {
-    this.shownFields = fields;
-    return this as unknown as ModelQuery<
-      Shape,
-      Result & Pick<ModelDocument<Shape>, Keys>,
+      FieldsDocument<Shape, Selection>,
       CursorReady,
       Relations,
       Scopes,
@@ -273,7 +249,7 @@ export class ModelQuery<
     specs: Specs &
       ValidatePopulateSpecs<Specs> &
       (Mode extends 'scope' | 'virtual'
-        ? QueryModeDiagnostic<'Cannot call populate() after with(); choose one population mode.'>
+        ? QueryModeDiagnostic<'Cannot call populate() after virtual() or with(); choose one population mode.'>
         : unknown),
   ): ModelQuery<
     Shape,
@@ -287,7 +263,7 @@ export class ModelQuery<
   > {
     if (this.populationMode === 'scope' || this.populationMode === 'virtual') {
       throw new InvalidQueryError(
-        'A query cannot combine a population scope with explicit population',
+        'A query cannot combine explicit population with another population mode',
       );
     }
     this.populationMode = 'populate';
@@ -306,11 +282,14 @@ export class ModelQuery<
 
   /** Load reverse relations declared with an edge's `inverse` name. */
   virtual<const Specs extends VirtualSpecs<Virtuals>>(
-    specs: Specs &
-      ValidateVirtualSpecs<Specs> &
-      (Mode extends 'scope' | 'populate'
-        ? QueryModeDiagnostic<'Cannot call virtual() after populate() or with(); choose one population mode.'>
-        : unknown),
+    specs: Specs & VirtualSpecs<Virtuals>,
+    ..._validation: [Specs] extends [ValidateVirtualSpecs<Specs>]
+      ? Mode extends 'scope' | 'populate'
+        ? [
+            QueryModeDiagnostic<'Cannot call virtual() after populate() or with(); choose one population mode.'>,
+          ]
+        : []
+      : [never]
   ): ModelQuery<
     Shape,
     PopulatedResult<Result, Relations, Specs, Virtuals>,

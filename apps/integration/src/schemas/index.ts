@@ -38,11 +38,11 @@ export const schemas = orm
       detail: [
         {
           ref: 'group',
-          select: ['name'],
+          fields: ['name'],
           populate: [
             {
               ref: 'creator',
-              show: ['createdAt', 'updatedAt'],
+              fields: ['$all', '+createdAt', '+updatedAt'],
             },
           ],
         },

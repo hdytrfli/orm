@@ -43,13 +43,18 @@ const schemas = orm
   .defineScopes({
     departments: {
       overview: [
-        { ref: 'company', select: ['name'] },
-        { virtual: 'employees', type: 'many', select: ['name'] },
+        { ref: 'company', fields: ['name'] },
+        { virtual: 'employees', type: 'many', fields: ['name'] },
       ],
     },
   });
 
-const database = createDatabase({ uri: env.MONGODB_URI, database: env.MONGODB_DATABASE, schemas });
+const database = createDatabase({
+  uri: env.MONGODB_URI,
+  database: env.MONGODB_DATABASE,
+  schemas,
+});
+
 const people = database.people;
 const projects = database.projects;
 const departments = database.departments;
@@ -81,17 +86,32 @@ describe('graph-based virtual population', () => {
 
     const result = await people
       .find({ _id: person._id })
-      .virtual([{ virtual: 'ownedProjects', type: 'many', select: ['title'] }])
+      .virtual([
+        {
+          type: 'many',
+          virtual: 'ownedProjects',
+          fields: ['title'],
+        },
+      ])
       .first();
-    expect(result?.ownedProjects.map(({ title }) => title)).toEqual(['Analytical Engine']);
+
+    expect(result?.ownedProjects.map((project) => project.title)).toEqual(['Analytical Engine']);
     expect(result?.ownedProjects[0]).not.toHaveProperty('internalNotes');
 
     const reverseEmployee = await departments
       .find({ _id: department._id })
-      .virtual([{ virtual: 'employees', type: 'first', select: ['name'], show: ['email'] }])
+      .virtual([
+        {
+          type: 'first',
+          virtual: 'employees',
+          fields: ['$all', '+email'],
+        },
+      ])
       .first();
+
     expect(reverseEmployee?.employees?.name).toBe('Ada Lovelace');
     expect(reverseEmployee?.employees?.email).toBe('ada@example.test');
+    expect(reverseEmployee?.employees?.profile.department).toEqual(department._id);
   });
 
   it('supports query-time aggregates and cardinality without definition duplication', async () => {
@@ -124,7 +144,14 @@ describe('graph-based virtual population', () => {
     const counted = await people
       .find({ _id: person._id })
       .virtual([
-        { virtual: 'ownedProjects', type: 'many', aggregate: { field: 'score', type: 'count' } },
+        {
+          type: 'many',
+          virtual: 'ownedProjects',
+          aggregate: {
+            field: 'score',
+            type: 'count',
+          },
+        },
       ])
       .first();
     expect(counted?.ownedProjects).toBe(2);
@@ -139,7 +166,7 @@ describe('graph-based virtual population', () => {
 
     const first = await people
       .find({ _id: person._id })
-      .virtual([{ virtual: 'ownedProjects', type: 'first', select: ['title'] }])
+      .virtual([{ virtual: 'ownedProjects', type: 'first', fields: ['title'] }])
       .first();
     expect(first?.ownedProjects?.title).toBe('One');
   });

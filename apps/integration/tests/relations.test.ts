@@ -56,7 +56,7 @@ describe('relation integration scenarios', () => {
       .populate([
         {
           ref: 'group',
-          select: ['name'],
+          fields: ['name'],
         },
       ])
       .first();

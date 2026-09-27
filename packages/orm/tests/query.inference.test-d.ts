@@ -41,7 +41,7 @@ describe('query inference', () => {
   });
 
   it('narrows result fields to the selected fields', async () => {
-    const selectedUsers = await users.find().select(['name']);
+    const selectedUsers = await users.find().fields(['name']);
     const userName: string = selectedUsers[0].name;
     const userId = selectedUsers[0]._id;
     const nameType = expectTypeOf(userName);
@@ -53,16 +53,27 @@ describe('query inference', () => {
     // @ts-expect-error Unselected fields are omitted from query results.
     const omittedRole = selectedUsers[0].role;
     void omittedRole;
+
+    // @ts-expect-error Hidden field selectors require `+` and the field must be hidden.
+    users.find().fields(['+name']);
+    // @ts-expect-error Field selectors are checked against the schema.
+    users.find().fields(['notAUserField']);
   });
 
-  it('omits hidden fields unless explicitly shown', async () => {
+  it('omits hidden fields unless explicitly selected with a plus prefix', async () => {
     const visibleUsers = await users.find();
-    const usersWithPassword = await users.find().show(['password']);
+    const usersWithPassword = await users.find().fields(['$all', '+password']);
     const password: string = usersWithPassword[0].password;
     const passwordType = expectTypeOf(password);
 
     void password;
     passwordType.toEqualTypeOf<string>();
+    const onlyPassword = await users.find().fields(['+password']);
+    const onlyPasswordValue: string = onlyPassword[0].password;
+    // @ts-expect-error A hidden-only selection does not include visible fields.
+    const omittedName = onlyPassword[0].name;
+    void onlyPasswordValue;
+    void omittedName;
 
     // @ts-expect-error Hidden fields are absent by default.
     const hiddenPassword = visibleUsers[0].password;
