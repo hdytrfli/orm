@@ -4,15 +4,15 @@ import type { SchemaShape } from '../../schema/contracts.js';
 import type { HiddenDocumentKey, ModelDocument, VisibleDocument } from './document.js';
 import type { Simplify, UnionToIntersection } from './utils.js';
 
-type NestedDocumentKeys<Value> = Value extends object
-  ? Value extends ObjectId | Date
-    ? never
-    : {
+type NestedDocumentKeys<Value> = Value extends ObjectId | Date | readonly unknown[]
+  ? never
+  : Value extends object
+    ? {
         [Key in Extract<keyof Value, string>]: NonNullable<Value[Key]> extends object
           ? Key | `${Key}.${NestedDocumentKeys<NonNullable<Value[Key]>>}`
           : Key;
       }[Extract<keyof Value, string>]
-  : never;
+    : never;
 
 type NestedSelectableKey<Shape extends SchemaShape> = {
   [Key in Extract<keyof Shape, string>]: Key extends keyof ModelDocument<Shape>
