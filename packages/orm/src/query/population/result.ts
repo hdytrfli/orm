@@ -8,19 +8,9 @@ import type {
 import type { HiddenDocumentKey, ModelDocument, VisibleDocument } from '../types/document.js';
 import type { SelectableKey, SelectedDocument } from '../types/selection.js';
 import type { Simplify } from '../types/utils.js';
-import type { PopulateSpecs } from './spec.js';
+import type { PopulateSpecs, RelationMapOf, RelationTargetOf } from './spec.js';
 
-type RelationTarget<Relation> = Relation extends { resolve: () => infer Target } ? Target : never;
-type RelationDocument<Relation> = Infer<RelationTarget<Relation>>;
-type RelationMapOf<Relation> = Relation extends { readonly __targetRelations?: infer Relations }
-  ? NonNullable<Relations> extends SchemaRelationMap
-    ? NonNullable<Relations>
-    : {}
-  : RelationTarget<Relation> extends { readonly relationMap: infer Relations }
-    ? Relations extends SchemaRelationMap
-      ? Relations
-      : {}
-    : {};
+type RelationDocument<Relation> = Infer<RelationTargetOf<Relation>>;
 
 type FieldSelectors<Spec> = Spec extends { fields?: readonly (infer Fields)[] } ? Fields : never;
 type SelectedFields<Spec> = Exclude<FieldSelectors<Spec>, '$all' | `+${string}`>;
@@ -46,7 +36,7 @@ type NestedRelationFields<Shape extends SchemaShape, Spec> =
 
 type VisibleRelationDocument<Relation, Spec> =
   RelationDocument<Relation> extends infer Document extends object
-    ? RelationTarget<Relation> extends Schema<infer Shape, any>
+    ? RelationTargetOf<Relation> extends Schema<infer Shape, any>
       ? SelectedPopulationDocument<Shape, Document, Spec>
       : Document
     : never;
@@ -128,7 +118,7 @@ type PopulatedVirtual<Virtual, Spec> = Spec extends { aggregate: { type: infer A
 
 type VisibleVirtualDocument<Virtual, Spec> =
   RelationDocument<Virtual> extends infer Document extends object
-    ? RelationTarget<Virtual> extends Schema<infer Shape, any>
+    ? RelationTargetOf<Virtual> extends Schema<infer Shape, any>
       ? SelectedPopulationDocument<Shape, Document, Spec>
       : Document
     : never;

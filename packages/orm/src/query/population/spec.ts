@@ -9,22 +9,23 @@ import type {
 import type { InferShape } from '../../schema/inference.js';
 import type { FieldSelection } from '../types/selection.js';
 
-type RelationTarget<Relation> = Relation extends { resolve: () => infer Target } ? Target : never;
-type NestedRelations<Relation> = Relation extends { readonly __targetRelations?: infer Relations }
+export type RelationTargetOf<Relation> = Relation extends { resolve: () => infer Target }
+  ? Target
+  : never;
+export type RelationMapOf<Relation> = Relation extends {
+  readonly __targetRelations?: infer Relations;
+}
   ? NonNullable<Relations> extends SchemaRelationMap
     ? NonNullable<Relations>
     : {}
-  : RelationTarget<Relation> extends { readonly relationMap: infer Relations }
+  : RelationTargetOf<Relation> extends { readonly relationMap: infer Relations }
     ? Relations extends SchemaRelationMap
       ? Relations
       : {}
     : {};
 type PopulationField<Relation> =
-  RelationTarget<Relation> extends Schema<infer Shape, any> ? FieldSelection<Shape> : never;
-type NumericTarget<Relation> =
-  RelationTarget<Relation> extends infer Target
-    ? Extract<NumericKeys<InferShape<Target>>, string>
-    : never;
+  RelationTargetOf<Relation> extends Schema<infer Shape, any> ? FieldSelection<Shape> : never;
+type NumericTarget<Relation> = Extract<NumericKeys<InferShape<RelationTargetOf<Relation>>>, string>;
 type NumericKeys<Value, Prefix extends string = ''> = Value extends object
   ? {
       [Key in Extract<keyof Value, string>]-?: NonNullable<Value[Key]> extends number
@@ -44,7 +45,7 @@ export type PopulateSpec<Relations extends SchemaRelationMap> = {
   [Name in Extract<keyof Relations, string>]: {
     ref: Name;
     fields?: readonly PopulationField<Relations[Name]>[];
-    populate?: PopulateSpecs<NestedRelations<Relations[Name]>, {}>;
+    populate?: PopulateSpecs<RelationMapOf<Relations[Name]>, {}>;
   };
 }[Extract<keyof Relations, string>];
 
