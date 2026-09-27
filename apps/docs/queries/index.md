@@ -22,8 +22,8 @@ Mongorm queries are lazy, typed builders. A query is assembled synchronously and
 const page = await db.post
   .find({ status: 'published', authorId: authorId })
   .sort({ publishedAt: 'desc' })
-  .select(['title', 'slug', 'publishedAt'])
+  .fields(['title', 'slug', 'publishedAt'])
   .limit(20);
 ```
 
-The same chain also determines the result type. Adding `.select()` removes fields from the TypeScript result; adding `.populate()` adds typed related documents.
+The same chain also determines the result type. `.fields()` narrows the TypeScript result; adding `.populate()` adds typed related documents.

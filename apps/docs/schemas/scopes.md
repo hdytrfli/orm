@@ -12,8 +12,8 @@ const schemas = orm
   .defineRelations({ post: { author: { ref: 'user' } } })
   .defineScopes({
     post: {
-      list: [{ ref: 'author', select: ['name'] }],
-      detail: [{ ref: 'author', select: ['name', 'email'] }],
+      list: [{ ref: 'author', fields: ['name'] }],
+      detail: [{ ref: 'author', fields: ['name', 'email'] }],
     },
   });
 ```
@@ -33,7 +33,7 @@ Only scopes defined for the current model can be passed to `.with()`. The popula
 Use explicit population for one-off queries:
 
 ```ts
-await db.post.find({}).populate([{ ref: 'author', select: ['name'] }]);
+await db.post.find({}).populate([{ ref: 'author', fields: ['name'] }]);
 ```
 
 Use a scope when a shape is reused by many endpoints:

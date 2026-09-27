@@ -54,7 +54,7 @@ const schemas = orm.defineSchemas({ people: person, departments: department }).d
   people: { 'profile.department': { ref: 'departments', inverse: 'employees' } },
 });
 
-const people = await db.people.find().populate([{ ref: 'profile.department', select: ['name'] }]);
+const people = await db.people.find().populate([{ ref: 'profile.department', fields: ['name'] }]);
 ```
 
 The populated result retains the nested shape: `person.profile.department` is the department document rather than a flattened `"profile.department"` property.
@@ -66,27 +66,27 @@ The populated result retains the nested shape: `person.profile.department` is th
 ```ts
 const people = await db.departments
   .find()
-  .virtual([{ virtual: 'employees', type: 'many', select: ['name'] }]);
+  .virtual([{ virtual: 'employees', type: 'many', fields: ['name'] }]);
 ```
 
-`.populate()` follows outgoing relation edges, and `.virtual()` follows inverse edges. They are separate query operations and cannot be chained on the same query. Cardinality and projection belong to the use site: `many` returns an array and `first` returns a document or `null`. `select` and `show` are checked against the target schema; hidden fields remain excluded unless listed in `show`.
+`.populate()` follows outgoing relation edges, and `.virtual()` follows inverse edges. They are separate query operations and cannot be chained on the same query. Cardinality and projection belong to the use site: `many` returns an array and `first` returns a document or `null`. The `fields` option is checked against the target schema; prefix hidden fields with `+`, or use `'$all'` to include all normally visible fields.
 
 ```ts
 const peopleWithPosts = await db.user
   .find()
-  .virtual([{ virtual: 'posts', type: 'many', select: ['title'] }]);
+  .virtual([{ virtual: 'posts', type: 'many', fields: ['title'] }]);
 
 // The same graph edge can have a different result shape in another query.
 const personWithFirstPost = await db.user
   .find()
-  .virtual([{ virtual: 'posts', type: 'first', select: ['title'] }]);
+  .virtual([{ virtual: 'posts', type: 'first', fields: ['title'] }]);
 
 const postCounts = await db.user
   .find()
   .virtual([{ virtual: 'posts', type: 'many', aggregate: { field: 'score', type: 'count' } }]);
 ```
 
-An aggregate virtual returns a number instead of related documents. `aggregate.field` is required and type-checked as a numeric target field. `count` counts related documents with a non-null value for that field; `sum`, `average`, `min`, and `max` calculate that field's statistic. Aggregates are only valid with `type: 'many'` and cannot be combined with `select` or `show`. Virtual populations do not support nested `populate`.
+An aggregate virtual returns a number instead of related documents. `aggregate.field` is required and type-checked as a numeric target field. `count` counts related documents with a non-null value for that field; `sum`, `average`, `min`, and `max` calculate that field's statistic. Aggregates are only valid with `type: 'many'` and cannot be combined with `fields`. Virtual populations do not support nested `populate`.
 
 ## Relations Are Opt-In
 
@@ -99,7 +99,7 @@ const posts = await db.post.find({});
 This query does:
 
 ```ts
-const posts = await db.post.find({}).populate([{ ref: 'author', select: ['name'] }]);
+const posts = await db.post.find({}).populate([{ ref: 'author', fields: ['name'] }]);
 ```
 
 Keeping population explicit makes query cost and response shape visible at the call site.

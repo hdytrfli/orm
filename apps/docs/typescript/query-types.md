@@ -9,7 +9,7 @@ Query methods are designed to transform the result type as the query changes.
 ## Selection Narrows
 
 ```ts
-const users = await db.user.find({ active: true }).select(['name', 'email']);
+const users = await db.user.find({ active: true }).fields(['name', 'email']);
 
 const first = users[0];
 first.name;
@@ -22,7 +22,7 @@ The selection list is checked against schema keys. Misspelled fields fail during
 ## Nested Selection Preserves Shape
 
 ```ts
-const users = await db.user.find().select(['name', 'profile.avatarUrl']);
+const users = await db.user.find().fields(['name', 'profile.avatarUrl']);
 
 users[0].profile.avatarUrl;
 ```
@@ -32,7 +32,7 @@ The path is represented as a nested object in the result type.
 ## Population Adds Relations
 
 ```ts
-const posts = await db.post.find({}).populate([{ ref: 'author', select: ['name'] }]);
+const posts = await db.post.find({}).populate([{ ref: 'author', fields: ['name'] }]);
 
 posts[0].author?.name;
 ```
@@ -45,7 +45,7 @@ The relation name must be declared in the registry. The populated value is nulla
 const posts = await db.post.find({}).populate([
   {
     ref: 'author',
-    populate: [{ ref: 'team', select: ['name'] }],
+    populate: [{ ref: 'team', fields: ['name'] }],
   },
 ]);
 
@@ -66,6 +66,6 @@ await db.post.find({}).with('detail');
 Methods return the appropriately typed builder, even though the runtime builder can update its internal operation state. Assign the result when it helps preserve the intended type:
 
 ```ts
-const selected = db.user.find().select(['email']);
+const selected = db.user.find().fields(['email']);
 const users = await selected;
 ```

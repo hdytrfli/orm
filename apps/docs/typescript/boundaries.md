@@ -10,7 +10,7 @@ TypeScript and Zod protect different moments in the data lifecycle.
 
 - Invalid schema field names in filters and sorting.
 - Invalid selection paths.
-- Invalid hidden fields passed to `.show()`.
+- Invalid hidden fields passed to `.fields()` without the `+` prefix.
 - Unknown relation and scope names.
 - Incorrect assumptions about populated result shape.
 

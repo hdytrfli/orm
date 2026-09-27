@@ -24,20 +24,20 @@ The result includes visible fields and `_id`, but not `passwordHash` or `recover
 
 ## Explicit Access
 
-Use `.show()` only in the narrow service that needs the field:
+Use a `+`-prefixed field selector only in the narrow service that needs the value:
 
 ```ts
-const account = await db.user.find({ email: 'ada@example.com' }).show(['passwordHash']);
+const account = await db.user.find({ email: 'ada@example.com' }).fields(['+passwordHash']);
 ```
 
-The returned type includes the shown field. Keep this operation close to authentication or another explicit security boundary.
+The returned type includes the hidden field. Without `'$all'`, this selects only `_id` and `passwordHash`. Keep this operation close to authentication or another explicit security boundary.
 
 ## Hidden Fields and Selection
 
-Selection and showing fields are separate concerns:
+Visible and hidden fields use one selector list:
 
 ```ts
-const account = await db.user.find({ _id: id }).select(['email']).show(['passwordHash']);
+const account = await db.user.find({ _id: id }).fields(['email', '+passwordHash']);
 ```
 
 Use this sparingly. A safer pattern is to keep credential verification in a dedicated function that never returns the full account object.
