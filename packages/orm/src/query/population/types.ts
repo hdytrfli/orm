@@ -3,6 +3,10 @@ export type { PopulatedResult } from './result.js';
 export type {
   PopulateSpec,
   PopulateSpecs,
+  PopulateSpecsOnly,
+  VirtualSpec,
+  VirtualSpecs,
+  ValidateVirtualSpecs,
   PopulationMode,
   ScopeName,
   ValidatePopulateSpecs,

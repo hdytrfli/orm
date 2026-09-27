@@ -22,12 +22,12 @@ The registry preserves the literal names and returns typed builder methods.
 
 ```ts
 const connected = schemas.defineRelations({
-  post: { author: 'user' },
-  comment: { author: 'user', post: 'post' },
+  post: { author: { ref: 'user', inverse: 'posts' } },
+  comment: { author: { ref: 'user' }, post: { ref: 'post', inverse: 'comments' } },
 });
 ```
 
-Each relation's public `ref` name is the local foreign-key field name itself. The value is the target schema's registry key, and the built-in target key is `_id`. A field named `authorId` therefore creates a relation named `authorId`, not `author`.
+Each relation key is the local ObjectId field name. Its required `ref` names the target schema; the target key is `_id`. An optional `inverse` declares a reverse virtual name on that target schema. Omitting `inverse` leaves a forward-only relation. Every entry uses the explicit object form.
 
 ## Relation Requirements
 
@@ -38,7 +38,9 @@ const post = orm.schema({
   author: orm.objectId(),
 });
 
-const schemas = orm.defineSchemas({ user, post }).defineRelations({ post: { author: 'user' } });
+const schemas = orm
+  .defineSchemas({ user, post })
+  .defineRelations({ post: { author: { ref: 'user' } } });
 ```
 
 For an ObjectId nested inside an object, use its dot path as the relation name and populate `ref`:
@@ -48,77 +50,43 @@ const person = orm.schema({
   profile: orm.object({ department: orm.objectId() }),
 });
 
-const schemas = orm
-  .defineSchemas({ people: person, departments: department })
-  .defineRelations({ people: { 'profile.department': 'departments' } });
+const schemas = orm.defineSchemas({ people: person, departments: department }).defineRelations({
+  people: { 'profile.department': { ref: 'departments', inverse: 'employees' } },
+});
 
 const people = await db.people.find().populate([{ ref: 'profile.department', select: ['name'] }]);
 ```
 
 The populated result retains the nested shape: `person.profile.department` is the department document rather than a flattened `"profile.department"` property.
 
-## Virtuals Can Join Nested ObjectIds
+## Reverse Relations (Virtuals)
 
-Virtuals use the same typed dot-path notation for their local and foreign ObjectId fields. The virtual's own name remains the key used by `populate`:
-
-```ts
-const schemas = connected.defineVirtual({
-  people: {
-    departmentProjects: {
-      ref: 'projects',
-      local: 'profile.department',
-      foreign: 'department',
-      type: 'many',
-      select: ['title'],
-    },
-  },
-});
-
-const people = await db.people.find().populate([{ virtual: 'departmentProjects' }]);
-```
-
-Virtual cardinality and projection are part of the definition, so each virtual has one stable result shape and query-time `populate` only names it. `type: 'many'` returns an array; `type: 'first'` returns one document or `null`. `select` and `show` are type-checked against the target schema and are only available for document-returning virtuals. Hidden target fields remain excluded unless listed in `show`.
-
-`match` is also definition-level and only available for `type: 'many'`. It is checked against the target schema and is combined with the virtual join condition, so it cannot override the join.
+`inverse` derives a reverse traversal from the same edge; there is no separate virtual declaration. A virtual always joins from the source document's `_id` to the foreign ObjectId path that declared the edge. Non-`_id` source joins are intentionally out of scope; use separate queries for those cases.
 
 ```ts
-const registry = schemas.defineVirtual({
-  people: {
-    activeProjects: {
-      ref: 'projects',
-      local: '_id',
-      foreign: 'owner',
-      type: 'many',
-      match: { status: 'active' },
-      select: ['title', 'status'],
-    },
-    featuredProject: {
-      ref: 'projects',
-      local: '_id',
-      foreign: 'owner',
-      type: 'first',
-      select: ['title'],
-    },
-    projectCount: {
-      ref: 'projects',
-      local: '_id',
-      foreign: 'owner',
-      type: 'many',
-      aggregate: { field: 'score', type: 'count' },
-    },
-  },
-});
-
-const peopleWithProjects = await db.people
+const people = await db.departments
   .find()
-  .populate([
-    { virtual: 'activeProjects' },
-    { virtual: 'featuredProject' },
-    { virtual: 'projectCount' },
-  ]);
+  .virtual([{ virtual: 'employees', type: 'many', select: ['name'] }]);
 ```
 
-An aggregate virtual returns a number instead of related documents. `aggregate.field` is required and type-checked as a numeric target field for every operation. `count` counts related documents with a non-null value for that field; `sum`, `average`, `min`, and `max` calculate that field's statistic. Aggregates are only valid with `type: 'many'` and may be combined with `match`, but not `select` or `show`. Virtual populations intentionally do not support nested `populate`; declare/populate a regular relation separately when needed.
+`.populate()` follows outgoing relation edges, and `.virtual()` follows inverse edges. They are separate query operations and cannot be chained on the same query. Cardinality and projection belong to the use site: `many` returns an array and `first` returns a document or `null`. `select` and `show` are checked against the target schema; hidden fields remain excluded unless listed in `show`.
+
+```ts
+const peopleWithPosts = await db.user
+  .find()
+  .virtual([{ virtual: 'posts', type: 'many', select: ['title'] }]);
+
+// The same graph edge can have a different result shape in another query.
+const personWithFirstPost = await db.user
+  .find()
+  .virtual([{ virtual: 'posts', type: 'first', select: ['title'] }]);
+
+const postCounts = await db.user
+  .find()
+  .virtual([{ virtual: 'posts', type: 'many', aggregate: { field: 'score', type: 'count' } }]);
+```
+
+An aggregate virtual returns a number instead of related documents. `aggregate.field` is required and type-checked as a numeric target field. `count` counts related documents with a non-null value for that field; `sum`, `average`, `min`, and `max` calculate that field's statistic. Aggregates are only valid with `type: 'many'` and cannot be combined with `select` or `show`. Virtual populations do not support nested `populate`.
 
 ## Relations Are Opt-In
 

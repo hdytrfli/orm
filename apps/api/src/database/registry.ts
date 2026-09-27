@@ -11,39 +11,11 @@ export const registry = orm
     tasks: taskSchema,
   })
   .defineRelations({
-    projects: { owner: 'users' },
+    projects: { owner: { ref: 'users', inverse: 'ownedProjects' } },
     tasks: {
-      project: 'projects',
-      reporter: 'users',
-      assignee: 'users',
-    },
-  })
-  .defineVirtual({
-    users: {
-      ownedProjects: {
-        ref: 'projects',
-        local: '_id',
-        foreign: 'owner',
-        type: 'many',
-        select: ['key', 'name', 'status', 'description'],
-      },
-      assignedTasks: {
-        ref: 'tasks',
-        local: '_id',
-        foreign: 'assignee',
-        type: 'many',
-        select: ['title', 'status', 'priority', 'dueAt'],
-      },
-    },
-    projects: {
-      tasks: {
-        ref: 'tasks',
-        local: '_id',
-        foreign: 'project',
-        type: 'many',
-        select: ['title', 'description', 'status', 'priority', 'dueAt', 'estimateMinutes'],
-        show: ['updatedAt'],
-      },
+      reporter: { ref: 'users' },
+      project: { ref: 'projects', inverse: 'tasks' },
+      assignee: { ref: 'users', inverse: 'assignedTasks' },
     },
   })
   .defineScopes({
@@ -51,23 +23,40 @@ export const registry = orm
       list: [
         {
           virtual: 'ownedProjects',
+          type: 'many',
+          select: ['key', 'name', 'status', 'description'],
         },
       ],
       detail: [
         {
+          type: 'many',
           virtual: 'ownedProjects',
+          select: ['key', 'name', 'status', 'description'],
         },
         {
+          type: 'many',
           virtual: 'assignedTasks',
+          select: ['title', 'status', 'priority', 'dueAt'],
         },
       ],
     },
     projects: {
-      list: [{ ref: 'owner', select: ['firstName', 'lastName'] }, { virtual: 'tasks' }],
+      list: [
+        { ref: 'owner', select: ['firstName', 'lastName'] },
+        {
+          type: 'many',
+          virtual: 'tasks',
+          show: ['updatedAt'],
+          select: ['title', 'description', 'status', 'priority', 'dueAt', 'estimateMinutes'],
+        },
+      ],
       detail: [
         { ref: 'owner', select: ['firstName', 'lastName', 'email', 'jobTitle'] },
         {
+          type: 'many',
           virtual: 'tasks',
+          show: ['updatedAt'],
+          select: ['title', 'description', 'status', 'priority', 'dueAt', 'estimateMinutes'],
         },
       ],
     },

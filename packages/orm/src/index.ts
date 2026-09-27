@@ -18,6 +18,7 @@ export type {
   SchemaRelationMap,
   SchemaVirtual,
   SchemaVirtualMap,
+  VirtualAggregate,
 } from './schema/index.js';
 export { createDatabase, Db } from './connection/database.js';
 export type { UnsafePurgeOptions } from './connection/database.js';
@@ -25,7 +26,6 @@ export type {
   RelationDefinitions,
   SchemaRegistryBuilder,
   ScopeDefinitionsBySchema,
-  VirtualDefinitions,
 } from './relations/registry.js';
 export {
   CursorQueryError,

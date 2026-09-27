@@ -63,7 +63,7 @@ const schemas = orm.defineSchemas({ user, post });
 Adds relation metadata to a registry. Each source field maps to a target registry key:
 
 ```ts
-schemas.defineRelations({ post: { author: 'user' } });
+schemas.defineRelations({ post: { author: { ref: 'user' } } });
 ```
 
 ## `.defineScopes(definitions)`

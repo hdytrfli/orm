@@ -62,7 +62,7 @@ Register both schemas, then map the post's `author` ObjectId field to the `users
 ```ts
 const schemas = orm
   .defineSchemas({ users: userSchema, posts: postSchema })
-  .defineRelations({ posts: { author: 'users' } })
+  .defineRelations({ posts: { author: { ref: 'users' } } })
   .defineScopes({
     posts: {
       detail: [{ ref: 'author', select: ['name', 'email'] }],

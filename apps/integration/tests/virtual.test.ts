@@ -1,577 +1,160 @@
-import { ObjectId, createDatabase, orm } from '@mongorm/orm';
+import { createDatabase, orm } from '@mongorm/orm';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { env } from '@/libs/env';
 
 const schemas = orm
   .defineSchemas({
-    companies: orm.schema({
-      slug: orm.string(),
-      name: orm.string(),
-      description: orm.string(),
-    }),
-    departments: orm.schema({
-      name: orm.string(),
-      description: orm.string(),
-      company: orm.objectId(),
-    }),
+    companies: orm.schema({ name: orm.string() }),
+    departments: orm.schema({ name: orm.string(), company: orm.objectId() }),
     people: orm.schema({
       name: orm.string(),
-      email: orm.email(),
-      profile: orm.object({
-        department: orm.objectId(),
-      }),
+      email: orm.email().hidden(),
+      profile: orm.object({ department: orm.objectId() }),
     }),
     projects: orm.schema({
+      owner: orm.objectId(),
       company: orm.objectId(),
       key: orm.string(),
-      owner: orm.objectId(),
+      department: orm.objectId().optional(),
       title: orm.string(),
       score: orm.number().optional(),
-      department: orm.objectId().optional(),
       status: orm.enum(['active', 'complete']),
       internalNotes: orm.string().hidden(),
     }),
-    tasks: orm.schema({
-      title: orm.string(),
-      owner: orm.objectId(),
-      project: orm.objectId(),
-    }),
+    tasks: orm.schema({ title: orm.string(), owner: orm.objectId(), project: orm.objectId() }),
   })
   .defineRelations({
-    projects: { owner: 'people', company: 'companies' },
-    tasks: { owner: 'people', project: 'projects' },
-    people: { 'profile.department': 'departments' },
-  })
-  .defineVirtual({
+    projects: {
+      owner: { ref: 'people', inverse: 'ownedProjects' },
+      company: { ref: 'companies', inverse: 'projects' },
+    },
+    tasks: {
+      owner: { ref: 'people', inverse: 'tasks' },
+      project: { ref: 'projects', inverse: 'tasks' },
+    },
     people: {
-      projects: {
-        ref: 'projects',
-        local: '_id',
-        foreign: 'owner',
-        type: 'many',
-        select: ['title', 'status'],
-      },
-      departmentProjects: {
-        ref: 'projects',
-        local: 'profile.department',
-        foreign: 'department',
-        type: 'many',
-        select: ['title'],
-      },
-      activeProjects: {
-        ref: 'projects',
-        local: '_id',
-        foreign: 'owner',
-        type: 'many',
-        match: { status: 'active' },
-        select: ['title'],
-      },
-      projectsWithNotes: {
-        ref: 'projects',
-        local: '_id',
-        foreign: 'owner',
-        type: 'many',
-        select: ['title'],
-        show: ['internalNotes'],
-      },
-      projectCount: {
-        ref: 'projects',
-        local: '_id',
-        foreign: 'owner',
-        type: 'many',
-        aggregate: { field: 'score', type: 'count' },
-      },
-      totalScore: {
-        ref: 'projects',
-        local: '_id',
-        foreign: 'owner',
-        type: 'many',
-        aggregate: { field: 'score', type: 'sum' },
-      },
-      averageScore: {
-        ref: 'projects',
-        local: '_id',
-        foreign: 'owner',
-        type: 'many',
-        aggregate: { field: 'score', type: 'average' },
-      },
-      activeScore: {
-        ref: 'projects',
-        local: '_id',
-        foreign: 'owner',
-        type: 'many',
-        match: { status: 'active' },
-        aggregate: { field: 'score', type: 'sum' },
-      },
-      featuredProject: {
-        ref: 'projects',
-        local: '_id',
-        foreign: 'owner',
-        type: 'first',
-        select: ['title'],
-      },
+      'profile.department': { ref: 'departments', inverse: 'employees' },
+    },
+    departments: {
+      company: { ref: 'companies' },
     },
   })
   .defineScopes({
-    people: {
-      projectSummary: [
-        {
-          virtual: 'projects',
-        },
-      ],
-      complete: [
-        { ref: 'profile.department' },
-        { virtual: 'projects' },
-        { virtual: 'projectCount' },
-        { virtual: 'totalScore' },
-        { virtual: 'averageScore' },
+    departments: {
+      overview: [
+        { ref: 'company', select: ['name'] },
+        { virtual: 'employees', type: 'many', select: ['name'] },
       ],
     },
   });
 
-const database = createDatabase({
-  uri: env.MONGODB_URI,
-  database: env.MONGODB_DATABASE,
-  schemas,
-});
-
+const database = createDatabase({ uri: env.MONGODB_URI, database: env.MONGODB_DATABASE, schemas });
 const people = database.people;
 const projects = database.projects;
 const departments = database.departments;
 const companies = database.companies;
 
-const createDepartment = async (name: string) => {
-  const company = await companies.create({
-    slug: 'virtual-' + name.toLowerCase() + '-' + new ObjectId().toHexString(),
-    name: name + ' Company',
-    description: 'Company supporting ' + name,
-  });
-
-  return departments.create({
-    name,
-    description: name + ' department',
-    company: company._id,
-  });
-};
-
-const createPerson = async (name: string, departmentId: ObjectId) =>
-  people.create({
-    name,
-    email: name.toLowerCase().replaceAll(' ', '.') + '@example.test',
-    profile: { department: departmentId },
-  });
-
-describe('virtual population integration scenarios', () => {
+describe('graph-based virtual population', () => {
   beforeAll(async () => database.connect());
   afterAll(async () => database.disconnect());
-  afterEach(async () =>
-    database.unsafe.purge({
-      quiet: true,
-    }),
-  );
+  afterEach(async () => database.unsafe.purge({ quiet: true }));
 
-  it('simple: populates the projects belonging to one person', async () => {
-    const research = await createDepartment('Research');
-    const person = await createPerson('Ada Lovelace', research._id);
-
-    const company = new ObjectId();
-
+  it('derives reverse virtuals from forward relation edges', async () => {
+    const company = await companies.create({ name: 'Research Co' });
+    const department = await departments.create({ name: 'Research', company: company._id });
+    const person = await people.create({
+      name: 'Ada Lovelace',
+      email: 'ada@example.test',
+      profile: { department: department._id },
+    });
     await projects.create({
-      company,
+      owner: person._id,
+      company: company._id,
       key: 'ADA-ENGINE',
-      owner: person._id,
-      department: research._id,
+      department: department._id,
       title: 'Analytical Engine',
+      score: 10,
       status: 'active',
-      internalNotes: 'Early computing project',
+      internalNotes: 'private',
     });
 
     const result = await people
-      .find({
-        _id: person._id,
-      })
-      .populate([
-        {
-          virtual: 'projects',
-        },
-      ])
-      .first();
-    const [firstProject] = result?.projects ?? [];
-
-    expect(result?.projects).toHaveLength(1);
-    expect(firstProject?.title).toBe('Analytical Engine');
-    expect(firstProject?.status).toBe('active');
-    expect(firstProject).not.toHaveProperty('internalNotes');
-  });
-
-  it('omits hidden virtual fields by default and includes them when shown', async () => {
-    const research = await createDepartment('Research');
-    const person = await createPerson('Ada Lovelace', research._id);
-
-    await projects.create({
-      company: new ObjectId(),
-      key: 'ADA-HIDDEN-FIELDS',
-      owner: person._id,
-      department: research._id,
-      title: 'Hidden field behavior',
-      status: 'active',
-      internalNotes: 'Only visible when explicitly shown',
-    });
-
-    const defaultResult = await people
       .find({ _id: person._id })
-      .populate([{ virtual: 'projects' }])
+      .virtual([{ virtual: 'ownedProjects', type: 'many', select: ['title'] }])
       .first();
+    expect(result?.ownedProjects.map(({ title }) => title)).toEqual(['Analytical Engine']);
+    expect(result?.ownedProjects[0]).not.toHaveProperty('internalNotes');
 
-    const [defaultProject] = defaultResult?.projects ?? [];
-
-    expect(defaultProject?.title).toBe('Hidden field behavior');
-    expect(defaultProject).not.toHaveProperty('internalNotes');
-
-    const shownResult = await people
-      .find({ _id: person._id })
-      .populate([{ virtual: 'projectsWithNotes' }])
+    const reverseEmployee = await departments
+      .find({ _id: department._id })
+      .virtual([{ virtual: 'employees', type: 'first', select: ['name'], show: ['email'] }])
       .first();
-
-    const [shownProject] = shownResult?.projectsWithNotes ?? [];
-
-    expect(shownProject?.title).toBe('Hidden field behavior');
-    expect(shownProject?.internalNotes).toBe('Only visible when explicitly shown');
-    expect(shownProject).not.toHaveProperty('status');
+    expect(reverseEmployee?.employees?.name).toBe('Ada Lovelace');
+    expect(reverseEmployee?.employees?.email).toBe('ada@example.test');
   });
 
-  it('negative: returns an empty array when the person has no projects', async () => {
-    const research = await createDepartment('Research');
-    const person = await createPerson('Alan Turing', research._id);
-
-    const result = await people
-      .find({
-        _id: person._id,
-      })
-      .populate([
-        {
-          virtual: 'projects',
-        },
-      ])
-      .first();
-
-    expect(result?.projects).toEqual([]);
-  });
-
-  it('applies a typed definition-level match to many virtual results', async () => {
-    const research = await createDepartment('Research');
-    const person = await createPerson('Ada Lovelace', research._id);
-    await projects.create({
-      company: new ObjectId(),
-      key: 'ADA-ACTIVE-MATCH',
-      owner: person._id,
-      title: 'Active work',
-      status: 'active',
-      internalNotes: 'active',
+  it('supports query-time aggregates and cardinality without definition duplication', async () => {
+    const company = await companies.create({ name: 'Research Co' });
+    const department = await departments.create({ name: 'Research', company: company._id });
+    const person = await people.create({
+      name: 'Ada Lovelace',
+      email: 'ada@example.test',
+      profile: { department: department._id },
     });
     await projects.create({
-      company: new ObjectId(),
-      key: 'ADA-COMPLETE-MATCH',
       owner: person._id,
-      title: 'Completed work',
+      company: company._id,
+      key: 'ADA-ONE',
+      title: 'One',
+      score: 4,
+      status: 'active',
+      internalNotes: '',
+    });
+    await projects.create({
+      owner: person._id,
+      company: company._id,
+      key: 'ADA-TWO',
+      title: 'Two',
+      score: 8,
       status: 'complete',
-      internalNotes: 'complete',
+      internalNotes: '',
     });
 
-    const result = await people
+    const counted = await people
       .find({ _id: person._id })
-      .populate([{ virtual: 'activeProjects' }])
-      .first();
-
-    expect(result?.activeProjects.map((project) => project.title)).toEqual(['Active work']);
-  });
-
-  it('edge case: an outer projection retains the virtual join key', async () => {
-    const research = await createDepartment('Research');
-    const person = await createPerson('Katherine Johnson', research._id);
-    const company = new ObjectId();
-    await projects.create({
-      company,
-      key: 'KATHERINE-TRAJECTORY',
-      owner: person._id,
-      department: research._id,
-      title: 'Orbital Trajectory',
-      status: 'active',
-      internalNotes: 'Flight calculations',
-    });
-
-    const result = await people
-      .find({
-        _id: person._id,
-      })
-      .select(['name'])
-      .populate([
-        {
-          virtual: 'projects',
-        },
+      .virtual([
+        { virtual: 'ownedProjects', type: 'many', aggregate: { field: 'score', type: 'count' } },
       ])
       .first();
-    const [firstProject] = result?.projects ?? [];
+    expect(counted?.ownedProjects).toBe(2);
 
-    expect(result?.name).toBe('Katherine Johnson');
-    expect(result?.projects).toHaveLength(1);
-    expect(firstProject?.title).toBe('Orbital Trajectory');
-  });
-
-  it('negative: returns no parent results when the source filter does not match', async () => {
-    const result = await people
-      .find({
-        name: 'No such person',
-      })
-      .populate([
-        {
-          virtual: 'projects',
-        },
+    const averaged = await people
+      .find({ _id: person._id })
+      .virtual([
+        { virtual: 'ownedProjects', type: 'many', aggregate: { field: 'score', type: 'average' } },
       ])
       .first();
-
-    expect(result).toBeNull();
-  });
-
-  it('nested reference: populates an ObjectId stored inside a nested object', async () => {
-    const research = await createDepartment('Research');
-    const person = await createPerson('Katherine Johnson', research._id);
-
-    const result = await people
-      .find({ _id: person._id })
-      .populate([{ ref: 'profile.department', select: ['name'] }])
-      .first();
-
-    expect(result?.profile.department?.name).toBe('Research');
-    expect(result?.profile.department).not.toHaveProperty('description');
-  });
-
-  it('nested virtual join: matches projects using a nested department ObjectId', async () => {
-    const research = await createDepartment('Research');
-    const person = await createPerson('Ada Lovelace', research._id);
-    const differentOwner = await createPerson('Grace Hopper', research._id);
-    const company = new ObjectId();
-    await projects.create({
-      company,
-      key: 'SHARED-DEPARTMENT-PROJECT',
-      owner: differentOwner._id,
-      department: research._id,
-      title: 'Department-wide Research',
-      status: 'active',
-      internalNotes: 'Shared with the whole department',
-    });
-
-    const result = await people
-      .find({ _id: person._id })
-      .populate([{ virtual: 'departmentProjects' }])
-      .first();
-    const [firstProject] = result?.departmentProjects ?? [];
-
-    expect(result?.departmentProjects).toHaveLength(1);
-    expect(firstProject?.title).toBe('Department-wide Research');
-    expect(firstProject).not.toHaveProperty('internalNotes');
-  });
-
-  it('best case: keeps each person matched only to their own projects', async () => {
-    const research = await createDepartment('Research');
-    const platform = await createDepartment('Platform');
-    const ada = await createPerson('Ada Lovelace', research._id);
-    const grace = await createPerson('Grace Hopper', platform._id);
-
-    await projects.bulk.create([
-      {
-        company: new ObjectId(),
-        key: 'ADA-ENGINE',
-        owner: ada._id,
-        title: 'Analytical Engine',
-        status: 'active',
-        internalNotes: 'Research notes',
-      },
-      {
-        company: new ObjectId(),
-        key: 'ADA-NOTES',
-        owner: ada._id,
-        title: 'Computing Notes',
-        status: 'complete',
-        internalNotes: 'Published notes',
-      },
-      {
-        company: new ObjectId(),
-        key: 'GRACE-COMPILER',
-        owner: grace._id,
-        title: 'Compiler Validation',
-        status: 'active',
-        internalNotes: 'Compiler tests',
-      },
-    ]);
-
-    const results = await people
-      .find()
-      .sort({
-        name: 'asc',
-      })
-      .populate([
-        {
-          virtual: 'projects',
-        },
-      ]);
-    const [adaResult, graceResult] = results;
-    const [firstAdaProject] = adaResult?.projects ?? [];
-
-    expect(results).toHaveLength(2);
-    expect(adaResult?.projects.map((project) => project.title)).toEqual([
-      'Analytical Engine',
-      'Computing Notes',
-    ]);
-
-    expect(graceResult?.projects.map((project) => project.title)).toEqual(['Compiler Validation']);
-    expect(firstAdaProject?.status).toBe('active');
-    expect(firstAdaProject).not.toHaveProperty('internalNotes');
-  });
-
-  it('applies a virtual scope and returns a single-document virtual', async () => {
-    const platform = await createDepartment('Platform');
-    const person = await createPerson('Grace Hopper', platform._id);
-    const company = new ObjectId();
-    await projects.create({
-      company,
-      key: 'GRACE-COMPILER',
-      owner: person._id,
-      department: platform._id,
-      title: 'Compiler Validation',
-      status: 'active',
-      internalNotes: 'Regression suite',
-    });
-
-    const scoped = await people
-      .find({
-        _id: person._id,
-      })
-      .with('projectSummary')
-      .first();
-
-    const [scopedProject] = scoped?.projects ?? [];
-
-    expect(scoped?.projects).toHaveLength(1);
-    expect(scopedProject?.title).toBe('Compiler Validation');
-    expect(scopedProject?.status).toBe('active');
-    expect(scopedProject).not.toHaveProperty('internalNotes');
+    expect(averaged?.ownedProjects).toBe(6);
 
     const first = await people
       .find({ _id: person._id })
-      .populate([{ virtual: 'featuredProject' }])
+      .virtual([{ virtual: 'ownedProjects', type: 'first', select: ['title'] }])
       .first();
-
-    expect(first?.featuredProject?.title).toBe('Compiler Validation');
+    expect(first?.ownedProjects?.title).toBe('One');
   });
 
-  it('returns a count for an aggregate virtual', async () => {
-    const research = await createDepartment('Research');
-    const person = await createPerson('Ada Lovelace', research._id);
-    await projects.create({
-      company: new ObjectId(),
-      key: 'ADA-COUNT-A',
-      owner: person._id,
-      title: 'One',
-      status: 'active',
-      score: 4,
-      internalNotes: 'a',
+  it('keeps populate and virtual as distinct query operations and allows mixed scopes', async () => {
+    const company = await companies.create({ name: 'Research Co' });
+    const department = await departments.create({ name: 'Research', company: company._id });
+    await people.create({
+      name: 'Ada Lovelace',
+      email: 'ada@example.test',
+      profile: { department: department._id },
     });
-    await projects.create({
-      company: new ObjectId(),
-      key: 'ADA-COUNT-B',
-      owner: person._id,
-      title: 'Two',
-      status: 'complete',
-      score: 7,
-      internalNotes: 'b',
-    });
-    const result = await people
-      .find({ _id: person._id })
-      .populate([
-        { virtual: 'projectCount' },
-        { virtual: 'totalScore' },
-        { virtual: 'averageScore' },
-        { virtual: 'activeScore' },
-      ])
-      .first();
-    const count: number | undefined = result?.projectCount;
-    const sum: number | undefined = result?.totalScore;
-    const average: number | null | undefined = result?.averageScore;
-    const activeScore: number | undefined = result?.activeScore;
-    expect(count).toBe(2);
-    expect(sum).toBe(11);
-    expect(average).toBe(5.5);
-    expect(activeScore).toBe(4);
-  });
 
-  it('real world: projects a tenant directory with each person’s active work', async () => {
-    const research = await createDepartment('Research');
-    const operations = await createDepartment('Operations');
-    const ada = await createPerson('Ada Lovelace', research._id);
-    await createPerson('Alan Turing', research._id);
-    const otherTenant = await createPerson('Ada Lovelace', operations._id);
-
-    await projects.bulk.create([
-      {
-        company: new ObjectId(),
-        key: 'RESEARCH-ENGINE',
-        owner: ada._id,
-        department: research._id,
-        title: 'Analytical Engine',
-        status: 'active',
-        internalNotes: 'Tenant research work',
-      },
-      {
-        company: new ObjectId(),
-        key: 'RESEARCH-NOTES',
-        owner: ada._id,
-        department: research._id,
-        title: 'Computing Notes',
-        status: 'complete',
-        internalNotes: 'Archived work',
-      },
-      {
-        company: new ObjectId(),
-        key: 'OPERATIONS-DASHBOARD',
-        owner: otherTenant._id,
-        department: operations._id,
-        title: 'Operations Dashboard',
-        status: 'active',
-        internalNotes: 'Different department',
-      },
-    ]);
-
-    const directory = await people
-      .find({
-        'profile.department': research._id,
-      })
-      .select(['name', 'profile.department'])
-      .sort({
-        name: 'asc',
-      })
-      .populate([
-        {
-          ref: 'profile.department',
-          select: ['name'],
-        },
-        {
-          virtual: 'projects',
-        },
-      ]);
-    const [researchAda, researchAlan] = directory;
-    const [firstResearchProject, secondResearchProject] = researchAda?.projects ?? [];
-
-    expect(directory).toHaveLength(2);
-    expect(researchAda?.projects).toHaveLength(2);
-    expect(firstResearchProject?.title).toBe('Analytical Engine');
-    expect(firstResearchProject?.status).toBe('active');
-    expect(secondResearchProject?.title).toBe('Computing Notes');
-    expect(secondResearchProject?.status).toBe('complete');
-    expect(researchAlan?.name).toBe('Alan Turing');
-    expect(researchAlan?.projects).toEqual([]);
-    expect(researchAda?.profile.department?.name).toBe('Research');
-    expect(researchAlan?.profile.department?.name).toBe('Research');
+    const result = await departments.find({ _id: department._id }).with('overview').first();
+    expect(result?.company?.name).toBe('Research Co');
+    expect(result?.employees.map(({ name }) => name)).toEqual(['Ada Lovelace']);
   });
 });

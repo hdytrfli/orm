@@ -16,21 +16,21 @@ export const schemas = orm
   })
   .defineRelations({
     groups: {
-      company: 'companies',
-      creator: 'users',
+      company: { ref: 'companies' },
+      creator: { ref: 'users' },
     },
     users: {
-      group: 'groups',
-      company: 'companies',
+      group: { ref: 'groups' },
+      company: { ref: 'companies' },
     },
     projects: {
-      company: 'companies',
-      owner: 'users',
+      company: { ref: 'companies', inverse: 'projects' },
+      owner: { ref: 'users', inverse: 'ownedProjects' },
     },
     tasks: {
-      project: 'projects',
-      createdBy: 'users',
-      assignee: 'users',
+      project: { ref: 'projects', inverse: 'tasks' },
+      createdBy: { ref: 'users' },
+      assignee: { ref: 'users', inverse: 'assignedTasks' },
     },
   })
   .defineScopes({

@@ -35,9 +35,9 @@ export type PopulatedResult<
   Virtuals extends SchemaVirtualMap = {},
 > = Simplify<
   ApplyRelationSpecs<Result, Relations, Specs> & {
-    [Spec in VirtualSpec<Specs[number]> as Spec['virtual']]: PopulatedVirtual<
-      Virtuals[Spec['virtual']],
-      Spec
+    [Name in Extract<VirtualSpec<Specs[number]>['virtual'], string>]: PopulatedVirtual<
+      Virtuals[Name],
+      Extract<VirtualSpec<Specs[number]>, { virtual: Name }>
     >;
   }
 >;
@@ -94,22 +94,20 @@ type VirtualMapOf<Virtual> = Virtual extends { resolve: () => infer Target }
     : {}
   : {};
 
-type PopulatedVirtual<Virtual, _Spec> = Virtual extends {
-  aggregate: { type: infer AggregateType };
-}
+type PopulatedVirtual<Virtual, Spec> = Spec extends { aggregate: { type: infer AggregateType } }
   ? AggregateType extends 'average' | 'min' | 'max'
     ? number | null
     : number
-  : Virtual extends { type: 'first' }
-    ? VisibleVirtualDocument<Virtual> | null
-    : VisibleVirtualDocument<Virtual>[];
+  : Spec extends { type: 'first' }
+    ? VisibleVirtualDocument<Virtual, Spec> | null
+    : VisibleVirtualDocument<Virtual, Spec>[];
 
-type VisibleVirtualDocument<Virtual> =
+type VisibleVirtualDocument<Virtual, Spec> =
   RelationDocument<Virtual> extends infer Document extends object
     ? RelationTarget<Virtual> extends Schema<infer Shape, any>
-      ? (Virtual extends { select: readonly unknown[] }
-          ? SelectedDocument<Shape, Extract<SelectedFields<Virtual>, SelectableKey<Shape>>>
+      ? (Spec extends { select: readonly unknown[] }
+          ? SelectedDocument<Shape, Extract<SelectedFields<Spec>, SelectableKey<Shape>>>
           : Omit<VisibleDocument<Shape> & Document, HiddenDocumentKey<Shape>>) &
-          Pick<Document, Extract<ShownFields<Virtual>, keyof Document>>
+          Pick<Document, Extract<ShownFields<Spec>, keyof Document>>
       : Document
     : never;

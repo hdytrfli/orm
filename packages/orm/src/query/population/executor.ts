@@ -1,5 +1,6 @@
 import type { Db } from '../../connection/database.js';
 import type { SchemaRelationMap, SchemaVirtualMap } from '../../relations/definitions.js';
+import type { VirtualAggregate } from '../../relations/definitions.js';
 import { populateProjectionFor, selectedPopulationFields } from './projection.js';
 
 export type RuntimePopulateSpec =
@@ -11,6 +12,10 @@ export type RuntimePopulateSpec =
     }
   | {
       virtual: string;
+      type: 'many' | 'first';
+      aggregate?: VirtualAggregate;
+      select?: readonly string[];
+      show?: readonly string[];
     };
 
 const valueAtPath = (document: Record<string, unknown>, path: string): unknown =>
@@ -71,12 +76,9 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
     if ('virtual' in spec) {
       const virtual = virtuals[spec.virtual];
       if (!virtual) return;
-      const aggregate = 'aggregate' in virtual ? virtual.aggregate : undefined;
+      const aggregate = spec.aggregate;
       const target = virtual.resolve();
-      const virtualOptions = virtual as typeof virtual & {
-        select?: readonly string[];
-        show?: readonly string[];
-      };
+      const virtualOptions = spec;
       const localValue = valueAtPath(document, virtual.local);
       if (localValue === undefined || localValue === null) {
         const aggregateValue = aggregate
@@ -87,7 +89,7 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
         setValueAtPath(
           document,
           spec.virtual,
-          aggregate ? aggregateValue : virtual.type === 'first' ? null : [],
+          aggregate ? aggregateValue : spec.type === 'first' ? null : [],
         );
         return;
       }
@@ -101,8 +103,7 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
       );
       const foreignValue = Array.isArray(localValue) ? { $in: localValue } : localValue;
       const joinFilter = { [virtual.foreign]: foreignValue };
-      const match = 'match' in virtual ? virtual.match : undefined;
-      const filter = match ? { $and: [joinFilter, match] } : joinFilter;
+      const filter = joinFilter;
       const collection = this.db.collectionFor(target);
       if (aggregate) {
         const operation =
@@ -124,7 +125,7 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
         setValueAtPath(document, spec.virtual, value);
         return;
       }
-      if (virtual.type === 'first') {
+      if (spec.type === 'first') {
         const first = await collection.findOne(filter, { projection });
         setValueAtPath(document, spec.virtual, first);
         return;

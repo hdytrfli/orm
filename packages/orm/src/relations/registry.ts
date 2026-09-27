@@ -6,14 +6,12 @@ import type {
   RelationDefinitions,
   SchemaRegistryBuilder,
   ScopeDefinitionsBySchema,
-  VirtualDefinitions,
 } from './registry-types.js';
 
 export type {
   RelationDefinitions,
   SchemaRegistryBuilder,
   ScopeDefinitionsBySchema,
-  VirtualDefinitions,
 } from './registry-types.js';
 
 type RuntimeFieldSchema = {
@@ -50,11 +48,14 @@ const attachMethods = <Registry extends Record<string, SchemaLike>>(
         );
       }
 
-      for (const [field, targetName] of Object.entries(relations ?? {})) {
-        const target = registry[targetName as string];
+      for (const [field, input] of Object.entries(relations ?? {}) as [
+        string,
+        { ref: string; inverse?: string },
+      ][]) {
+        const target = registry[input.ref];
         if (!target) {
           throw new SchemaConfigurationError(
-            `Unknown relation target "${targetName}". Use a schema name registered with defineSchemas().`,
+            `Unknown relation target "${input.ref}". Use a schema name registered with defineSchemas().`,
           );
         }
         if (!fieldSchemaAtPath(source, field)) {
@@ -72,71 +73,20 @@ const attachMethods = <Registry extends Record<string, SchemaLike>>(
           resolve: () => target,
           localField: field,
           foreignField: '_id',
+          inverse: input.inverse,
         };
-      }
-    }
-    return attachMethods(registry);
-  };
-
-  const defineVirtual = (definitions: VirtualDefinitions<Registry>) => {
-    for (const [name, virtuals] of Object.entries(definitions)) {
-      const source = registry[name];
-      if (!source) {
-        throw new SchemaConfigurationError(
-          `Unknown schema "${name}" in virtual definitions. Add it to defineSchemas() first.`,
-        );
-      }
-
-      for (const [virtualName, input] of Object.entries(virtuals ?? {}) as [
-        string,
-        {
-          ref: string;
-          local: string;
-          foreign: string;
-          type: 'many' | 'first';
-          aggregate?: { field: string; type: 'count' | 'sum' | 'average' | 'min' | 'max' };
-          select?: readonly string[];
-          show?: readonly string[];
-          match?: Record<string, unknown>;
-        },
-      ][]) {
-        const target = registry[input.ref];
-        if (!target) {
-          throw new SchemaConfigurationError(
-            `Unknown virtual target "${input.ref}". Use a schema name registered with defineSchemas().`,
-          );
+        if (input.inverse) {
+          if (target.virtualMap[input.inverse]) {
+            throw new SchemaConfigurationError(
+              `Duplicate inverse relation "${input.inverse}" on schema "${input.ref}".`,
+            );
+          }
+          target.virtualMap[input.inverse] = {
+            resolve: () => source,
+            local: '_id',
+            foreign: field,
+          };
         }
-        if (input.local !== '_id' && !fieldSchemaAtPath(source, input.local)) {
-          throw new SchemaConfigurationError(
-            `Unknown local field "${name}.${input.local}" in virtual "${virtualName}".`,
-          );
-        }
-        if (input.local !== '_id' && !isObjectIdField(source, input.local)) {
-          throw new SchemaConfigurationError(
-            `Virtual local field "${name}.${input.local}" must be an ObjectId field.`,
-          );
-        }
-        if (input.foreign !== '_id' && !fieldSchemaAtPath(target, input.foreign)) {
-          throw new SchemaConfigurationError(
-            `Unknown foreign field "${input.ref}.${input.foreign}" in virtual "${virtualName}".`,
-          );
-        }
-        if (input.foreign !== '_id' && !isObjectIdField(target, input.foreign)) {
-          throw new SchemaConfigurationError(
-            `Virtual foreign field "${input.ref}.${input.foreign}" must be an ObjectId field.`,
-          );
-        }
-
-        source.virtualMap[virtualName] = {
-          resolve: () => target,
-          local: input.local,
-          foreign: input.foreign,
-          type: input.type,
-          ...(input.type === 'many' && input.aggregate ? { aggregate: input.aggregate } : {}),
-          select: input.select,
-          show: input.show,
-          ...(input.type === 'many' && input.match ? { match: input.match } : {}),
-        };
       }
     }
     return attachMethods(registry);
@@ -158,7 +108,6 @@ const attachMethods = <Registry extends Record<string, SchemaLike>>(
   Object.defineProperties(registry, {
     __registry: { configurable: false, enumerable: false, value: registry },
     defineRelations: { configurable: true, enumerable: false, value: defineRelations },
-    defineVirtual: { configurable: true, enumerable: false, value: defineVirtual },
     defineScopes: { configurable: true, enumerable: false, value: defineScopes },
   });
   return registry as SchemaRegistryBuilder<Registry>;

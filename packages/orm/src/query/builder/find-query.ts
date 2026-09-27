@@ -18,6 +18,9 @@ import type {
   ModelSort,
   ModelDocument,
   PopulateSpecs,
+  PopulateSpecsOnly,
+  VirtualSpecs,
+  ValidateVirtualSpecs,
   ValidatePopulateSpecs,
   PopulatedResult,
   PopulationMode,
@@ -266,10 +269,10 @@ export class ModelQuery<
   }
 
   /** Populate declared one-way relations, including nested relation arrays. */
-  populate<const Specs extends PopulateSpecs<Relations, Virtuals>>(
+  populate<const Specs extends PopulateSpecsOnly<Relations>>(
     specs: Specs &
       ValidatePopulateSpecs<Specs> &
-      (Mode extends 'scope'
+      (Mode extends 'scope' | 'virtual'
         ? QueryModeDiagnostic<'Cannot call populate() after with(); choose one population mode.'>
         : unknown),
   ): ModelQuery<
@@ -282,13 +285,13 @@ export class ModelQuery<
     SoftDelete,
     Virtuals
   > {
-    if (this.populationMode === 'scope') {
+    if (this.populationMode === 'scope' || this.populationMode === 'virtual') {
       throw new InvalidQueryError(
         'A query cannot combine a population scope with explicit population',
       );
     }
     this.populationMode = 'populate';
-    this.populateSpecs = specs;
+    this.populateSpecs = specs as PopulateSpecs<Relations, Virtuals>;
     return this as unknown as ModelQuery<
       Shape,
       PopulatedResult<Result, Relations, Specs, Virtuals>,
@@ -301,10 +304,46 @@ export class ModelQuery<
     >;
   }
 
+  /** Load reverse relations declared with an edge's `inverse` name. */
+  virtual<const Specs extends VirtualSpecs<Virtuals>>(
+    specs: Specs &
+      ValidateVirtualSpecs<Specs> &
+      (Mode extends 'scope' | 'populate'
+        ? QueryModeDiagnostic<'Cannot call virtual() after populate() or with(); choose one population mode.'>
+        : unknown),
+  ): ModelQuery<
+    Shape,
+    PopulatedResult<Result, Relations, Specs, Virtuals>,
+    CursorReady,
+    Relations,
+    Scopes,
+    'virtual',
+    SoftDelete,
+    Virtuals
+  > {
+    if (this.populationMode === 'scope' || this.populationMode === 'populate') {
+      throw new InvalidQueryError(
+        'A query cannot combine virtual loading with another population mode',
+      );
+    }
+    this.populationMode = 'virtual';
+    this.populateSpecs = specs as unknown as PopulateSpecs<Relations, Virtuals>;
+    return this as unknown as ModelQuery<
+      Shape,
+      PopulatedResult<Result, Relations, Specs, Virtuals>,
+      CursorReady,
+      Relations,
+      Scopes,
+      'virtual',
+      SoftDelete,
+      Virtuals
+    >;
+  }
+
   /** Apply a named population scope. */
   with<Name extends ScopeName<Scopes>>(
     name: Name &
-      (Mode extends 'populate'
+      (Mode extends 'populate' | 'virtual'
         ? QueryModeDiagnostic<'Cannot call with() after populate(); choose one population mode.'>
         : unknown),
   ): ModelQuery<
@@ -317,7 +356,7 @@ export class ModelQuery<
     SoftDelete,
     Virtuals
   > {
-    if (this.populationMode === 'populate') {
+    if (this.populationMode === 'populate' || this.populationMode === 'virtual') {
       throw new InvalidQueryError(
         'A query cannot combine explicit population with a population scope',
       );

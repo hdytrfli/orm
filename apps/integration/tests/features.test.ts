@@ -14,17 +14,7 @@ const entrySchema = orm.schema({ owner: orm.objectId(), title: orm.string() });
 
 const schemas = orm
   .defineSchemas({ owners: ownerSchema, entries: entrySchema })
-  .defineRelations({ entries: { owner: 'owners' } })
-  .defineVirtual({
-    owners: {
-      entries: {
-        ref: 'entries',
-        local: '_id',
-        foreign: 'owner',
-        type: 'many',
-      },
-    },
-  })
+  .defineRelations({ entries: { owner: { ref: 'owners', inverse: 'entries' } } })
   .defineScopes({ entries: { detail: [{ ref: 'owner', select: ['name'] }] } });
 
 const db = createDatabase({
