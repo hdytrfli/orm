@@ -73,6 +73,11 @@ const user = orm.schema({
   maxScore: orm.virtual('max'),
   postCount: orm.virtual('count'),
 });
+const post = orm.schema({
+  author: orm.objectId(),
+  title: orm.string(),
+  score: orm.number(),
+});
 
 const connected = schemas.defineRelations({ post: { author: { ref: 'user' } } }).defineVirtuals({
   user: {

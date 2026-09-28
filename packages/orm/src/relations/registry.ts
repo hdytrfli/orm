@@ -78,6 +78,17 @@ const attachMethods = <Registry extends Record<string, SchemaLike>, Relations = 
   };
 
   const defineVirtuals = (definitions: Record<string, Record<string, object>>) => {
+    for (const [ownerName, owner] of Object.entries(registry)) {
+      const bindings = definitions[ownerName];
+      for (const name of Object.keys(owner.virtualDefinitions)) {
+        if (!Object.hasOwn(bindings ?? {}, name)) {
+          throw new SchemaConfigurationError(
+            `Virtual "${ownerName}.${name}" must be bound in defineVirtuals().`,
+          );
+        }
+      }
+    }
+
     for (const [ownerName, virtuals] of Object.entries(definitions)) {
       const owner = registry[ownerName];
       if (!owner) {
@@ -87,11 +98,6 @@ const attachMethods = <Registry extends Record<string, SchemaLike>, Relations = 
       }
 
       for (const [name, placeholder] of Object.entries(owner.virtualDefinitions)) {
-        if (!Object.hasOwn(virtuals ?? {}, name)) {
-          throw new SchemaConfigurationError(
-            `Virtual "${ownerName}.${name}" must be bound in defineVirtuals().`,
-          );
-        }
         if (owner.virtualMap[name]) {
           throw new SchemaConfigurationError(
             `Virtual "${ownerName}.${name}" has already been bound.`,
