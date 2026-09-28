@@ -42,6 +42,17 @@ type NumericKeys<Value, Prefix extends string = ''> = Value extends object
             : never;
     }[Extract<keyof Value, string>]
   : never;
+type ScalarFieldPaths<Value, Prefix extends string = ''> = Value extends object
+  ? {
+      [Key in Extract<keyof Value, string>]-?: NonNullable<Value[Key]> extends ObjectId | Date
+        ? `${Prefix}${Key}`
+        : NonNullable<Value[Key]> extends readonly unknown[]
+          ? never
+          : NonNullable<Value[Key]> extends object
+            ? ScalarFieldPaths<NonNullable<Value[Key]>, `${Prefix}${Key}.`>
+            : `${Prefix}${Key}`;
+    }[Extract<keyof Value, string>]
+  : never;
 
 export type RelationDefinitions<Registry extends Record<string, SchemaLike>> = {
   [Name in keyof Registry]?: Partial<
@@ -63,13 +74,28 @@ type InvalidRelationFields<Registry extends Record<string, SchemaLike>, Definiti
     : Extract<keyof NonNullable<Definitions[Source]>, string>;
 }[keyof Definitions];
 
+type InvalidRelationProperties<Definitions> = {
+  [Source in keyof Definitions]: {
+    [Field in keyof NonNullable<Definitions[Source]>]: Exclude<
+      keyof NonNullable<Definitions[Source]>[Field],
+      'ref'
+    > extends never
+      ? never
+      : `${Extract<Source, string>}.${Extract<Field, string>}`;
+  }[keyof NonNullable<Definitions[Source]>];
+}[keyof Definitions];
+
+type InvalidRelationDefinitions<Registry extends Record<string, SchemaLike>, Definitions> =
+  | InvalidRelationFields<Registry, Definitions>
+  | InvalidRelationProperties<Definitions>;
+
 type ValidateRelationFields<Registry extends Record<string, SchemaLike>, Definitions> = [
-  InvalidRelationFields<Registry, Definitions>,
+  InvalidRelationDefinitions<Registry, Definitions>,
 ] extends [never]
   ? unknown
   : {
       readonly [
-        Message in `Invalid relation field(s): ${InvalidRelationFields<Registry, Definitions>}`
+        Message in `Invalid relation definition(s): ${InvalidRelationDefinitions<Registry, Definitions>}`
       ]: never;
     };
 
@@ -131,13 +157,28 @@ type BindingInput<
 > =
   RelationBinding<Relations, Owner> extends infer Binding
     ? Binding extends { ref: infer Target extends keyof Registry & string }
-      ? Kind extends 'sum' | 'avg' | 'min' | 'max'
+      ? Kind extends 'sum' | 'avg' | 'min' | 'max' | 'median'
         ? Binding & { readonly field: NumericFields<Registry, Target> }
-        : Binding
+        : Kind extends 'distinct'
+          ? Binding & {
+              readonly field: Extract<ScalarFieldPaths<InferShape<Registry[Target]>>, string>;
+            }
+          : Kind extends 'count'
+            ? Binding & {
+                readonly field: Extract<ScalarFieldPaths<InferShape<Registry[Target]>>, string>;
+              }
+            : Binding
       : never
     : never;
 
-type BindingKeys<Kind extends VirtualKind> = Kind extends 'sum' | 'avg' | 'min' | 'max'
+type BindingKeys<Kind extends VirtualKind> = Kind extends
+  | 'sum'
+  | 'avg'
+  | 'min'
+  | 'max'
+  | 'median'
+  | 'distinct'
+  | 'count'
   ? 'ref' | 'via' | 'field'
   : 'ref' | 'via';
 

@@ -23,7 +23,10 @@ export const registry = orm
       ownedProjects: { ref: 'projects', via: 'owner' },
       assignedTasks: { ref: 'tasks', via: 'assignee' },
     },
-    projects: { tasks: { ref: 'tasks', via: 'project' } },
+    projects: {
+      tasks: { ref: 'tasks', via: 'project' },
+      totalTasks: { ref: 'tasks', via: 'project', field: 'source.kind' },
+    },
   })
   .defineScopes({
     users: {

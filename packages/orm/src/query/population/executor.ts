@@ -60,14 +60,23 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
       const target = this.db.schemaFor(binding.ref);
       const aggregate =
         binding.kind === 'count' ||
+        binding.kind === 'distinct' ||
         binding.kind === 'sum' ||
         binding.kind === 'avg' ||
         binding.kind === 'min' ||
-        binding.kind === 'max';
+        binding.kind === 'max' ||
+        binding.kind === 'median';
       const joinFilter = { [binding.via]: valueAtPath(document, '_id') };
       const collection = this.db.collectionFor(target);
       if (aggregate && binding.kind === 'count') {
-        setValueAtPath(document, spec.ref, await collection.countDocuments(joinFilter));
+        const countFilter = {
+          ...joinFilter,
+          [binding.field!]: {
+            $exists: true,
+            $ne: null,
+          },
+        };
+        setValueAtPath(document, spec.ref, await collection.countDocuments(countFilter));
         return;
       }
       const projection = populateProjectionFor(
@@ -78,11 +87,45 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
         target.relationMap as SchemaRelationMap,
       );
       if (aggregate) {
-        const operation = binding.kind === 'avg' ? '$avg' : `$${binding.kind}`;
+        if (binding.kind === 'distinct') {
+          const [result] = await collection
+            .aggregate<{ value: number }>([
+              {
+                $match: {
+                  ...joinFilter,
+                  [binding.field!]: {
+                    $exists: true,
+                    $ne: null,
+                  },
+                },
+              },
+              {
+                $group: {
+                  _id: `$${binding.field}`,
+                },
+              },
+              {
+                $count: 'value',
+              },
+            ])
+            .toArray();
+          setValueAtPath(document, spec.ref, result?.value ?? 0);
+          return;
+        }
+
+        const accumulator =
+          binding.kind === 'median'
+            ? {
+                $median: {
+                  input: `$${binding.field}`,
+                  method: 'approximate',
+                },
+              }
+            : { [`$${binding.kind}`]: `$${binding.field}` };
         const [result] = await collection
           .aggregate<{ value: number | null }>([
             { $match: joinFilter },
-            { $group: { _id: null, value: { [operation]: `$${binding.field}` } } },
+            { $group: { _id: null, value: accumulator } },
           ])
           .toArray();
         const value = result?.value ?? (binding.kind === 'sum' ? 0 : null);

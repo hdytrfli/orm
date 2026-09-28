@@ -114,9 +114,9 @@ type VirtualMapOf<Virtual> = Virtual extends { resolve: () => infer Target }
 
 type PopulatedVirtual<Virtual, Spec> =
   Virtual extends VirtualBinding<any, any, any, infer Kind>
-    ? Kind extends 'count' | 'sum'
+    ? Kind extends 'count' | 'distinct' | 'sum'
       ? number
-      : Kind extends 'avg' | 'min' | 'max'
+      : Kind extends 'avg' | 'min' | 'max' | 'median'
         ? number | null
         : Kind extends 'first'
           ? VisibleVirtualDocument<Virtual, Spec> | null

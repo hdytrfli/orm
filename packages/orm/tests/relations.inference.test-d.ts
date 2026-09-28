@@ -13,11 +13,15 @@ describe('relation and schema-declared virtual inference', () => {
       maxScore: orm.virtual('max'),
       avgScore: orm.virtual('avg'),
       projectCount: orm.virtual('count'),
+      scoredProjectCount: orm.virtual('count'),
+      distinctStatuses: orm.virtual('distinct'),
+      medianScore: orm.virtual('median'),
     });
     const projects = orm.schema({
       owner: orm.objectId(),
       title: orm.string(),
       score: orm.number(),
+      status: orm.enum(['active', 'complete']),
       internal: orm.string().hidden(),
     });
     const registry = orm
@@ -29,7 +33,10 @@ describe('relation and schema-declared virtual inference', () => {
           favoriteProject: { ref: 'projects', via: 'owner' },
           maxScore: { ref: 'projects', via: 'owner', field: 'score' },
           avgScore: { ref: 'projects', via: 'owner', field: 'score' },
-          projectCount: { ref: 'projects', via: 'owner' },
+          projectCount: { ref: 'projects', via: 'owner', field: 'title' },
+          scoredProjectCount: { ref: 'projects', via: 'owner', field: 'score' },
+          distinctStatuses: { ref: 'projects', via: 'owner', field: 'status' },
+          medianScore: { ref: 'projects', via: 'owner', field: 'score' },
         },
       })
       .defineScopes({
@@ -69,13 +76,26 @@ describe('relation and schema-declared virtual inference', () => {
 
     const aggregate = await database.people
       .find()
-      .virtual([{ ref: 'maxScore' }, { ref: 'avgScore' }, { ref: 'projectCount' }]);
+      .virtual([
+        { ref: 'maxScore' },
+        { ref: 'avgScore' },
+        { ref: 'projectCount' },
+        { ref: 'scoredProjectCount' },
+        { ref: 'distinctStatuses' },
+        { ref: 'medianScore' },
+      ]);
     const maxScore: number | null = aggregate[0]!.maxScore;
     const average: number | null = aggregate[0]!.avgScore;
     const count: number = aggregate[0]!.projectCount;
+    const scoredCount: number = aggregate[0]!.scoredProjectCount;
+    const distinctCount: number = aggregate[0]!.distinctStatuses;
+    const median: number | null = aggregate[0]!.medianScore;
     void maxScore;
     void average;
     void count;
+    void scoredCount;
+    void distinctCount;
+    void median;
 
     const first = await database.people
       .find()
@@ -107,6 +127,8 @@ describe('relation and schema-declared virtual inference', () => {
     base.defineRelations({ people: { name: { ref: 'projects' } } });
     // @ts-expect-error Relation keys must name declared schema fields.
     base.defineRelations({ people: { notAField: { ref: 'projects' } } });
+    // @ts-expect-error Relations only accept the `ref` property.
+    base.defineRelations({ projects: { owner: { ref: 'people', inverse: 'projects' } } });
 
     const relations = base.defineRelations({ projects: { owner: { ref: 'people' } } });
     relations.defineVirtuals({
@@ -128,5 +150,76 @@ describe('relation and schema-declared virtual inference', () => {
         },
       },
     });
+  });
+
+  it('requires scalar fields for count and distinct aggregates', () => {
+    const owners = orm.schema({
+      count: orm.virtual('count'),
+      distinct: orm.virtual('distinct'),
+    });
+    const entries = orm.schema({
+      owner: orm.objectId(),
+      label: orm.string(),
+      metadata: orm.object({
+        source: orm.string(),
+      }),
+      tags: orm.array(orm.string()),
+    });
+    const relations = orm.defineSchemas({ owners, entries }).defineRelations({
+      entries: {
+        owner: {
+          ref: 'owners',
+        },
+      },
+    });
+
+    relations.defineVirtuals({
+      owners: {
+        // @ts-expect-error Count requires a field.
+        count: {
+          ref: 'entries',
+          via: 'owner',
+        },
+      },
+    });
+
+    relations.defineVirtuals({
+      owners: {
+        count: {
+          ref: 'entries',
+          via: 'owner',
+          // @ts-expect-error Count fields cannot be objects.
+          field: 'metadata',
+        },
+      },
+    });
+
+    relations.defineVirtuals({
+      owners: {
+        distinct: {
+          ref: 'entries',
+          via: 'owner',
+          // @ts-expect-error Distinct fields cannot be arrays.
+          field: 'tags',
+        },
+      },
+    });
+
+    const valid = relations.defineVirtuals({
+      owners: {
+        count: {
+          ref: 'entries',
+          via: 'owner',
+          field: 'metadata.source',
+        },
+        distinct: {
+          ref: 'entries',
+          via: 'owner',
+          field: 'label',
+        },
+      },
+    });
+    expectTypeOf(valid).not.toBeNever();
+    void valid;
   });
 });

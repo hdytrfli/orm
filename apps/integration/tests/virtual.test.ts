@@ -19,6 +19,9 @@ const schemas = orm
       maxScore: orm.virtual('max'),
       avgScore: orm.virtual('avg'),
       projectCount: orm.virtual('count'),
+      scoredProjectCount: orm.virtual('count'),
+      distinctStatuses: orm.virtual('distinct'),
+      medianScore: orm.virtual('median'),
     }),
     projects: orm.schema({
       owner: orm.objectId(),
@@ -26,7 +29,7 @@ const schemas = orm
       key: orm.string(),
       department: orm.objectId().optional(),
       title: orm.string(),
-      score: orm.number().optional(),
+      score: orm.number().nullable().optional(),
       status: orm.enum(['active', 'complete']),
       internalNotes: orm.string().hidden(),
     }),
@@ -55,7 +58,10 @@ const schemas = orm
       ownedProjects: { ref: 'projects', via: 'owner' },
       maxScore: { ref: 'projects', via: 'owner', field: 'score' },
       avgScore: { ref: 'projects', via: 'owner', field: 'score' },
-      projectCount: { ref: 'projects', via: 'owner' },
+      projectCount: { ref: 'projects', via: 'owner', field: 'title' },
+      scoredProjectCount: { ref: 'projects', via: 'owner', field: 'score' },
+      distinctStatuses: { ref: 'projects', via: 'owner', field: 'status' },
+      medianScore: { ref: 'projects', via: 'owner', field: 'score' },
     },
   })
   .defineScopes({
@@ -145,21 +151,49 @@ describe('schema-declared virtual population', () => {
     await projects.create({
       owner: person._id,
       company: company._id,
+      key: 'ADA-FOUR',
+      title: 'Four',
+      score: null,
+      status: 'complete',
+      internalNotes: '',
+    });
+    await projects.create({
+      owner: person._id,
+      company: company._id,
       key: 'ADA-TWO',
       title: 'Two',
       score: 8,
       status: 'complete',
       internalNotes: '',
     });
+    await projects.create({
+      owner: person._id,
+      company: company._id,
+      key: 'ADA-THREE',
+      title: 'Three',
+      status: 'active',
+      internalNotes: '',
+    });
 
     const aggregates = await people
       .find({ _id: person._id })
-      .virtual([{ ref: 'projectCount' }, { ref: 'avgScore' }, { ref: 'maxScore' }])
+      .virtual([
+        { ref: 'projectCount' },
+        { ref: 'scoredProjectCount' },
+        { ref: 'distinctStatuses' },
+        { ref: 'avgScore' },
+        { ref: 'maxScore' },
+        { ref: 'medianScore' },
+      ])
       .first();
 
-    expect(aggregates?.projectCount).toBe(2);
+    expect(aggregates?.projectCount).toBe(4);
+    expect(aggregates?.scoredProjectCount).toBe(2);
+    expect(aggregates?.distinctStatuses).toBe(2);
     expect(aggregates?.avgScore).toBe(6);
     expect(aggregates?.maxScore).toBe(8);
+    expect(aggregates?.medianScore).toBeGreaterThanOrEqual(4);
+    expect(aggregates?.medianScore).toBeLessThanOrEqual(8);
   });
 
   it('applies mixed relation and virtual specs through a scope', async () => {

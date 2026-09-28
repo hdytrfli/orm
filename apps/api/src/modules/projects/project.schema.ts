@@ -22,6 +22,7 @@ export const projectSchema = orm
     }),
     labels: orm.string().array(),
     tasks: orm.virtual('many'),
+    totalTasks: orm.virtual('count'),
   })
   .options({ timestamps: true, softdelete: true, hideManaged: true })
   .indexes([

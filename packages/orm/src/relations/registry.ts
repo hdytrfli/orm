@@ -15,9 +15,13 @@ export type {
 } from './registry-types.js';
 
 type RuntimeFieldSchema = {
+  readonly _def?: {
+    readonly type?: string;
+    readonly options?: readonly RuntimeFieldSchema[];
+  };
   readonly shape?: Record<string, RuntimeFieldSchema>;
   readonly unwrap?: () => RuntimeFieldSchema;
-  readonly safeParse?: (value: unknown) => { success: boolean };
+  readonly safeParse?: (value: unknown) => { success: boolean; data?: unknown };
 };
 
 const fieldSchemaAtPath = (schema: SchemaLike, path: string): RuntimeFieldSchema | undefined => {
@@ -35,6 +39,47 @@ const fieldSchemaAtPath = (schema: SchemaLike, path: string): RuntimeFieldSchema
 const isObjectIdField = (schema: SchemaLike, path: string): boolean =>
   fieldSchemaAtPath(schema, path)?.safeParse?.(new ObjectId()).success ?? false;
 
+const isScalarFieldSchema = (field: RuntimeFieldSchema): boolean => {
+  let current = field;
+  while (current.unwrap) current = current.unwrap();
+
+  const type = current._def?.type;
+  if (
+    type === 'string' ||
+    type === 'number' ||
+    type === 'boolean' ||
+    type === 'date' ||
+    type === 'enum' ||
+    type === 'literal' ||
+    type === 'bigint'
+  ) {
+    return true;
+  }
+
+  if (type === 'union') {
+    return current._def?.options?.every(isScalarFieldSchema) ?? false;
+  }
+
+  if (type === 'custom') {
+    const probes: unknown[] = ['', 0, false, 0n, new Date(), new ObjectId()];
+    return probes.some((probe) => {
+      const parsed = current.safeParse?.(probe);
+      if (!parsed?.success) return false;
+      return (
+        parsed.data === null ||
+        typeof parsed.data === 'string' ||
+        typeof parsed.data === 'number' ||
+        typeof parsed.data === 'boolean' ||
+        typeof parsed.data === 'bigint' ||
+        parsed.data instanceof Date ||
+        parsed.data instanceof ObjectId
+      );
+    });
+  }
+
+  return false;
+};
+
 /** Attach relation/scope builder methods and apply definitions to schema metadata. */
 const attachMethods = <Registry extends Record<string, SchemaLike>, Relations = {}>(
   registry: Registry,
@@ -50,6 +95,13 @@ const attachMethods = <Registry extends Record<string, SchemaLike>, Relations = 
       }
 
       for (const [field, input] of Object.entries(relations ?? {}) as [string, { ref: string }][]) {
+        const extraProperties = Object.keys(input).filter((key) => key !== 'ref');
+        if (extraProperties.length > 0) {
+          throw new SchemaConfigurationError(
+            `Relation "${name}.${field}" only accepts the "ref" property; remove: ${extraProperties.join(', ')}.`,
+          );
+        }
+
         const target = registry[input.ref];
         if (!target) {
           throw new SchemaConfigurationError(
@@ -117,16 +169,24 @@ const attachMethods = <Registry extends Record<string, SchemaLike>, Relations = 
           );
         }
         const kind = placeholder.kind;
-        const needsField = kind === 'sum' || kind === 'avg' || kind === 'min' || kind === 'max';
+        const needsNumericField =
+          kind === 'sum' || kind === 'avg' || kind === 'min' || kind === 'max' || kind === 'median';
+        const needsScalarField = kind === 'count' || kind === 'distinct';
         if (
-          needsField &&
+          needsNumericField &&
           (!input.field || !fieldSchemaAtPath(target, input.field)?.safeParse?.(1).success)
         ) {
           throw new SchemaConfigurationError(
             `Virtual "${ownerName}.${name}" of kind "${kind}" requires a numeric field on "${input.ref}".`,
           );
         }
-        if (!needsField && input.field !== undefined) {
+        const scalarField = input.field ? fieldSchemaAtPath(target, input.field) : undefined;
+        if (needsScalarField && (!scalarField || !isScalarFieldSchema(scalarField))) {
+          throw new SchemaConfigurationError(
+            `Virtual "${ownerName}.${name}" of kind "${kind}" requires a scalar field on "${input.ref}".`,
+          );
+        }
+        if (!needsNumericField && !needsScalarField && input.field !== undefined) {
           throw new SchemaConfigurationError(
             `Virtual "${ownerName}.${name}" of kind "${kind}" does not accept a field.`,
           );

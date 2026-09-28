@@ -21,7 +21,16 @@ export interface SchemaRelation<
 
 export type SchemaRelationMap = Record<string, SchemaRelation>;
 
-export type VirtualKind = 'many' | 'first' | 'count' | 'sum' | 'avg' | 'min' | 'max';
+export type VirtualKind =
+  | 'many'
+  | 'first'
+  | 'count'
+  | 'distinct'
+  | 'sum'
+  | 'avg'
+  | 'min'
+  | 'max'
+  | 'median';
 
 /** Marker accepted in schema shapes for non-persisted virtual fields. */
 export type VirtualField<Kind extends VirtualKind = VirtualKind> = {
