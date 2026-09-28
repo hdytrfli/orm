@@ -1,11 +1,24 @@
 import { z } from 'zod';
 
+import type { VirtualField, VirtualKind, VirtualPlaceholder } from './relations/definitions.js';
 import type { SchemaLike } from './relations/definitions.js';
 import { createSchemaRegistry } from './relations/registry.js';
-import type { SchemaShape } from './schema/contracts.js';
 import { objectId } from './schema/object-id.js';
 import { Schema } from './schema/schema.js';
 import { withZodNamespace } from './schema/zod-namespace.js';
+
+type SchemaInput = Record<string, z.ZodType | VirtualField>;
+type ActualShape<Input extends SchemaInput> = {
+  [Key in keyof Input as Input[Key] extends VirtualField ? never : Key]: Extract<
+    Input[Key],
+    z.ZodType
+  >;
+};
+type DeclaredVirtuals<Input extends SchemaInput> = {
+  [
+    Key in keyof Input as Input[Key] extends VirtualField ? Key : never
+  ]: Input[Key] extends VirtualField<infer Kind> ? VirtualPlaceholder<Kind> : never;
+};
 
 type ZodConstructorKey = {
   [Key in keyof typeof z]: Key extends string
@@ -26,7 +39,11 @@ const isZodConstructor = ([name, value]: [string, unknown]): boolean => {
 /** The public schema-construction API. */
 export type OrmApi = ZodConstructors & {
   /** Define a typed object schema. */
-  schema<Shape extends SchemaShape>(shape: Shape): Schema<Shape>;
+  schema<const Input extends SchemaInput>(
+    shape: Input,
+  ): Schema<ActualShape<Input>, {}, {}, {}, [], DeclaredVirtuals<Input>>;
+  /** Declare a non-persisted virtual result field. */
+  virtual<Kind extends VirtualKind>(kind: Kind): VirtualField<Kind>;
   /** Build a registry of named schemas and their relation graph. */
   defineSchemas<const Registry extends Record<string, SchemaLike>>(
     registry: Registry,
@@ -41,7 +58,25 @@ const constructorEntries = zodEntries.filter(isZodConstructor);
 const zodConstructors = Object.fromEntries(constructorEntries) as ZodConstructors;
 
 export const orm: OrmApi = Object.assign({}, withZodNamespace(zodConstructors), {
-  schema: <Shape extends SchemaShape>(shape: Shape) => new Schema(shape),
+  schema: <const Input extends SchemaInput>(shape: Input) => {
+    const actualShape: Record<string, z.ZodType> = {};
+    const virtualDefinitions: Record<string, VirtualPlaceholder> = {};
+    for (const [name, field] of Object.entries(shape)) {
+      if ('__mongormVirtual' in field) virtualDefinitions[name] = { kind: field.__mongormVirtual };
+      else actualShape[name] = field;
+    }
+    return new Schema(actualShape, {}, {}, {}, [], {}, virtualDefinitions) as unknown as Schema<
+      ActualShape<Input>,
+      {},
+      {},
+      {},
+      [],
+      DeclaredVirtuals<Input>
+    >;
+  },
+  virtual: <Kind extends VirtualKind>(kind: Kind): VirtualField<Kind> => ({
+    __mongormVirtual: kind,
+  }),
   defineSchemas: createSchemaRegistry,
   objectId,
 });

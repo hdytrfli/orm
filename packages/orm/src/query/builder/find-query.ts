@@ -238,7 +238,7 @@ export class ModelQuery<
   /** Populate declared one-way relations, including nested relation arrays. */
   populate<const Specs extends PopulateSpecsOnly<Relations>>(
     specs: Specs &
-      ValidatePopulateSpecs<Specs> &
+      ValidatePopulateSpecs<Specs, Relations> &
       (Mode extends 'scope' | 'virtual'
         ? QueryModeDiagnostic<'Cannot call populate() after virtual() or with(); choose one population mode.'>
         : unknown),
@@ -271,7 +271,7 @@ export class ModelQuery<
     >;
   }
 
-  /** Load reverse relations declared with an edge's `inverse` name. */
+  /** Load schema-declared virtual fields. */
   virtual<const Specs extends VirtualSpecs<Virtuals>>(
     specs: Specs & VirtualSpecs<Virtuals>,
     ..._validation: [Specs] extends [ValidateVirtualSpecs<Specs>]

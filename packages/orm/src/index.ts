@@ -16,9 +16,12 @@ export type {
   SchemaLike,
   SchemaRelation,
   SchemaRelationMap,
-  SchemaVirtual,
   SchemaVirtualMap,
-  VirtualAggregate,
+  SchemaVirtualDeclarations,
+  VirtualPlaceholder,
+  VirtualBinding,
+  VirtualField,
+  VirtualKind,
 } from './schema/index.js';
 export { createDatabase, Db } from './connection/database.js';
 export type { UnsafePurgeOptions } from './connection/database.js';

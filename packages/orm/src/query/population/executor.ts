@@ -1,20 +1,12 @@
 import type { Db } from '../../connection/database.js';
 import type { SchemaRelationMap, SchemaVirtualMap } from '../../relations/definitions.js';
-import type { VirtualAggregate } from '../../relations/definitions.js';
 import { populateProjectionFor } from './projection.js';
 
-export type RuntimePopulateSpec =
-  | {
-      ref: string;
-      fields?: readonly string[];
-      populate?: readonly RuntimePopulateSpec[];
-    }
-  | {
-      virtual: string;
-      type: 'many' | 'first';
-      aggregate?: VirtualAggregate;
-      fields?: readonly string[];
-    };
+export type RuntimePopulateSpec = {
+  ref: string;
+  fields?: readonly string[];
+  populate?: readonly RuntimePopulateSpec[];
+};
 
 const valueAtPath = (document: Record<string, unknown>, path: string): unknown =>
   path.split('.').reduce<unknown>((value, segment) => {
@@ -63,66 +55,47 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
     relations: SchemaRelationMap,
     virtuals: SchemaVirtualMap = this.virtuals,
   ): Promise<void> {
-    if ('virtual' in spec) {
-      const virtual = virtuals[spec.virtual];
-      if (!virtual) return;
-      const aggregate = spec.aggregate;
-      const target = virtual.resolve();
-      const virtualOptions = spec;
-      const localValue = valueAtPath(document, virtual.local);
-      if (localValue === undefined || localValue === null) {
-        const aggregateValue = aggregate
-          ? aggregate.type === 'count' || aggregate.type === 'sum'
-            ? 0
-            : null
-          : undefined;
-        setValueAtPath(
-          document,
-          spec.virtual,
-          aggregate ? aggregateValue : spec.type === 'first' ? null : [],
-        );
+    const binding = virtuals[spec.ref];
+    if (binding) {
+      const target = this.db.schemaFor(binding.ref);
+      const aggregate =
+        binding.kind === 'count' ||
+        binding.kind === 'sum' ||
+        binding.kind === 'avg' ||
+        binding.kind === 'min' ||
+        binding.kind === 'max';
+      const joinFilter = { [binding.via]: valueAtPath(document, '_id') };
+      const collection = this.db.collectionFor(target);
+      if (aggregate && binding.kind === 'count') {
+        setValueAtPath(document, spec.ref, await collection.countDocuments(joinFilter));
         return;
       }
-
       const projection = populateProjectionFor(
         target.fields,
         target.hiddenFields,
-        virtualOptions.fields,
+        spec.fields,
         [],
         target.relationMap as SchemaRelationMap,
-        target.virtualMap as SchemaVirtualMap,
       );
-      const foreignValue = Array.isArray(localValue) ? { $in: localValue } : localValue;
-      const joinFilter = { [virtual.foreign]: foreignValue };
-      const filter = joinFilter;
-      const collection = this.db.collectionFor(target);
       if (aggregate) {
-        const operation =
-          aggregate.type === 'count'
-            ? '$sum'
-            : `$${aggregate.type === 'average' ? 'avg' : aggregate.type}`;
-        const expression =
-          aggregate.type === 'count'
-            ? { $cond: [{ $ne: [`$${aggregate.field}`, null] }, 1, 0] }
-            : `$${aggregate.field}`;
+        const operation = binding.kind === 'avg' ? '$avg' : `$${binding.kind}`;
         const [result] = await collection
           .aggregate<{ value: number | null }>([
-            { $match: filter },
-            { $group: { _id: null, value: { [operation]: expression } } },
+            { $match: joinFilter },
+            { $group: { _id: null, value: { [operation]: `$${binding.field}` } } },
           ])
           .toArray();
-        const value =
-          result?.value ?? (aggregate.type === 'count' || aggregate.type === 'sum' ? 0 : null);
-        setValueAtPath(document, spec.virtual, value);
+        const value = result?.value ?? (binding.kind === 'sum' ? 0 : null);
+        setValueAtPath(document, spec.ref, value);
         return;
       }
-      if (spec.type === 'first') {
-        const first = await collection.findOne(filter, { projection });
-        setValueAtPath(document, spec.virtual, first);
+      if (binding.kind === 'first') {
+        const first = await collection.findOne(joinFilter, { projection });
+        setValueAtPath(document, spec.ref, first);
         return;
       }
-      const related = await collection.find(filter, { projection }).toArray();
-      setValueAtPath(document, spec.virtual, related);
+      const related = await collection.find(joinFilter, { projection }).toArray();
+      setValueAtPath(document, spec.ref, related);
       return;
     }
 
@@ -137,7 +110,6 @@ export class PopulationExecutor<Relations extends SchemaRelationMap> {
       spec.fields,
       nestedSpecs,
       targetRelations,
-      target.virtualMap as SchemaVirtualMap,
     );
     const related = value
       ? await this.db

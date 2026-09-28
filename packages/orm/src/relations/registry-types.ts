@@ -10,8 +10,13 @@ import type {
   WithSchemaVirtuals,
 } from '../schema/extractors.js';
 import type { InferShape } from '../schema/inference.js';
-import type { Schema } from '../schema/schema.js';
-import type { SchemaLike, SchemaRelation, SchemaVirtual } from './definitions.js';
+import type {
+  SchemaLike,
+  SchemaRelation,
+  VirtualPlaceholder,
+  VirtualBinding,
+  VirtualKind,
+} from './definitions.js';
 
 type ObjectIdPathKeys<Value, Prefix extends string = ''> = Value extends object
   ? {
@@ -25,205 +30,211 @@ type ObjectIdPathKeys<Value, Prefix extends string = ''> = Value extends object
     }[Extract<keyof Value, string>]
   : never;
 
-type ObjectIdPathsOfSchema<Value> = ObjectIdPathKeys<InferShape<Value>>;
-type RelationInput<Registry extends Record<string, SchemaLike>> = {
-  [Target in Extract<keyof Registry, string>]: { readonly ref: Target; readonly inverse?: string };
-}[Extract<keyof Registry, string>];
+type ObjectIdPaths<SchemaType> = ObjectIdPathKeys<InferShape<SchemaType>>;
+type NumericKeys<Value, Prefix extends string = ''> = Value extends object
+  ? {
+      [Key in Extract<keyof Value, string>]-?: NonNullable<Value[Key]> extends number
+        ? `${Prefix}${Key}`
+        : NonNullable<Value[Key]> extends ObjectId | Date | readonly unknown[]
+          ? never
+          : NonNullable<Value[Key]> extends object
+            ? NumericKeys<NonNullable<Value[Key]>, `${Prefix}${Key}.`>
+            : never;
+    }[Extract<keyof Value, string>]
+  : never;
+
+export type RelationDefinitions<Registry extends Record<string, SchemaLike>> = {
+  [Name in keyof Registry]?: Partial<
+    Record<
+      Extract<ObjectIdPaths<Registry[Name]>, string>,
+      { readonly ref: keyof Registry & string }
+    >
+  >;
+};
 
 type InvalidRelationFields<Registry extends Record<string, SchemaLike>, Definitions> = {
   [Source in keyof Definitions]: Source extends keyof Registry
-    ? `${Extract<Source, string>}.${Exclude<
+    ? Exclude<
         Extract<keyof NonNullable<Definitions[Source]>, string>,
-        Extract<ObjectIdPathsOfSchema<Registry[Source]>, string>
-      > &
-        string}`
-    : `${Extract<Source, string>}.${Extract<keyof NonNullable<Definitions[Source]>, string>}`;
+        Extract<ObjectIdPaths<Registry[Source]>, string>
+      > extends infer Invalid extends string
+      ? `${Extract<Source, string>}.${Invalid}`
+      : never
+    : Extract<keyof NonNullable<Definitions[Source]>, string>;
 }[keyof Definitions];
 
-type ValidRelationFields<Registry extends Record<string, SchemaLike>, Definitions> = [
+type ValidateRelationFields<Registry extends Record<string, SchemaLike>, Definitions> = [
   InvalidRelationFields<Registry, Definitions>,
 ] extends [never]
   ? unknown
   : {
       readonly [
-        Message in `Invalid relation path "${InvalidRelationFields<Registry, Definitions>}". Use an ObjectId field declared on that source schema.`
+        Message in `Invalid relation field(s): ${InvalidRelationFields<Registry, Definitions>}`
       ]: never;
     };
 
-type InverseEntry<Definitions> = {
-  [Source in keyof Definitions]: NonNullable<Definitions[Source]> extends infer Relations
-    ? Relations extends object
-      ? {
-          [Field in keyof Relations]: Relations[Field] extends {
-            ref: infer Target extends string;
-            inverse: infer Inverse extends string;
-          }
-            ? readonly [Source, Field, Target, Inverse]
-            : never;
-        }[keyof Relations]
-      : never
-    : never;
-}[keyof Definitions];
-
-type InversePaths<Definitions, Target extends string, Name extends string> = {
-  [Source in keyof Definitions]: NonNullable<Definitions[Source]> extends infer Relations
-    ? Relations extends object
-      ? {
-          [Field in keyof Relations]: Relations[Field] extends {
-            ref: Target;
-            inverse: Name;
-          }
-            ? `${Extract<Source, string>}.${Extract<Field, string>}`
-            : never;
-        }[keyof Relations]
-      : never
-    : never;
-}[keyof Definitions];
-
-type IsUnion<Value, Whole = Value> = Value extends Whole
-  ? [Whole] extends [Value]
-    ? false
-    : true
-  : never;
-
-type DuplicateInverseName<Entry, Definitions> = Entry extends readonly [
-  unknown,
-  unknown,
-  infer Target extends string,
-  infer Name extends string,
-]
-  ? IsUnion<InversePaths<Definitions, Target, Name>> extends true
-    ? `${Target & string}.${Name}`
-    : never
-  : never;
-
-type DuplicateInverseNames<Definitions> = DuplicateInverseName<
-  InverseEntry<Definitions>,
-  Definitions
->;
-
-type ExistingInverseConflict<
-  Entry,
-  Registry extends Record<string, SchemaLike>,
-> = Entry extends readonly [
-  unknown,
-  unknown,
-  infer Target extends keyof Registry,
-  infer Name extends string,
-]
-  ? Name extends keyof SchemaVirtualsOf<Registry[Target]>
-    ? `${Extract<Target, string>}.${Name}`
-    : never
-  : never;
-
-type ExistingInverseConflicts<
-  Registry extends Record<string, SchemaLike>,
-  Definitions,
-> = ExistingInverseConflict<InverseEntry<Definitions>, Registry>;
-
-type UniqueInverseNames<Registry extends Record<string, SchemaLike>, Definitions> = [
-  DuplicateInverseNames<Definitions> | ExistingInverseConflicts<Registry, Definitions>,
+type RelationsFor<Registry extends Record<string, SchemaLike>, AllDefinitions, Config> = [
+  Config,
 ] extends [never]
-  ? unknown
-  : {
-      readonly [
-        Message in `Duplicate inverse name "${DuplicateInverseNames<Definitions> | ExistingInverseConflicts<Registry, Definitions>}". Use a unique inverse name for each relation targeting the same schema.`
-      ]: never;
-    };
-
-export type RelationDefinitions<Registry extends Record<string, SchemaLike>> = {
-  [Name in keyof Registry]?: Partial<
-    Record<Extract<ObjectIdPathsOfSchema<Registry[Name]>, string>, RelationInput<Registry>>
-  >;
-};
-
-type RelationsFor<Registry extends Record<string, SchemaLike>, AllDefinitions, Config> = {
-  [Field in keyof Config & string]: Config[Field] extends {
-    ref: infer Target extends keyof Registry;
-  }
-    ? SchemaRelation<
-        Registry[Target],
-        Field,
-        '_id',
-        RelationsFor<
-          Registry,
-          AllDefinitions,
-          NonNullable<AllDefinitions[Target & keyof AllDefinitions]>
-        >
-      >
-    : never;
-};
-
-type InverseVirtuals<
-  Registry extends Record<string, SchemaLike>,
-  Definitions,
-  Source extends keyof Registry,
-> = {
-  [Owner in keyof Definitions]: Definitions[Owner] extends object
+  ? {}
+  : Config extends object
     ? {
-        [
-          Field in keyof Definitions[Owner] as Definitions[Owner][Field] extends {
-            ref: Source;
-            inverse: infer Inverse extends string;
-          }
-            ? Inverse
-            : never
-        ]: Definitions[Owner][Field] extends { ref: Source }
-          ? SchemaVirtual<Registry[Extract<Owner, keyof Registry>], '_id', Extract<Field, string>>
+        [Field in keyof Config & string]: Config[Field] extends {
+          ref: infer Target extends keyof Registry;
+        }
+          ? SchemaRelation<
+              Registry[Target],
+              Field,
+              '_id',
+              RelationsFor<
+                Registry,
+                AllDefinitions,
+                NonNullable<AllDefinitions[Target & keyof AllDefinitions]>
+              >
+            >
           : never;
       }
     : {};
-}[keyof Definitions] extends infer Maps
-  ? UnionToIntersection<Maps>
-  : {};
 
-type UnionToIntersection<Union> = (Union extends unknown ? (value: Union) => void : never) extends (
-  value: infer Intersection,
-) => void
-  ? Intersection
-  : {};
-
-type RegistryWithRelations<
-  Registry extends Record<string, SchemaLike>,
-  Definitions extends RelationDefinitions<Registry>,
-> = {
-  [Name in keyof Registry]: WithSchemaVirtuals<
-    WithSchemaRelations<
-      Registry[Name],
-      RelationsFor<Registry, Definitions, NonNullable<Definitions[Name]>>
-    >,
-    InverseVirtuals<Registry, Definitions, Name>
+type RegistryWithRelations<Registry extends Record<string, SchemaLike>, Definitions> = {
+  [Name in keyof Registry]: WithSchemaRelations<
+    Registry[Name],
+    RelationsFor<Registry, Definitions, NonNullable<Definitions[Name & keyof Definitions]>>
   >;
 };
 
-type RelationMapOf<Value> =
-  Value extends Schema<any, infer Relations, any, any> ? Relations : SchemaRelationsOf<Value>;
+type DeclaredKind<Value> = Value extends VirtualPlaceholder<infer Kind> ? Kind : never;
+type VirtualNames<SchemaType> = Extract<keyof SchemaVirtualsOf<SchemaType>, string>;
+type TargetName<Config> = Config extends { ref: infer Target extends string } ? Target : never;
+type ViaName<Config> = Config extends { via: infer Via extends string } ? Via : never;
+
+type RelationBinding<Relations, Owner extends string> = {
+  [Target in Extract<keyof Relations, string>]: {
+    [Via in Extract<keyof NonNullable<Relations[Target]>, string>]: NonNullable<
+      Relations[Target]
+    >[Via] extends { ref: Owner }
+      ? { readonly ref: Target; readonly via: Via }
+      : never;
+  }[Extract<keyof NonNullable<Relations[Target]>, string>];
+}[Extract<keyof Relations, string>];
+
+type NumericFields<
+  Registry extends Record<string, SchemaLike>,
+  Target extends keyof Registry,
+> = Extract<NumericKeys<InferShape<Registry[Target]>>, string>;
+
+type BindingInput<
+  Registry extends Record<string, SchemaLike>,
+  Relations,
+  Owner extends string,
+  Kind extends VirtualKind,
+> =
+  RelationBinding<Relations, Owner> extends infer Binding
+    ? Binding extends { ref: infer Target extends keyof Registry & string }
+      ? Kind extends 'sum' | 'avg' | 'min' | 'max'
+        ? Binding & { readonly field: NumericFields<Registry, Target> }
+        : Binding
+      : never
+    : never;
+
+type BindingKeys<Kind extends VirtualKind> = Kind extends 'sum' | 'avg' | 'min' | 'max'
+  ? 'ref' | 'via' | 'field'
+  : 'ref' | 'via';
+
+type ValidateVirtualBindings<
+  Registry extends Record<string, SchemaLike>,
+  Relations,
+  Definitions,
+> = {
+  [Owner in keyof Definitions]: Owner extends keyof Registry
+    ? {
+        [Name in keyof NonNullable<Definitions[Owner]>]: Name extends VirtualNames<Registry[Owner]>
+          ? NonNullable<Definitions[Owner]>[Name] extends BindingInput<
+              Registry,
+              Relations,
+              Extract<Owner, string>,
+              Extract<DeclaredKind<SchemaVirtualsOf<Registry[Owner]>[Name]>, VirtualKind>
+            >
+            ? Exclude<
+                keyof NonNullable<Definitions[Owner]>[Name],
+                BindingKeys<
+                  Extract<DeclaredKind<SchemaVirtualsOf<Registry[Owner]>[Name]>, VirtualKind>
+                >
+              > extends never
+              ? unknown
+              : never
+            : never
+          : never;
+      }
+    : never;
+};
+
+export type VirtualDefinitions<Registry extends Record<string, SchemaLike>, Relations> = {
+  [Owner in keyof Registry]?: {
+    [Name in VirtualNames<Registry[Owner]>]: BindingInput<
+      Registry,
+      Relations,
+      Extract<Owner, string>,
+      Extract<DeclaredKind<SchemaVirtualsOf<Registry[Owner]>[Name]>, VirtualKind>
+    >;
+  };
+};
+
+type BoundVirtual<Registry extends Record<string, SchemaLike>, Config, Kind extends VirtualKind> =
+  TargetName<Config> extends infer Target extends keyof Registry & string
+    ? VirtualBinding<Registry[Target], Target, ViaName<Config>, Kind> &
+        (Config extends { field: infer Field extends string } ? { readonly field: Field } : {})
+    : never;
+
+type BoundVirtuals<
+  Registry extends Record<string, SchemaLike>,
+  Definitions,
+  Owner extends keyof Registry,
+> = Owner extends keyof Definitions
+  ? {
+      [Name in keyof NonNullable<Definitions[Owner]> & string]: BoundVirtual<
+        Registry,
+        NonNullable<Definitions[Owner]>[Name],
+        Extract<DeclaredKind<SchemaVirtualsOf<Registry[Owner]>[Name]>, VirtualKind>
+      >;
+    }
+  : {};
+
+type RegistryWithVirtuals<Registry extends Record<string, SchemaLike>, Definitions> = {
+  [Name in keyof Registry]: WithSchemaVirtuals<
+    Registry[Name],
+    BoundVirtuals<Registry, Definitions, Name>
+  >;
+};
 
 export type ScopeDefinitionsBySchema<Registry extends Record<string, SchemaLike>> = {
   [Name in keyof Registry]?: Record<
     string,
-    PopulateSpecs<RelationMapOf<Registry[Name]>, SchemaVirtualsOf<Registry[Name]>>
+    PopulateSpecs<SchemaRelationsOf<Registry[Name]>, SchemaVirtualsOf<Registry[Name]>>
   >;
 };
 
-type RegistryWithScopes<
-  Registry extends Record<string, SchemaLike>,
-  Definitions extends ScopeDefinitionsBySchema<Registry>,
-> = {
+type RegistryWithScopes<Registry, Definitions> = {
   [Name in keyof Registry]: WithSchemaScopes<
     Registry[Name],
-    Definitions[Name] extends ScopeDefinitions ? Definitions[Name] : {}
+    Definitions[Name & keyof Definitions] extends ScopeDefinitions
+      ? Definitions[Name & keyof Definitions]
+      : {}
   >;
 };
 
-export type SchemaRegistryBuilder<Registry extends Record<string, SchemaLike>> = Registry & {
+export type SchemaRegistryBuilder<
+  Registry extends Record<string, SchemaLike>,
+  Relations = {},
+> = Registry & {
   readonly __registry?: Registry;
   defineRelations<const Definitions extends RelationDefinitions<Registry>>(
-    definitions: Definitions &
-      ValidRelationFields<Registry, Definitions> &
-      UniqueInverseNames<Registry, Definitions>,
-  ): SchemaRegistryBuilder<RegistryWithRelations<Registry, Definitions>>;
+    definitions: Definitions & ValidateRelationFields<Registry, Definitions>,
+  ): SchemaRegistryBuilder<RegistryWithRelations<Registry, Definitions>, Definitions>;
+  defineVirtuals<const Definitions extends VirtualDefinitions<Registry, Relations>>(
+    definitions: Definitions & ValidateVirtualBindings<Registry, Relations, Definitions>,
+  ): SchemaRegistryBuilder<RegistryWithVirtuals<Registry, Definitions>, Relations>;
   defineScopes<const Definitions extends ScopeDefinitionsBySchema<Registry>>(
     definitions: Definitions,
-  ): SchemaRegistryBuilder<RegistryWithScopes<Registry, Definitions>>;
+  ): SchemaRegistryBuilder<RegistryWithScopes<Registry, Definitions>, Relations>;
 };

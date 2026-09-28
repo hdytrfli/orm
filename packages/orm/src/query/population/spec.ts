@@ -1,17 +1,12 @@
-import type { ObjectId } from 'mongodb';
-
-import type {
-  Schema,
-  SchemaRelationMap,
-  SchemaVirtualMap,
-  VirtualAggregate,
-} from '../../schema/index.js';
-import type { InferShape } from '../../schema/inference.js';
+import type { SchemaShape } from '../../schema/contracts.js';
+import type { SchemaRelationMap, SchemaVirtualMap, VirtualBinding } from '../../schema/index.js';
 import type { FieldSelection } from '../types/selection.js';
 
-export type RelationTargetOf<Relation> = Relation extends { resolve: () => infer Target }
-  ? Target
-  : never;
+export type RelationTargetOf<Relation> = Relation extends { readonly __target?: infer Target }
+  ? NonNullable<Target>
+  : Relation extends { resolve: () => infer Target }
+    ? Target
+    : never;
 export type RelationMapOf<Relation> = Relation extends {
   readonly __targetRelations?: infer Relations;
 }
@@ -24,20 +19,9 @@ export type RelationMapOf<Relation> = Relation extends {
       : {}
     : {};
 type PopulationField<Relation> =
-  RelationTargetOf<Relation> extends Schema<infer Shape, any> ? FieldSelection<Shape> : never;
-type NumericTarget<Relation> = Extract<NumericKeys<InferShape<RelationTargetOf<Relation>>>, string>;
-type NumericKeys<Value, Prefix extends string = ''> = Value extends object
-  ? {
-      [Key in Extract<keyof Value, string>]-?: NonNullable<Value[Key]> extends number
-        ? `${Prefix}${Key}`
-        : NonNullable<Value[Key]> extends ObjectId | Date | readonly unknown[]
-          ? never
-          : NonNullable<Value[Key]> extends object
-            ? NumericKeys<NonNullable<Value[Key]>, `${Prefix}${Key}.`>
-            : never;
-    }[Extract<keyof Value, string>]
-  : never;
-
+  RelationTargetOf<Relation> extends { readonly __shape: infer Shape extends SchemaShape }
+    ? FieldSelection<Shape>
+    : never;
 export type ScopeName<Scopes> = Extract<keyof Scopes, string>;
 export type PopulationMode = 'none' | 'populate' | 'virtual' | 'scope';
 
@@ -50,25 +34,16 @@ export type PopulateSpec<Relations extends SchemaRelationMap> = {
 }[Extract<keyof Relations, string>];
 
 export type VirtualSpec<Virtuals extends SchemaVirtualMap> = {
-  [Name in Extract<keyof Virtuals, string>]:
-    | ({
-        virtual: Name;
-        type: 'many';
-      } & (
-        | {
-            aggregate: VirtualAggregate<NumericTarget<Virtuals[Name]>>;
-            fields?: never;
-          }
-        | {
-            aggregate?: never;
-            fields?: readonly PopulationField<Virtuals[Name]>[];
-          }
-      ))
-    | {
-        virtual: Name;
-        type: 'first';
-        fields?: readonly PopulationField<Virtuals[Name]>[];
-      };
+  [Name in Extract<keyof Virtuals, string>]: Virtuals[Name] extends VirtualBinding<
+    infer Target,
+    string,
+    string,
+    infer Kind
+  >
+    ? Kind extends 'many' | 'first'
+      ? { ref: Name; fields?: readonly PopulationField<Target>[] }
+      : { ref: Name }
+    : never;
 }[Extract<keyof Virtuals, string>];
 
 export type PopulateSpecs<
@@ -81,16 +56,19 @@ export type VirtualSpecs<Virtuals extends SchemaVirtualMap> = readonly VirtualSp
 type WithoutExtraKeys<Spec, Allowed extends string> =
   Exclude<keyof Spec, Allowed> extends never ? Spec : never;
 
-export type ValidatePopulateSpecs<Specs extends readonly unknown[]> = {
-  [Index in keyof Specs]: WithoutExtraKeys<Specs[Index], 'ref' | 'fields' | 'populate'>;
+export type ValidatePopulateSpecs<
+  Specs extends readonly unknown[],
+  Relations extends SchemaRelationMap,
+> = {
+  [Index in keyof Specs]: Specs[Index] extends { ref: infer Name extends string }
+    ? Name extends keyof Relations
+      ? WithoutExtraKeys<Specs[Index], 'ref' | 'fields' | 'populate'>
+      : never
+    : never;
 };
 
 export type ValidateVirtualSpecs<Specs extends readonly unknown[]> = {
-  [Index in keyof Specs]: Specs[Index] extends { virtual: string; type: 'many'; aggregate: object }
-    ? WithoutExtraKeys<Specs[Index], 'virtual' | 'type' | 'aggregate'>
-    : Specs[Index] extends { virtual: string; type: 'many'; aggregate?: never }
-      ? WithoutExtraKeys<Specs[Index], 'virtual' | 'type' | 'fields' | 'aggregate'>
-      : Specs[Index] extends { virtual: string; type: 'first' }
-        ? WithoutExtraKeys<Specs[Index], 'virtual' | 'type' | 'fields'>
-        : never;
+  [Index in keyof Specs]: Specs[Index] extends { ref: string }
+    ? WithoutExtraKeys<Specs[Index], 'ref' | 'fields'>
+    : never;
 };
