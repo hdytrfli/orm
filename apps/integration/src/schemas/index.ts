@@ -24,14 +24,22 @@ export const schemas = orm
       company: { ref: 'companies' },
     },
     projects: {
-      company: { ref: 'companies', inverse: 'projects' },
-      owner: { ref: 'users', inverse: 'ownedProjects' },
+      company: { ref: 'companies' },
+      owner: { ref: 'users' },
     },
     tasks: {
-      project: { ref: 'projects', inverse: 'tasks' },
+      project: { ref: 'projects' },
       createdBy: { ref: 'users' },
-      assignee: { ref: 'users', inverse: 'assignedTasks' },
+      assignee: { ref: 'users' },
     },
+  })
+  .defineVirtuals({
+    companies: { projects: { ref: 'projects', via: 'company' } },
+    users: {
+      ownedProjects: { ref: 'projects', via: 'owner' },
+      assignedTasks: { ref: 'tasks', via: 'assignee' },
+    },
+    projects: { tasks: { ref: 'tasks', via: 'project' } },
   })
   .defineScopes({
     users: {

@@ -3,6 +3,7 @@ import { describe, expectTypeOf, it } from 'vitest';
 import type {
   createDatabase,
   ModelScopeName,
+  FieldPathsOf,
   ModelSoftDeleteEnabled,
   SortOf,
 } from '../src/index.js';
@@ -13,6 +14,8 @@ describe('query inference', () => {
     name: orm.string(),
     role: orm.enum(['admin', 'member']),
     password: orm.string().hidden(),
+    profile: orm.object({ location: orm.object({ city: orm.string() }) }),
+    projects: orm.virtual('many'),
   });
 
   const registry = orm
@@ -115,5 +118,25 @@ describe('query inference', () => {
     const invalidField: UserSort = { unknown: 'asc' };
     void invalidDirection;
     void invalidField;
+  });
+
+  it('exposes persisted model field paths for app-specific allowlists', () => {
+    type UserFieldPath = FieldPathsOf<typeof users>;
+    const fields: readonly UserFieldPath[] = [
+      'name',
+      'password',
+      'profile',
+      'profile.location',
+      'profile.location.city',
+      '_id',
+    ];
+    expectTypeOf(fields).toEqualTypeOf<readonly UserFieldPath[]>();
+
+    // @ts-expect-error Virtual result fields are not persisted model paths.
+    const virtualField: UserFieldPath = 'projects';
+    // @ts-expect-error Unknown paths are not in the schema.
+    const unknownField: UserFieldPath = 'profile.location.zip';
+    void virtualField;
+    void unknownField;
   });
 });

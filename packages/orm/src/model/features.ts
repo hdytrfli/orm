@@ -1,25 +1,27 @@
+import type { SchemaRelationMap } from '../relations/definitions.js';
+import type { ScopeDefinitions } from '../schema/contracts.js';
+import type { SchemaIndex } from '../schema/indexes.js';
 import { hasSoftDelete, type SoftDeleteEnabled } from '../schema/options.js';
+import type { SchemaOptions } from '../schema/options.js';
 import type { Schema } from '../schema/schema.js';
 
 /** Runtime capability metadata derived from a model's registered schema. */
-export type ModelFeaturesOf<SchemaType> =
-  SchemaType extends Schema<
-    any,
-    infer Relations,
-    infer Scopes,
-    infer Options,
-    infer Indexes,
-    infer Virtuals
-  >
-    ? {
-        readonly timestamps: Options['timestamps'] extends true ? true : false;
-        readonly softdelete: SoftDeleteEnabled<Options>;
-        readonly relations: readonly Extract<keyof Relations, string>[];
-        readonly scopes: readonly Extract<keyof Scopes, string>[];
-        readonly virtuals: readonly Extract<keyof Virtuals, string>[];
-        readonly indexes: readonly Indexes[number][];
-      }
-    : never;
+export type ModelFeaturesOf<SchemaType> = SchemaType extends {
+  readonly __relations: infer Relations extends SchemaRelationMap;
+  readonly __scopes: infer Scopes extends ScopeDefinitions;
+  readonly __options: infer Options extends SchemaOptions;
+  readonly __indexes: infer Indexes extends readonly SchemaIndex<any>[];
+  readonly __virtuals: infer Virtuals;
+}
+  ? {
+      readonly timestamps: Options['timestamps'] extends true ? true : false;
+      readonly softdelete: SoftDeleteEnabled<Options>;
+      readonly relations: readonly Extract<keyof Relations, string>[];
+      readonly scopes: readonly Extract<keyof Scopes, string>[];
+      readonly virtuals: readonly Extract<keyof Virtuals, string>[];
+      readonly indexes: readonly Indexes[number][];
+    }
+  : never;
 
 /** Build immutable feature metadata from a schema's registered declarations. */
 export const createModelFeatures = <SchemaType extends Schema<any, any, any, any, any, any>>(

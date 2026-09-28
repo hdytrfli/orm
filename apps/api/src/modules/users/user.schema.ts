@@ -23,6 +23,8 @@ export const userSchema = orm
       emailNotifications: orm.boolean(),
       productUpdates: orm.boolean(),
     }),
+    ownedProjects: orm.virtual('many'),
+    assignedTasks: orm.virtual('many'),
   })
   .options({ timestamps: true, softdelete: true, hideManaged: true })
   .indexes([

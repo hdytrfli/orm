@@ -22,7 +22,14 @@ This rejects before insertion because `email` does not satisfy the schema.
 Updates are partial, but supplied fields are still parsed:
 
 ```ts
-await db.user.update({ _id: userId }, { email: 'ada@example.com' });
+await db.user.update(
+  {
+    _id: userId,
+  },
+  {
+    email: 'ada@example.com',
+  },
+);
 ```
 
 Fields omitted from the patch are not required. Fields present in the patch must satisfy their schema validators.

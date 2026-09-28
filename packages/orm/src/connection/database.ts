@@ -115,6 +115,15 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
     return this.native.collection<Document>(name);
   }
 
+  /** Resolve a registered collection name to its schema metadata. */
+  schemaFor(name: string): SchemaLike {
+    const schema = (this.options.schemas as Record<string, SchemaLike>)[name];
+    if (!schema) {
+      throw new SchemaConfigurationError(`Unknown registered schema "${name}".`);
+    }
+    return schema;
+  }
+
   /** Explicitly create all indexes declared by registered schemas. */
   async sync(
     options: { dropIndexes?: boolean; quiet?: boolean } = {},
@@ -148,16 +157,10 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
   }
 }
 
-type DatabaseSchemaInput = SchemaRegistry | { readonly __registry?: SchemaRegistry };
+type DatabaseSchemaInput = SchemaRegistry | { readonly __registry?: unknown };
 
-type RegistryFromBuilder<Input> = Input extends { readonly __registry?: infer Registry }
-  ? NonNullable<Registry> extends SchemaRegistry
-    ? NonNullable<Registry>
-    : SchemaRegistry
-  : SchemaRegistry;
-
-type RegistryFromInput<Input> = '__registry' extends keyof Input
-  ? RegistryFromBuilder<Input>
+type RegistryFromInput<Input> = Input extends { readonly __registry?: infer Registry }
+  ? NonNullable<Registry>
   : Input extends SchemaRegistry
     ? Input
     : SchemaRegistry;

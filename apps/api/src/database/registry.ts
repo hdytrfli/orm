@@ -11,31 +11,38 @@ export const registry = orm
     tasks: taskSchema,
   })
   .defineRelations({
-    projects: { owner: { ref: 'users', inverse: 'ownedProjects' } },
+    projects: { owner: { ref: 'users' } },
     tasks: {
       reporter: { ref: 'users' },
-      project: { ref: 'projects', inverse: 'tasks' },
-      assignee: { ref: 'users', inverse: 'assignedTasks' },
+      project: { ref: 'projects' },
+      assignee: { ref: 'users' },
+    },
+  })
+  .defineVirtuals({
+    users: {
+      ownedProjects: { ref: 'projects', via: 'owner' },
+      assignedTasks: { ref: 'tasks', via: 'assignee' },
+    },
+    projects: {
+      tasks: { ref: 'tasks', via: 'project' },
+      totalTasks: { ref: 'tasks', via: 'project', field: 'source.kind' },
     },
   })
   .defineScopes({
     users: {
       list: [
         {
-          virtual: 'ownedProjects',
-          type: 'many',
+          ref: 'ownedProjects',
           fields: ['key', 'name', 'status', 'description'],
         },
       ],
       detail: [
         {
-          type: 'many',
-          virtual: 'ownedProjects',
+          ref: 'ownedProjects',
           fields: ['key', 'name', 'status', 'description'],
         },
         {
-          type: 'many',
-          virtual: 'assignedTasks',
+          ref: 'assignedTasks',
           fields: ['title', 'status', 'priority', 'dueAt'],
         },
       ],
@@ -44,8 +51,7 @@ export const registry = orm
       list: [
         { ref: 'owner', fields: ['firstName', 'lastName'] },
         {
-          type: 'many',
-          virtual: 'tasks',
+          ref: 'tasks',
           fields: [
             'title',
             'description',
@@ -60,8 +66,7 @@ export const registry = orm
       detail: [
         { ref: 'owner', fields: ['firstName', 'lastName', 'email', 'jobTitle'] },
         {
-          type: 'many',
-          virtual: 'tasks',
+          ref: 'tasks',
           fields: [
             'title',
             'description',

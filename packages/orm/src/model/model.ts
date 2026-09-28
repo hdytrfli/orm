@@ -52,6 +52,13 @@ export class Model<
   Indexes extends readonly SchemaIndex<any>[] = [],
   Virtuals extends SchemaVirtualMap = {},
 > {
+  declare readonly __shape: Shape;
+  declare readonly __relations: Relations;
+  declare readonly __scopes: Scopes;
+  declare readonly __options: Options;
+  declare readonly __indexes: Indexes;
+  declare readonly __virtuals: Virtuals;
+
   readonly features: ModelFeaturesOf<Schema<Shape, Relations, Scopes, Options, Indexes, Virtuals>>;
   declare readonly index: IndexManager<Indexes>;
   declare readonly bulk: {
@@ -183,7 +190,7 @@ export class Model<
       this.db,
       this.schema.relationMap,
       this.schema.scopeMap,
-      this.schema.virtualMap,
+      this.schema.virtualMap as Virtuals,
       hasSoftDelete(this.schema.optionsConfig),
     );
   }

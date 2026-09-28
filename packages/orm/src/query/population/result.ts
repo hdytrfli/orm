@@ -1,16 +1,16 @@
-import type {
-  Infer,
-  Schema,
-  SchemaRelationMap,
-  SchemaShape,
-  SchemaVirtualMap,
-} from '../../schema/index.js';
+import type { VirtualBinding } from '../../relations/definitions.js';
+import type { SchemaRelationMap, SchemaShape, SchemaVirtualMap } from '../../schema/index.js';
 import type { HiddenDocumentKey, ModelDocument, VisibleDocument } from '../types/document.js';
 import type { SelectableKey, SelectedDocument } from '../types/selection.js';
 import type { Simplify } from '../types/utils.js';
 import type { PopulateSpecs, RelationMapOf, RelationTargetOf } from './spec.js';
 
-type RelationDocument<Relation> = Infer<RelationTargetOf<Relation>>;
+type RelationDocument<Relation> =
+  RelationTargetOf<Relation> extends {
+    readonly __shape: infer Shape extends SchemaShape;
+  }
+    ? ModelDocument<Shape>
+    : never;
 
 type FieldSelectors<Spec> = Spec extends { fields?: readonly (infer Fields)[] } ? Fields : never;
 type SelectedFields<Spec> = Exclude<FieldSelectors<Spec>, '$all' | `+${string}`>;
@@ -36,7 +36,7 @@ type NestedRelationFields<Shape extends SchemaShape, Spec> =
 
 type VisibleRelationDocument<Relation, Spec> =
   RelationDocument<Relation> extends infer Document extends object
-    ? RelationTargetOf<Relation> extends Schema<infer Shape, any>
+    ? RelationTargetOf<Relation> extends { readonly __shape: infer Shape extends SchemaShape }
       ? SelectedPopulationDocument<Shape, Document, Spec>
       : Document
     : never;
@@ -49,14 +49,18 @@ export type PopulatedResult<
   Virtuals extends SchemaVirtualMap = {},
 > = Simplify<
   ApplyRelationSpecs<Result, Relations, Specs> & {
-    [Name in Extract<VirtualSpec<Specs[number]>['virtual'], string>]: PopulatedVirtual<
+    [Name in Extract<VirtualSpec<Specs[number], Virtuals>['ref'], string>]: PopulatedVirtual<
       Virtuals[Name],
-      Extract<VirtualSpec<Specs[number]>, { virtual: Name }>
+      Extract<VirtualSpec<Specs[number], Virtuals>, { ref: Name }>
     >;
   }
 >;
 
-type VirtualSpec<Spec> = Spec extends { virtual: string } ? Spec : never;
+type VirtualSpec<Spec, Virtuals extends SchemaVirtualMap> = Spec extends {
+  ref: keyof Virtuals & string;
+}
+  ? Spec
+  : never;
 
 type ReplacePath<
   Value,
@@ -108,17 +112,20 @@ type VirtualMapOf<Virtual> = Virtual extends { resolve: () => infer Target }
     : {}
   : {};
 
-type PopulatedVirtual<Virtual, Spec> = Spec extends { aggregate: { type: infer AggregateType } }
-  ? AggregateType extends 'average' | 'min' | 'max'
-    ? number | null
-    : number
-  : Spec extends { type: 'first' }
-    ? VisibleVirtualDocument<Virtual, Spec> | null
-    : VisibleVirtualDocument<Virtual, Spec>[];
+type PopulatedVirtual<Virtual, Spec> =
+  Virtual extends VirtualBinding<any, any, any, infer Kind>
+    ? Kind extends 'count' | 'distinct' | 'sum'
+      ? number
+      : Kind extends 'avg' | 'min' | 'max' | 'median'
+        ? number | null
+        : Kind extends 'first'
+          ? VisibleVirtualDocument<Virtual, Spec> | null
+          : VisibleVirtualDocument<Virtual, Spec>[]
+    : never;
 
 type VisibleVirtualDocument<Virtual, Spec> =
   RelationDocument<Virtual> extends infer Document extends object
-    ? RelationTargetOf<Virtual> extends Schema<infer Shape, any>
+    ? RelationTargetOf<Virtual> extends { readonly __shape: infer Shape extends SchemaShape }
       ? SelectedPopulationDocument<Shape, Document, Spec>
       : Document
     : never;

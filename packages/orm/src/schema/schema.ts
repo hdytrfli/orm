@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-import type { SchemaRelationMap, SchemaVirtualMap } from '../relations/definitions.js';
+import type {
+  SchemaRelationMap,
+  SchemaVirtualMap,
+  SchemaVirtualDeclarations,
+} from '../relations/definitions.js';
 import { SchemaConfigurationError } from '../validation/errors.js';
 import type { SchemaDefinition, SchemaShape, ScopeDefinitions } from './contracts.js';
 import type { SchemaIndex, ValidateIndexDefinitions } from './indexes.js';
@@ -15,8 +19,14 @@ export class Schema<
   Scopes extends ScopeDefinitions = {},
   Options extends SchemaOptions = {},
   Indexes extends readonly SchemaIndex<any>[] = [],
-  Virtuals extends SchemaVirtualMap = {},
+  Virtuals extends SchemaVirtualDeclarations | SchemaVirtualMap = {},
 > {
+  declare readonly __shape: Shape;
+  declare readonly __relations: Relations;
+  declare readonly __scopes: Scopes;
+  declare readonly __indexes: Indexes;
+  declare readonly __virtuals: Virtuals;
+
   /** The underlying Zod object for advanced validation use cases. */
   readonly definition: SchemaDefinition<Shape>;
   private partialDefinition: { parse(input: unknown): unknown } | undefined;
@@ -25,7 +35,10 @@ export class Schema<
   readonly relationMap: Relations;
 
   /** Reverse/virtual relation metadata declared for this schema. */
-  readonly virtualMap: Virtuals;
+  readonly virtualMap: Virtuals extends SchemaVirtualMap ? Virtuals : {};
+
+  /** Schema-level virtual kinds, retained separately from resolved bindings. */
+  readonly virtualDefinitions: SchemaVirtualDeclarations;
 
   /** Named population scopes declared for this schema. */
   scopeMap: Scopes;
@@ -52,11 +65,13 @@ export class Schema<
     scopeMap = {} as Scopes,
     optionsConfig = {} as Options,
     indexDefinitions = [] as unknown as Indexes,
-    virtualMap = {} as Virtuals,
+    virtualMap = {} as SchemaVirtualMap,
+    virtualDefinitions = {} as SchemaVirtualDeclarations,
   ) {
     this.definition = z.object(shape);
     this.relationMap = relations;
-    this.virtualMap = virtualMap;
+    this.virtualMap = virtualMap as Virtuals extends SchemaVirtualMap ? Virtuals : {};
+    this.virtualDefinitions = virtualDefinitions;
     this.scopeMap = scopeMap;
     const fields = Object.keys(shape) as (keyof Shape & string)[];
     const hiddenFields: (keyof Shape & string)[] = [];
@@ -115,6 +130,7 @@ export class Schema<
       options,
       this.indexDefinitions as unknown as readonly SchemaIndex<Shape & ManagedShape<Enabled>>[],
       this.virtualMap,
+      this.virtualDefinitions,
     );
     return next as unknown as Schema<
       Shape & ManagedShape<Enabled>,

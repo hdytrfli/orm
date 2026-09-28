@@ -5,12 +5,23 @@ import { env } from '@/libs/env';
 
 const schemas = orm
   .defineSchemas({
-    companies: orm.schema({ name: orm.string() }),
-    departments: orm.schema({ name: orm.string(), company: orm.objectId() }),
+    companies: orm.schema({ name: orm.string(), projects: orm.virtual('many') }),
+    departments: orm.schema({
+      name: orm.string(),
+      company: orm.objectId(),
+      employees: orm.virtual('first'),
+    }),
     people: orm.schema({
       name: orm.string(),
       email: orm.email().hidden(),
       profile: orm.object({ department: orm.objectId() }),
+      ownedProjects: orm.virtual('many'),
+      maxScore: orm.virtual('max'),
+      avgScore: orm.virtual('avg'),
+      projectCount: orm.virtual('count'),
+      scoredProjectCount: orm.virtual('count'),
+      distinctStatuses: orm.virtual('distinct'),
+      medianScore: orm.virtual('median'),
     }),
     projects: orm.schema({
       owner: orm.objectId(),
@@ -18,7 +29,7 @@ const schemas = orm
       key: orm.string(),
       department: orm.objectId().optional(),
       title: orm.string(),
-      score: orm.number().optional(),
+      score: orm.number().nullable().optional(),
       status: orm.enum(['active', 'complete']),
       internalNotes: orm.string().hidden(),
     }),
@@ -26,25 +37,38 @@ const schemas = orm
   })
   .defineRelations({
     projects: {
-      owner: { ref: 'people', inverse: 'ownedProjects' },
-      company: { ref: 'companies', inverse: 'projects' },
+      owner: { ref: 'people' },
+      company: { ref: 'companies' },
     },
     tasks: {
-      owner: { ref: 'people', inverse: 'tasks' },
-      project: { ref: 'projects', inverse: 'tasks' },
+      owner: { ref: 'people' },
+      project: { ref: 'projects' },
     },
     people: {
-      'profile.department': { ref: 'departments', inverse: 'employees' },
+      'profile.department': { ref: 'departments' },
     },
     departments: {
       company: { ref: 'companies' },
+    },
+  })
+  .defineVirtuals({
+    companies: { projects: { ref: 'projects', via: 'company' } },
+    departments: { employees: { ref: 'people', via: 'profile.department' } },
+    people: {
+      ownedProjects: { ref: 'projects', via: 'owner' },
+      maxScore: { ref: 'projects', via: 'owner', field: 'score' },
+      avgScore: { ref: 'projects', via: 'owner', field: 'score' },
+      projectCount: { ref: 'projects', via: 'owner', field: 'title' },
+      scoredProjectCount: { ref: 'projects', via: 'owner', field: 'score' },
+      distinctStatuses: { ref: 'projects', via: 'owner', field: 'status' },
+      medianScore: { ref: 'projects', via: 'owner', field: 'score' },
     },
   })
   .defineScopes({
     departments: {
       overview: [
         { ref: 'company', fields: ['name'] },
-        { virtual: 'employees', type: 'many', fields: ['name'] },
+        { ref: 'employees', fields: ['name'] },
       ],
     },
   });
@@ -60,12 +84,12 @@ const projects = database.projects;
 const departments = database.departments;
 const companies = database.companies;
 
-describe('graph-based virtual population', () => {
+describe('schema-declared virtual population', () => {
   beforeAll(async () => database.connect());
   afterAll(async () => database.disconnect());
   afterEach(async () => database.unsafe.purge({ quiet: true }));
 
-  it('derives reverse virtuals from forward relation edges', async () => {
+  it('loads multiple virtuals over the same relation edge with declared cardinality', async () => {
     const company = await companies.create({ name: 'Research Co' });
     const department = await departments.create({ name: 'Research', company: company._id });
     const person = await people.create({
@@ -88,8 +112,7 @@ describe('graph-based virtual population', () => {
       .find({ _id: person._id })
       .virtual([
         {
-          type: 'many',
-          virtual: 'ownedProjects',
+          ref: 'ownedProjects',
           fields: ['title'],
         },
       ])
@@ -100,13 +123,7 @@ describe('graph-based virtual population', () => {
 
     const reverseEmployee = await departments
       .find({ _id: department._id })
-      .virtual([
-        {
-          type: 'first',
-          virtual: 'employees',
-          fields: ['$all', '+email'],
-        },
-      ])
+      .virtual([{ ref: 'employees', fields: ['$all', '+email'] }])
       .first();
 
     expect(reverseEmployee?.employees?.name).toBe('Ada Lovelace');
@@ -114,7 +131,7 @@ describe('graph-based virtual population', () => {
     expect(reverseEmployee?.employees?.profile.department).toEqual(department._id);
   });
 
-  it('supports query-time aggregates and cardinality without definition duplication', async () => {
+  it('calculates aggregates configured on virtual fields', async () => {
     const company = await companies.create({ name: 'Research Co' });
     const department = await departments.create({ name: 'Research', company: company._id });
     const person = await people.create({
@@ -134,44 +151,52 @@ describe('graph-based virtual population', () => {
     await projects.create({
       owner: person._id,
       company: company._id,
+      key: 'ADA-FOUR',
+      title: 'Four',
+      score: null,
+      status: 'complete',
+      internalNotes: '',
+    });
+    await projects.create({
+      owner: person._id,
+      company: company._id,
       key: 'ADA-TWO',
       title: 'Two',
       score: 8,
       status: 'complete',
       internalNotes: '',
     });
+    await projects.create({
+      owner: person._id,
+      company: company._id,
+      key: 'ADA-THREE',
+      title: 'Three',
+      status: 'active',
+      internalNotes: '',
+    });
 
-    const counted = await people
+    const aggregates = await people
       .find({ _id: person._id })
       .virtual([
-        {
-          type: 'many',
-          virtual: 'ownedProjects',
-          aggregate: {
-            field: 'score',
-            type: 'count',
-          },
-        },
+        { ref: 'projectCount' },
+        { ref: 'scoredProjectCount' },
+        { ref: 'distinctStatuses' },
+        { ref: 'avgScore' },
+        { ref: 'maxScore' },
+        { ref: 'medianScore' },
       ])
       .first();
-    expect(counted?.ownedProjects).toBe(2);
 
-    const averaged = await people
-      .find({ _id: person._id })
-      .virtual([
-        { virtual: 'ownedProjects', type: 'many', aggregate: { field: 'score', type: 'average' } },
-      ])
-      .first();
-    expect(averaged?.ownedProjects).toBe(6);
-
-    const first = await people
-      .find({ _id: person._id })
-      .virtual([{ virtual: 'ownedProjects', type: 'first', fields: ['title'] }])
-      .first();
-    expect(first?.ownedProjects?.title).toBe('One');
+    expect(aggregates?.projectCount).toBe(4);
+    expect(aggregates?.scoredProjectCount).toBe(2);
+    expect(aggregates?.distinctStatuses).toBe(2);
+    expect(aggregates?.avgScore).toBe(6);
+    expect(aggregates?.maxScore).toBe(8);
+    expect(aggregates?.medianScore).toBeGreaterThanOrEqual(4);
+    expect(aggregates?.medianScore).toBeLessThanOrEqual(8);
   });
 
-  it('keeps populate and virtual as distinct query operations and allows mixed scopes', async () => {
+  it('applies mixed relation and virtual specs through a scope', async () => {
     const company = await companies.create({ name: 'Research Co' });
     const department = await departments.create({ name: 'Research', company: company._id });
     await people.create({
@@ -182,6 +207,6 @@ describe('graph-based virtual population', () => {
 
     const result = await departments.find({ _id: department._id }).with('overview').first();
     expect(result?.company?.name).toBe('Research Co');
-    expect(result?.employees.map(({ name }) => name)).toEqual(['Ada Lovelace']);
+    expect(result?.employees?.name).toBe('Ada Lovelace');
   });
 });

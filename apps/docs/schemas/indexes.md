@@ -1,5 +1,5 @@
 ---
-order: 8
+order: 10
 ---
 
 # Schema Indexes
@@ -8,14 +8,32 @@ Declare MongoDB indexes on a schema with `.indexes()`. Mongorm does not create o
 
 ## 1. Declare the access pattern
 
-Choose fields based on the filters and sorts the application actually uses. Field names and index directions are checked against the schema.
+Choose fields based on the filters and sorts the application actually uses. A definition has a required non-empty `fields` map and optional MongoDB `options`. Field names are checked against top-level schema fields and directions are checked against MongoDB's supported index directions. Use `options` for settings such as `unique`, `name`, `sparse`, `expireAfterSeconds`, and `partialFilterExpression`.
 
 ```ts
 const user = orm
-  .schema({ tenantId: orm.objectId(), email: orm.email(), status: orm.string() })
+  .schema({
+    tenantId: orm.objectId(),
+    email: orm.email(),
+    status: orm.string(),
+  })
   .indexes([
-    { fields: { tenantId: 1, email: 1 }, options: { unique: true, name: 'user_email_per_tenant' } },
-    { fields: { tenantId: 1, status: 1 } },
+    {
+      fields: {
+        tenantId: 1,
+        email: 1,
+      },
+      options: {
+        unique: true,
+        name: 'user_email_per_tenant',
+      },
+    },
+    {
+      fields: {
+        tenantId: 1,
+        status: 1,
+      },
+    },
   ]);
 ```
 
@@ -27,15 +45,23 @@ Index `options` accepts MongoDB index options, including `unique`, `name`, `spar
 
 ```ts
 const account = orm
-  .schema({ email: orm.email() })
-  .options({ softdelete: true })
+  .schema({
+    email: orm.email(),
+  })
+  .options({
+    softdelete: true,
+  })
   .indexes([
     {
-      fields: { email: 1 },
+      fields: {
+        email: 1,
+      },
       options: {
         name: 'active_account_email',
         unique: true,
-        partialFilterExpression: { deletedAt: null },
+        partialFilterExpression: {
+          deletedAt: null,
+        },
       },
     },
   ]);
@@ -45,16 +71,33 @@ For an optional unique field, include an `$exists` condition so missing values a
 
 ```ts
 const user = orm
-  .schema({ tenantId: orm.objectId(), username: orm.string().optional() })
-  .options({ softdelete: true })
+  .schema({
+    tenantId: orm.objectId(),
+    username: orm.string().optional(),
+  })
+  .options({
+    softdelete: true,
+  })
   .indexes([
     {
-      fields: { tenantId: 1, username: 1 },
+      fields: {
+        tenantId: 1,
+        username: 1,
+      },
       options: {
         name: 'active_username_per_tenant',
         unique: true,
         partialFilterExpression: {
-          $and: [{ username: { $exists: true } }, { deletedAt: null }],
+          $and: [
+            {
+              username: {
+                $exists: true,
+              },
+            },
+            {
+              deletedAt: null,
+            },
+          ],
         },
       },
     },
@@ -74,12 +117,16 @@ const result = await db.sync();
 
 `sync()` creates declared indexes and returns created/existing index names by collection. By default it does not remove existing indexes or alter their options.
 
+`.indexes()` only records declarations; it does not create indexes during schema or database construction. An empty list declares no indexes. The per-model `index` manager is available after connection for operations on the current collection.
+
 ## 4. Replace or drop indexes deliberately
 
 To drop all non-`_id` indexes in registered collections before recreating declared indexes:
 
 ```ts
-await db.sync({ dropIndexes: true });
+await db.sync({
+  dropIndexes: true,
+});
 ```
 
 This is destructive to undeclared indexes too. Use it only when that reset is intended. For one collection, explicitly named schema indexes can be dropped with typed names:

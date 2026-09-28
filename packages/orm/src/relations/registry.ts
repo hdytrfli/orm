@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb';
 
 import { SchemaConfigurationError } from '../validation/errors.js';
-import type { SchemaRelationMap, SchemaLike } from './definitions.js';
+import type { SchemaRelationMap, SchemaLike, SchemaVirtualMap } from './definitions.js';
 import type {
   RelationDefinitions,
   SchemaRegistryBuilder,
@@ -15,9 +15,13 @@ export type {
 } from './registry-types.js';
 
 type RuntimeFieldSchema = {
+  readonly _def?: {
+    readonly type?: string;
+    readonly options?: readonly RuntimeFieldSchema[];
+  };
   readonly shape?: Record<string, RuntimeFieldSchema>;
   readonly unwrap?: () => RuntimeFieldSchema;
-  readonly safeParse?: (value: unknown) => { success: boolean };
+  readonly safeParse?: (value: unknown) => { success: boolean; data?: unknown };
 };
 
 const fieldSchemaAtPath = (schema: SchemaLike, path: string): RuntimeFieldSchema | undefined => {
@@ -35,10 +39,52 @@ const fieldSchemaAtPath = (schema: SchemaLike, path: string): RuntimeFieldSchema
 const isObjectIdField = (schema: SchemaLike, path: string): boolean =>
   fieldSchemaAtPath(schema, path)?.safeParse?.(new ObjectId()).success ?? false;
 
+const isScalarFieldSchema = (field: RuntimeFieldSchema): boolean => {
+  let current = field;
+  while (current.unwrap) current = current.unwrap();
+
+  const type = current._def?.type;
+  if (
+    type === 'string' ||
+    type === 'number' ||
+    type === 'boolean' ||
+    type === 'date' ||
+    type === 'enum' ||
+    type === 'literal' ||
+    type === 'bigint'
+  ) {
+    return true;
+  }
+
+  if (type === 'union') {
+    return current._def?.options?.every(isScalarFieldSchema) ?? false;
+  }
+
+  if (type === 'custom') {
+    const probes: unknown[] = ['', 0, false, 0n, new Date(), new ObjectId()];
+    return probes.some((probe) => {
+      const parsed = current.safeParse?.(probe);
+      if (!parsed?.success) return false;
+      return (
+        parsed.data === null ||
+        typeof parsed.data === 'string' ||
+        typeof parsed.data === 'number' ||
+        typeof parsed.data === 'boolean' ||
+        typeof parsed.data === 'bigint' ||
+        parsed.data instanceof Date ||
+        parsed.data instanceof ObjectId
+      );
+    });
+  }
+
+  return false;
+};
+
 /** Attach relation/scope builder methods and apply definitions to schema metadata. */
-const attachMethods = <Registry extends Record<string, SchemaLike>>(
+const attachMethods = <Registry extends Record<string, SchemaLike>, Relations = {}>(
   registry: Registry,
-): SchemaRegistryBuilder<Registry> => {
+  relationDefinitions: Relations = {} as Relations,
+): SchemaRegistryBuilder<Registry, Relations> => {
   const defineRelations = (definitions: RelationDefinitions<Registry>) => {
     for (const [name, relations] of Object.entries(definitions)) {
       const source = registry[name];
@@ -48,10 +94,14 @@ const attachMethods = <Registry extends Record<string, SchemaLike>>(
         );
       }
 
-      for (const [field, input] of Object.entries(relations ?? {}) as [
-        string,
-        { ref: string; inverse?: string },
-      ][]) {
+      for (const [field, input] of Object.entries(relations ?? {}) as [string, { ref: string }][]) {
+        const extraProperties = Object.keys(input).filter((key) => key !== 'ref');
+        if (extraProperties.length > 0) {
+          throw new SchemaConfigurationError(
+            `Relation "${name}.${field}" only accepts the "ref" property; remove: ${extraProperties.join(', ')}.`,
+          );
+        }
+
         const target = registry[input.ref];
         if (!target) {
           throw new SchemaConfigurationError(
@@ -73,23 +123,90 @@ const attachMethods = <Registry extends Record<string, SchemaLike>>(
           resolve: () => target,
           localField: field,
           foreignField: '_id',
-          inverse: input.inverse,
         };
-        if (input.inverse) {
-          if (target.virtualMap[input.inverse]) {
-            throw new SchemaConfigurationError(
-              `Duplicate inverse relation "${input.inverse}" on schema "${input.ref}".`,
-            );
-          }
-          target.virtualMap[input.inverse] = {
-            resolve: () => source,
-            local: '_id',
-            foreign: field,
-          };
+      }
+    }
+    return attachMethods(registry, definitions);
+  };
+
+  const defineVirtuals = (definitions: Record<string, Record<string, object>>) => {
+    for (const [ownerName, owner] of Object.entries(registry)) {
+      const bindings = definitions[ownerName];
+      for (const name of Object.keys(owner.virtualDefinitions)) {
+        if (!Object.hasOwn(bindings ?? {}, name)) {
+          throw new SchemaConfigurationError(
+            `Virtual "${ownerName}.${name}" must be bound in defineVirtuals().`,
+          );
         }
       }
     }
-    return attachMethods(registry);
+
+    for (const [ownerName, virtuals] of Object.entries(definitions)) {
+      const owner = registry[ownerName];
+      if (!owner) {
+        throw new SchemaConfigurationError(
+          `Unknown schema "${ownerName}" in virtual definitions. Add it to defineSchemas() first.`,
+        );
+      }
+
+      for (const [name, placeholder] of Object.entries(owner.virtualDefinitions)) {
+        if (owner.virtualMap[name]) {
+          throw new SchemaConfigurationError(
+            `Virtual "${ownerName}.${name}" has already been bound.`,
+          );
+        }
+        const input = virtuals[name] as { ref?: string; via?: string; field?: string };
+        const target = input.ref ? registry[input.ref] : undefined;
+        if (!target || !input.via) {
+          throw new SchemaConfigurationError(
+            `Virtual "${ownerName}.${name}" must specify a registered ref and relation via.`,
+          );
+        }
+        const relation = target.relationMap[input.via];
+        if (!relation || relation.resolve() !== owner) {
+          throw new SchemaConfigurationError(
+            `Virtual "${ownerName}.${name}" via "${input.ref}.${input.via}" must be a relation targeting "${ownerName}".`,
+          );
+        }
+        const kind = placeholder.kind;
+        const needsNumericField =
+          kind === 'sum' || kind === 'avg' || kind === 'min' || kind === 'max' || kind === 'median';
+        const needsScalarField = kind === 'count' || kind === 'distinct';
+        if (
+          needsNumericField &&
+          (!input.field || !fieldSchemaAtPath(target, input.field)?.safeParse?.(1).success)
+        ) {
+          throw new SchemaConfigurationError(
+            `Virtual "${ownerName}.${name}" of kind "${kind}" requires a numeric field on "${input.ref}".`,
+          );
+        }
+        const scalarField = input.field ? fieldSchemaAtPath(target, input.field) : undefined;
+        if (needsScalarField && (!scalarField || !isScalarFieldSchema(scalarField))) {
+          throw new SchemaConfigurationError(
+            `Virtual "${ownerName}.${name}" of kind "${kind}" requires a scalar field on "${input.ref}".`,
+          );
+        }
+        if (!needsNumericField && !needsScalarField && input.field !== undefined) {
+          throw new SchemaConfigurationError(
+            `Virtual "${ownerName}.${name}" of kind "${kind}" does not accept a field.`,
+          );
+        }
+        (owner.virtualMap as SchemaVirtualMap)[name] = {
+          kind,
+          ref: input.ref,
+          via: input.via,
+          ...(input.field ? { field: input.field } : {}),
+        } as never;
+      }
+      for (const name of Object.keys(virtuals ?? {})) {
+        if (!Object.hasOwn(owner.virtualDefinitions, name)) {
+          throw new SchemaConfigurationError(
+            `Virtual "${ownerName}.${name}" must be declared with orm.virtual() in the schema shape.`,
+          );
+        }
+      }
+    }
+    return attachMethods(registry, relationDefinitions);
   };
 
   const defineScopes = (definitions: ScopeDefinitionsBySchema<Registry>) => {
@@ -108,6 +225,7 @@ const attachMethods = <Registry extends Record<string, SchemaLike>>(
   Object.defineProperties(registry, {
     __registry: { configurable: false, enumerable: false, value: registry },
     defineRelations: { configurable: true, enumerable: false, value: defineRelations },
+    defineVirtuals: { configurable: true, enumerable: false, value: defineVirtuals },
     defineScopes: { configurable: true, enumerable: false, value: defineScopes },
   });
   return registry as SchemaRegistryBuilder<Registry>;

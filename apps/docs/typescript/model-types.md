@@ -7,12 +7,20 @@ order: 2
 Mongorm exports type helpers for cases where a type needs to be named or passed across a generic boundary. Each helper takes a registered model type, typically `typeof db.user`. These are compile-time types; they do not create runtime values or replace schema validation.
 
 ```ts
-import type { CreateInputOf, FilterOf, PopulateOf, ShapeOf, UpdateInputOf } from '@mongorm/orm';
+import type {
+  CreateInputOf,
+  FieldPathsOf,
+  FilterOf,
+  PopulateOf,
+  ShapeOf,
+  UpdateInputOf,
+} from '@mongorm/orm';
 
 type UserShape = ShapeOf<typeof db.user>;
 type NewUser = CreateInputOf<typeof db.user>;
 type UserUpdate = UpdateInputOf<typeof db.user>;
 type UserFilter = FilterOf<typeof db.user>;
+type UserFieldPath = FieldPathsOf<typeof db.user>;
 type UserPopulation = PopulateOf<typeof db.user>;
 ```
 
@@ -22,12 +30,32 @@ type UserPopulation = PopulateOf<typeof db.user>;
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `AnyModel`             | Any Mongorm `Model` type; useful as a generic constraint.                                                              |
 | `ShapeOf<Model>`       | The field shape registered on the model.                                                                               |
+| `FieldPathsOf<Model>`  | Stored field paths, including parent and dotted nested paths; virtuals are excluded.                                   |
 | `CreateInputOf<Model>` | The validated input accepted by that model's `create()`.                                                               |
 | `UpdateInputOf<Model>` | The partial update input accepted by that model's update operation.                                                    |
 | `FilterOf<Model>`      | A schema-aware MongoDB filter for the model, including a direct `_id: ObjectId` lookup form.                           |
 | `ZodSchemaOf<Model>`   | A Zod schema compatible with the model's create input and with a `.partial()` schema compatible with its update input. |
 
 Create and update inputs account for the model's schema options. For example, managed fields and generated `_id` are not ordinary caller-supplied create fields. Prefer these helpers over manually rebuilding input types from the schema shape.
+
+`FieldPathsOf<Model>` provides the schema-wide candidate paths for app-specific filter or sort allowlists. It includes hidden and managed fields, so each application can intentionally omit sensitive or unsuitable paths; it is a type helper, not a runtime authorization policy.
+
+```ts
+import type { FieldPathsOf } from '@mongorm/orm';
+
+const userFilterFields = [
+  'email',
+  'role',
+  'profile.location.city',
+] as const satisfies readonly FieldPathsOf<typeof db.user>[];
+
+type UserFilterField = (typeof userFilterFields)[number];
+
+const isUserFilterField = (value: string): value is UserFilterField =>
+  userFilterFields.some((field) => field === value);
+```
+
+Use the resulting narrow union when validating client-supplied filter paths before constructing a Mongorm filter. Keep the runtime check: the type helper only verifies that the allowlist itself uses real schema paths. It does not sanitize untrusted input automatically. Parent paths such as `profile` and `profile.location` are included as well as leaf paths, so only put paths in the application allowlist that the endpoint intends to expose.
 
 `ZodSchemaOf` is useful when an abstraction accepts one schema and uses it for both create and partial-update validation:
 

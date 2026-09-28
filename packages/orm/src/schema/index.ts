@@ -14,7 +14,10 @@ export type {
   SchemaLike,
   SchemaRelation,
   SchemaRelationMap,
-  SchemaVirtual,
   SchemaVirtualMap,
-  VirtualAggregate,
+  SchemaVirtualDeclarations,
+  VirtualPlaceholder,
+  VirtualBinding,
+  VirtualField,
+  VirtualKind,
 } from '../relations/definitions.js';
