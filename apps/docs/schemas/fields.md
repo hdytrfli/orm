@@ -4,7 +4,7 @@ order: 3
 
 # Field Types and Composition
 
-`orm` exposes the native lowercase Zod constructors available in the installed Zod version. This keeps the learning curve small: Zod documentation remains useful, and Mongorm adds only its database-specific helpers.
+`orm.schema()` takes a shape object whose values are Zod schemas, plus Mongorm's non-persisted `orm.virtual(kind)` declarations. `orm` exposes the native lowercase Zod constructors available in the installed Zod version. This keeps the learning curve small: Zod documentation remains useful, and Mongorm adds only its database-specific helpers.
 
 ## Primitive Fields
 
@@ -31,8 +31,14 @@ Use an enum for a closed set of named values. Use a union when variants have dif
 
 ```ts
 const event = orm.discriminatedUnion('kind', [
-  orm.object({ kind: orm.literal('login'), userId: orm.objectId() }),
-  orm.object({ kind: orm.literal('purchase'), orderId: orm.objectId() }),
+  orm.object({
+    kind: orm.literal('login'),
+    userId: orm.objectId(),
+  }),
+  orm.object({
+    kind: orm.literal('purchase'),
+    orderId: orm.objectId(),
+  }),
 ]);
 ```
 
@@ -47,7 +53,18 @@ const comment = orm.schema({
 });
 ```
 
-`objectId()` validates MongoDB `ObjectId` instances. It is not the same as a string containing a hexadecimal ObjectId. Convert request strings at the transport boundary before passing them to Mongorm.
+`objectId()` validates MongoDB `ObjectId` instances. It is not the same as a string containing a hexadecimal ObjectId. Convert request strings at the transport boundary before passing them to Mongorm. Use it for local relation keys: `defineRelations()` rejects strings and non-ObjectId paths. See [Registries and Relations](/schemas/relations).
+
+```ts
+const task = orm.schema({
+  owner: orm.objectId(),
+  audit: orm.object({
+    actor: orm.objectId(),
+  }),
+});
+```
+
+Both `owner` and `audit.actor` can be declared as relation keys. ObjectIds inside arrays are not relation keys in the current registry API.
 
 ## Refinements and Transforms
 

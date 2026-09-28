@@ -16,7 +16,7 @@ const user = orm.schema({
 
 ## Managed Persistence Options
 
-Add built-in lifecycle fields after defining the document shape:
+Add built-in lifecycle fields after defining the document shape. These options change persistence/query behavior; they are not ordinary fields you need to add to the shape:
 
 ```ts
 const user = orm
@@ -24,8 +24,21 @@ const user = orm
     email: orm.email(),
     name: orm.string(),
   })
-  .options({ timestamps: true, softdelete: true });
+  .options({
+    timestamps: true,
+    softdelete: true,
+  });
 ```
+
+The supported options are:
+
+| Option        | Default | Effect                                                                                               |
+| ------------- | ------- | ---------------------------------------------------------------------------------------------------- |
+| `timestamps`  | `false` | Adds and manages `createdAt` and `updatedAt`.                                                        |
+| `softdelete`  | `false` | Adds `deletedAt`; ordinary reads exclude deleted documents and `delete()` marks rather than removes. |
+| `hideManaged` | `false` | Marks enabled managed fields hidden from default query projections.                                  |
+
+Pass all options in a single `.options({...})` call. A second call throws; combine the options instead. If timestamps are enabled, do not declare `createdAt` or `updatedAt` yourself. If soft deletion is enabled, do not declare `deletedAt` yourself; Mongorm rejects those collisions.
 
 `timestamps: true` adds `createdAt` and `updatedAt` dates. Mongorm sets both on creation and refreshes `updatedAt` on updates and soft deletion. `softdelete: true` adds nullable `deletedAt`, hides deleted documents from normal queries, and makes `delete()` mark documents as deleted instead of removing them.
 
@@ -35,14 +48,55 @@ To omit managed timestamps and soft-delete metadata from normal query results, e
 
 ```ts
 const user = orm
-  .schema({ email: orm.email() })
-  .options({ timestamps: true, softdelete: true, hideManaged: true });
+  .schema({
+    email: orm.email(),
+  })
+  .options({
+    timestamps: true,
+    softdelete: true,
+    hideManaged: true,
+  });
 
 const users = await db.users.find(); // createdAt, updatedAt, deletedAt are omitted
 const withLifecycle = await db.users.find().fields(['$all', '+createdAt', '+deletedAt']);
 ```
 
 `hideManaged` only changes default query projections. `create()`, `update()`, and `restore()` return the full document because they do not have a projection chain.
+
+`.hidden()` on a user-defined field is a separate choice; it hides that field by default whether or not `hideManaged` is enabled. See [Hidden Fields](/schemas/hidden-fields) for explicit access and security limitations.
+
+## Schema Configuration Flow
+
+A typical application defines the shape first, then persistence options, indexes, and finally relations/scopes in a registry:
+
+```ts
+const user = orm
+  .schema({
+    email: orm.email(),
+    passwordHash: orm.string().hidden(),
+    profile: orm.object({
+      city: orm.string(),
+    }),
+  })
+  .options({
+    timestamps: true,
+    softdelete: true,
+    hideManaged: true,
+  })
+  .indexes([
+    {
+      fields: {
+        email: 1,
+      },
+      options: {
+        unique: true,
+        name: 'user_email_unique',
+      },
+    },
+  ]);
+```
+
+Schemas do not implicitly create database indexes or load related data. Indexes are created with `db.sync()` after connecting; relations and virtuals are loaded explicitly through query methods or named scopes. See [Schema Indexes](/schemas/indexes), [Registries and Relations](/schemas/relations), [Virtual Fields](/schemas/virtuals), and [Population Scopes](/schemas/scopes).
 
 ## Parsing and Inference
 

@@ -48,7 +48,14 @@ const userFilterFields = [
   'role',
   'profile.location.city',
 ] as const satisfies readonly FieldPathsOf<typeof db.user>[];
+
+type UserFilterField = (typeof userFilterFields)[number];
+
+const isUserFilterField = (value: string): value is UserFilterField =>
+  userFilterFields.some((field) => field === value);
 ```
+
+Use the resulting narrow union when validating client-supplied filter paths before constructing a Mongorm filter. Keep the runtime check: the type helper only verifies that the allowlist itself uses real schema paths. It does not sanitize untrusted input automatically. Parent paths such as `profile` and `profile.location` are included as well as leaf paths, so only put paths in the application allowlist that the endpoint intends to expose.
 
 `ZodSchemaOf` is useful when an abstraction accepts one schema and uses it for both create and partial-update validation:
 

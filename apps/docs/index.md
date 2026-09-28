@@ -72,7 +72,7 @@ const admins = await db.user.find({ email: { $regex: '@example.com$' } }).fields
 ## Follow the Documentation
 
 - **New to Mongorm?** Start with [Getting Started](/getting-started/), then complete the [Quick Start](/getting-started/quick-start).
-- **Defining collections?** Read [Schemas](/schemas/), then [Relations and Registries](/schemas/relations) and [Schema Indexes](/schemas/indexes).
+- **Defining collections?** Read [Schemas](/schemas/), then [Relations and Registries](/schemas/relations), [Virtual Fields](/schemas/virtuals), and [Schema Indexes](/schemas/indexes).
 - **Reading and writing documents?** Follow [Queries](/queries/) and [TypeScript](/typescript/) for result inference.
 - **Looking for a method?** Use the [API Reference](/reference/).
 

@@ -13,7 +13,9 @@ Schemas are the source of truth for document validation, field inference, hidden
 - [Validation and Errors](/schemas/validation): understand parse failures and boundary validation.
 - [Hidden Fields](/schemas/hidden-fields): protect secrets while retaining validation and explicit access.
 - [Registries and Relations](/schemas/relations): connect schemas and define relation graphs.
-- [Population Scopes](/schemas/scopes): name and reuse relation-loading policies.
+- [Virtual Fields](/schemas/virtuals): declare and load reverse document relationships.
+- [Aggregate Virtuals](/schemas/virtual-aggregates): attach per-owner counts and numeric summaries.
+- [Population Scopes](/schemas/scopes): name and reuse relation/virtual-loading policies.
 - [Schema Indexes](/schemas/indexes): declare, synchronize, and manage MongoDB indexes.
 
 ## A Schema Is More Than a Type
@@ -30,4 +32,4 @@ const account = orm.schema({
 });
 ```
 
-This definition simultaneously describes input validation, stored data, default query projection, update input, and TypeScript inference.
+Persisted fields describe input validation, stored data, default query projection, update input, and TypeScript inference. See [Virtual Fields](/schemas/virtuals) for non-persisted result fields, which are declared and bound separately.
