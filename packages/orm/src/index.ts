@@ -50,6 +50,7 @@ export type {
   RelationsOf,
   ScopesOf,
   ShapeOf,
+  SortOf,
   UpdateInputOf,
   VirtualsOf,
   ZodSchemaOf,

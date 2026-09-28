@@ -1,6 +1,11 @@
 import { describe, expectTypeOf, it } from 'vitest';
 
-import type { createDatabase, ModelScopeName, ModelSoftDeleteEnabled } from '../src/index.js';
+import type {
+  createDatabase,
+  ModelScopeName,
+  ModelSoftDeleteEnabled,
+  SortOf,
+} from '../src/index.js';
 import { orm } from '../src/index.js';
 
 describe('query inference', () => {
@@ -96,5 +101,19 @@ describe('query inference', () => {
       // @ts-expect-error Filters reject undeclared fields.
       unknown: true,
     });
+  });
+
+  it('derives schema-aware sort specifications from a model', () => {
+    type UserSort = SortOf<typeof users>;
+    const validSort: UserSort = { name: 'asc', role: 'desc' };
+    expectTypeOf(validSort).toEqualTypeOf<UserSort>();
+    void validSort;
+
+    // @ts-expect-error Sort directions are limited to asc and desc.
+    const invalidDirection: UserSort = { name: 'up' };
+    // @ts-expect-error Sort keys must be declared schema fields.
+    const invalidField: UserSort = { unknown: 'asc' };
+    void invalidDirection;
+    void invalidField;
   });
 });

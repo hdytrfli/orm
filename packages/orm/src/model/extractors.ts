@@ -1,6 +1,6 @@
 import type { ZodType } from 'zod';
 
-import type { ModelFilter, PopulateSpecs } from '../query/index.js';
+import type { ModelFilter, ModelSort, PopulateSpecs } from '../query/index.js';
 import type { Schema, SchemaIndex, SchemaVirtualMap, SoftDeleteEnabled } from '../schema/index.js';
 import type { Model } from './model.js';
 import type { CreateInput, UpdateInput } from './types.js';
@@ -32,6 +32,9 @@ export type VirtualsOf<T> =
 
 /** Derive a model's schema-aware MongoDB filter type. */
 export type FilterOf<T> = ModelFilter<ShapeOf<T>>;
+
+/** Derive the schema-aware sort specification accepted by a model. */
+export type SortOf<T> = ModelSort<ShapeOf<T>>;
 
 /** Derive the create input accepted by a model. */
 export type CreateInputOf<T> = CreateInput<ShapeOf<T>, OptionsOf<T>>;
