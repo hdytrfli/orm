@@ -1,6 +1,8 @@
+import type { ObjectId } from 'mongodb';
 import type { ZodType } from 'zod';
 
 import type { ModelFilter, ModelSort, PopulateSpecs } from '../query/index.js';
+import type { ModelDocument } from '../query/types/document.js';
 import type {
   SchemaIndex,
   SchemaRelationMap,
@@ -57,6 +59,19 @@ export type FilterOf<T> = ModelFilter<ShapeOf<T>>;
 
 /** Derive the schema-aware sort specification accepted by a model. */
 export type SortOf<T> = ModelSort<ShapeOf<T>>;
+
+type NestedFieldPaths<Value> = Value extends ObjectId | Date | readonly unknown[]
+  ? never
+  : Value extends object
+    ? {
+        [Key in Extract<keyof Value, string>]:
+          | Key
+          | `${Key}.${NestedFieldPaths<NonNullable<Value[Key]>>}`;
+      }[Extract<keyof Value, string>]
+    : never;
+
+/** All persisted field paths on a model, including parents and nested paths. */
+export type FieldPathsOf<T> = Extract<NestedFieldPaths<ModelDocument<ShapeOf<T>>>, string>;
 
 /** Derive the create input accepted by a model. */
 export type CreateInputOf<T> = CreateInput<ShapeOf<T>, OptionsOf<T>>;

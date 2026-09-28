@@ -44,6 +44,7 @@ export { Model } from './model/model.js';
 export type {
   AnyModel,
   CreateInputOf,
+  FieldPathsOf,
   FilterOf,
   IndexesOf,
   ModelScopeName,
