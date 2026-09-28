@@ -21,6 +21,7 @@ export const projectSchema = orm
       defaultEstimateMinutes: orm.number().int().nonnegative(),
     }),
     labels: orm.string().array(),
+    tasks: orm.virtual('many'),
   })
   .options({ timestamps: true, softdelete: true, hideManaged: true })
   .indexes([

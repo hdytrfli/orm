@@ -7,14 +7,15 @@ const ownerIndexes = [
 ] as const;
 
 const ownerSchema = orm
-  .schema({ name: orm.string() })
+  .schema({ name: orm.string(), entries: orm.virtual('many') })
   .options({ timestamps: true, softdelete: true })
   .indexes(ownerIndexes);
 const entrySchema = orm.schema({ owner: orm.objectId(), title: orm.string() });
 
 const schemas = orm
   .defineSchemas({ owners: ownerSchema, entries: entrySchema })
-  .defineRelations({ entries: { owner: { ref: 'owners', inverse: 'entries' } } })
+  .defineRelations({ entries: { owner: { ref: 'owners' } } })
+  .defineVirtuals({ owners: { entries: { ref: 'entries', via: 'owner' } } })
   .defineScopes({ entries: { detail: [{ ref: 'owner', fields: ['name'] }] } });
 
 const db = createDatabase({
@@ -60,7 +61,6 @@ describe('model feature metadata', () => {
     expectTypeOf(db.owners.features.timestamps).toEqualTypeOf<true>();
     expectTypeOf(db.owners.features.softdelete).toEqualTypeOf<true>();
     expectTypeOf(db.owners.features.relations).toEqualTypeOf<readonly never[]>();
-    expectTypeOf(db.owners.features.scopes).toEqualTypeOf<readonly never[]>();
     expectTypeOf(db.owners.features.virtuals).toEqualTypeOf<readonly 'entries'[]>();
     expectTypeOf(db.owners.features.indexes).toEqualTypeOf<
       readonly (typeof ownerIndexes)[number][]

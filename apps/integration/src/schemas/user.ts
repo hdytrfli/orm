@@ -11,6 +11,8 @@ export const userSchema = orm
     password: orm.string().hidden(),
     group: orm.objectId(),
     company: orm.objectId(),
+    ownedProjects: orm.virtual('many'),
+    assignedTasks: orm.virtual('many'),
     profile: orm.object({
       email: orm.string().hidden(),
       website: orm.url(),

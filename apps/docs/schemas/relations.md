@@ -22,12 +22,12 @@ The registry preserves the literal names and returns typed builder methods.
 
 ```ts
 const connected = schemas.defineRelations({
-  post: { author: { ref: 'user', inverse: 'posts' } },
-  comment: { author: { ref: 'user' }, post: { ref: 'post', inverse: 'comments' } },
+  post: { author: { ref: 'user' } },
+  comment: { author: { ref: 'user' }, post: { ref: 'post' } },
 });
 ```
 
-Each relation key is the local ObjectId field name. Its required `ref` names the target schema; the target key is `_id`. An optional `inverse` declares a reverse virtual name on that target schema. Inverse names must be unique per target schema; duplicate names are rejected by TypeScript during editing and checked again at runtime. Omitting `inverse` leaves a forward-only relation. Every entry uses the explicit object form.
+Each relation key is the local ObjectId field name. Its required `ref` names the target schema; the target key is `_id`. Relations only define forward ObjectId links. Reverse and aggregate virtuals are declared separately on the owning schema and bound to one of these relation fields with `defineVirtuals`.
 
 ## Relation Requirements
 
@@ -40,7 +40,8 @@ const post = orm.schema({
 
 const schemas = orm
   .defineSchemas({ user, post })
-  .defineRelations({ post: { author: { ref: 'user' } } });
+  .defineRelations({ post: { author: { ref: 'user' } } })
+  .defineVirtuals({ user: { posts: { ref: 'post', via: 'author' } } });
 ```
 
 For an ObjectId nested inside an object, use its dot path as the relation name and populate `ref`:
@@ -49,44 +50,48 @@ For an ObjectId nested inside an object, use its dot path as the relation name a
 const person = orm.schema({
   profile: orm.object({ department: orm.objectId() }),
 });
+const departmentSchema = orm.schema({ employees: orm.virtual('many') });
 
-const schemas = orm.defineSchemas({ people: person, departments: department }).defineRelations({
-  people: { 'profile.department': { ref: 'departments', inverse: 'employees' } },
-});
+const schemas = orm
+  .defineSchemas({ people: person, departments: departmentSchema })
+  .defineRelations({ people: { 'profile.department': { ref: 'departments' } } })
+  .defineVirtuals({ departments: { employees: { ref: 'people', via: 'profile.department' } } });
 
 const people = await db.people.find().populate([{ ref: 'profile.department', fields: ['name'] }]);
 ```
 
 The populated result retains the nested shape: `person.profile.department` is the department document rather than a flattened `"profile.department"` property.
 
-## Reverse Relations (Virtuals)
+## Schema-Declared Virtuals
 
-`inverse` derives a reverse traversal from the same edge; there is no separate virtual declaration. A virtual always joins from the source document's `_id` to the foreign ObjectId path that declared the edge. Non-`_id` source joins are intentionally out of scope; use separate queries for those cases.
-
-```ts
-const people = await db.departments
-  .find()
-  .virtual([{ virtual: 'employees', type: 'many', fields: ['name'] }]);
-```
-
-`.populate()` follows outgoing relation edges, and `.virtual()` follows inverse edges. They are separate query operations and cannot be chained on the same query. Cardinality and projection belong to the use site: `many` returns an array and `first` returns a document or `null`. The `fields` option is checked against the target schema; prefix hidden fields with `+`, or use `'$all'` to include all normally visible fields.
+Virtuals are non-persisted fields declared in `orm.schema()` with `orm.virtual(kind)`. Bind each declaration in `defineVirtuals`: `ref` selects the related collection and `via` selects its relation field back to the owning schema. The owning document's `_id` is matched against that field. This explicit edge lets multiple virtuals reuse one relation.
 
 ```ts
-const peopleWithPosts = await db.user
-  .find()
-  .virtual([{ virtual: 'posts', type: 'many', fields: ['title'] }]);
+const user = orm.schema({
+  posts: orm.virtual('many'),
+  firstPost: orm.virtual('first'),
+  maxScore: orm.virtual('max'),
+  postCount: orm.virtual('count'),
+});
 
-// The same graph edge can have a different result shape in another query.
-const personWithFirstPost = await db.user
-  .find()
-  .virtual([{ virtual: 'posts', type: 'first', fields: ['title'] }]);
-
-const postCounts = await db.user
-  .find()
-  .virtual([{ virtual: 'posts', type: 'many', aggregate: { field: 'score', type: 'count' } }]);
+const connected = schemas.defineRelations({ post: { author: { ref: 'user' } } }).defineVirtuals({
+  user: {
+    posts: { ref: 'post', via: 'author' },
+    firstPost: { ref: 'post', via: 'author' },
+    maxScore: { ref: 'post', via: 'author', field: 'score' },
+    postCount: { ref: 'post', via: 'author' },
+  },
+});
 ```
 
-An aggregate virtual returns a number instead of related documents. `aggregate.field` is required and type-checked as a numeric target field. `count` counts related documents with a non-null value for that field; `sum`, `average`, `min`, and `max` calculate that field's statistic. Aggregates are only valid with `type: 'many'` and cannot be combined with `fields`. Virtual populations do not support nested `populate`.
+Kinds are `many`, `first`, `count`, `sum`, `avg`, `min`, and `max`. `many` returns an array; `first` returns a document or `null`; aggregates return numbers (`avg`, `min`, and `max` may be `null` when there are no values). Numeric aggregates require `field`, which is type-checked against the referenced schema. `count` counts matching documents and needs no field. Document virtuals can select fields; aggregate virtuals cannot. Prefix hidden fields with `+`, or use `'$all'` to include all normally visible fields.
+
+```ts
+const usersWithPosts = await db.user.find().virtual([{ ref: 'posts', fields: ['title'] }]);
+const userStats = await db.user.find().virtual([{ ref: 'maxScore' }, { ref: 'postCount' }]);
+```
+
+Virtual field declarations are metadata only: they are excluded from Zod persistence parsing and never stored in MongoDB. Every declared virtual must be bound exactly once in `defineVirtuals`; missing and unknown bindings are rejected at runtime as well as by the type checker.
 
 ## Relations Are Opt-In
 

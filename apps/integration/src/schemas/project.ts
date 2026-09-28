@@ -6,6 +6,7 @@ export const projectSchema = orm
   .schema({
     company: orm.objectId(),
     owner: orm.objectId(),
+    tasks: orm.virtual('many'),
     key: orm.string().toUpperCase(),
     name: orm.string().min(3),
     description: orm.string().optional(),

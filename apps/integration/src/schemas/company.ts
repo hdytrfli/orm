@@ -6,6 +6,7 @@ export const companySchema = orm
   .schema({
     slug: orm.string(),
     name: orm.string(),
+    projects: orm.virtual('many'),
     domain: orm.email().optional(),
     description: orm.string().optional(),
     plan: orm.enum(COMPANY_PLANS),
