@@ -108,6 +108,12 @@ export class Schema<
         'Field deletedAt is managed by Mongorm when softdelete is enabled; omit it from the schema shape.',
       );
     }
+    if (
+      options.collection !== undefined &&
+      (!options.collection.trim() || options.collection.includes('\0'))
+    ) {
+      throw new SchemaConfigurationError('collection must be a non-empty MongoDB collection name.');
+    }
 
     const managedShape = {
       ...(options.timestamps

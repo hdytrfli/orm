@@ -66,12 +66,14 @@ const user = orm
     timestamps: true,
     softdelete: true,
     hideManaged: true,
+    collection: 'app_users',
   });
 ```
 
 - `timestamps` manages `createdAt` and `updatedAt`.
 - `softdelete` manages nullable `deletedAt` and filters deleted documents from normal reads.
 - `hideManaged` hides whichever managed fields are enabled from default query results. Use a `+` selector in `.fields()` to include them explicitly. It affects query projections; mutation methods such as `create()` and `update()` still return the full document.
+- `collection` overrides the physical MongoDB collection name. The registry key remains the model name and the name used by relation definitions.
 
 These are the supported schema options. Configure them together in a single `.options({...})` call; calling `.options()` again on the same schema throws. See [Schema Fundamentals](/schemas/fundamentals#managed-persistence-options) for lifecycle behavior.
 

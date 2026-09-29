@@ -95,13 +95,14 @@ export class Db<Registry extends SchemaRegistry = SchemaRegistry> {
   }
 
   private registerSchema(schema: SchemaLike, name: string): void {
+    const collectionName = schema.optionsConfig.collection ?? name;
     const registeredName = this.schemaCollections.get(schema);
-    if (registeredName && registeredName !== name) {
+    if (registeredName && registeredName !== collectionName) {
       throw new SchemaConfigurationError(
-        `Schema is already registered with collection "${registeredName}" and cannot also use "${name}". Use separate schema instances for separate collections.`,
+        `Schema is already registered with collection "${registeredName}" and cannot also use "${collectionName}". Use separate schema instances for separate collections.`,
       );
     }
-    this.schemaCollections.set(schema, name);
+    this.schemaCollections.set(schema, collectionName);
   }
 
   /** Resolve a registered schema to its MongoDB collection. */

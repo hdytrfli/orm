@@ -6,6 +6,8 @@ import { withHidden, type HiddenSchema } from './hidden.js';
 export interface SchemaOptions {
   readonly timestamps?: boolean;
   readonly softdelete?: boolean;
+  /** Override the MongoDB collection name used for this schema. */
+  readonly collection?: string;
   /** Hide Mongorm-managed fields from default query results. */
   readonly hideManaged?: boolean;
 }
