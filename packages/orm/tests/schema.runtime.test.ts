@@ -56,12 +56,12 @@ describe('schema runtime parsing', () => {
     expect(
       schema.definition.parse({
         age: 42,
-        active: 'false',
+        active: true,
         profile: { height: 1.75 },
         scores: [3, 7],
         id: new ObjectId(),
       }),
-    ).toMatchObject({ age: 42, active: false });
+    ).toMatchObject({ age: 42, active: true });
   });
 
   it('reuses partial parsing behavior for successive update payloads', () => {

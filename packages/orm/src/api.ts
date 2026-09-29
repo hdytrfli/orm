@@ -31,8 +31,10 @@ type ZodConstructorKey = {
 }[keyof typeof z];
 
 type ZodConstructors = Pick<typeof z, ZodConstructorKey>;
+const stringbool = () => z.union([z.boolean(), z.stringbool()]);
+
 type CoerceNamespace = typeof z.coerce & {
-  stringbool: typeof z.stringbool;
+  stringbool: typeof stringbool;
   objectId: typeof coerceObjectId;
 };
 
@@ -63,7 +65,7 @@ const zodEntries = Object.entries(z);
 const constructorEntries = zodEntries.filter(isZodConstructor);
 const zodConstructors = Object.fromEntries(constructorEntries) as ZodConstructors;
 const coerceNamespace = withZodNamespace(
-  Object.assign({}, z.coerce, { stringbool: z.stringbool, objectId: coerceObjectId }),
+  Object.assign({}, z.coerce, { stringbool, objectId: coerceObjectId }),
 ) as CoerceNamespace;
 
 export const orm: OrmApi = Object.assign({}, withZodNamespace(zodConstructors), {

@@ -60,5 +60,8 @@ describe('schema inference', () => {
     expectTypeOf(parsed.age).toEqualTypeOf<number>();
     expectTypeOf(parsed.enabled).toEqualTypeOf<boolean>();
     expectTypeOf(parsed.id).toEqualTypeOf<ObjectId>();
+    expectTypeOf(
+      requestSchema.parse({ age: 38, enabled: true, id: new ObjectId() }).enabled,
+    ).toEqualTypeOf<boolean>();
   });
 });
