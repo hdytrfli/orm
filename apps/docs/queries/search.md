@@ -25,7 +25,7 @@ Paths may refer to scalar string fields on the model or a declared relation targ
 const users = await db.users.find({ active: true }).search('acme').sort({ name: 'asc' }).limit(20);
 ```
 
-Search is a literal, case-insensitive substring match. It ORs across configured fields and ANDs with the normal `find()` filter. Empty/whitespace-only terms are rejected. User input is escaped before it is used in a regular expression.
+Search is a literal, case-insensitive substring match. It ORs across configured fields and ANDs with the normal `find()` filter. Empty/whitespace-only strings, `null`, and `undefined` are no-ops; other terms are trimmed. User input is escaped before it is used in a regular expression.
 
 When all searchable paths are local, Mongorm adds the search predicate to the normal `find()` filter. When a relation path is included, Mongorm executes one aggregation: first it applies the model filter, then `$lookup`s the declared relation targets and matches local or related string values before sort, skip, and limit. Temporary lookup fields are removed before results are returned. Explicit population and virtual loading retain their existing follow-up behavior.
 
