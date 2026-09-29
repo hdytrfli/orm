@@ -113,7 +113,7 @@ export class Model<
   }
 
   private get collection(): Collection<StoredDocument<Shape>> {
-    return this.db.native.collection<StoredDocument<Shape>>(this.name);
+    return this.db.collectionFor(this.schema) as unknown as Collection<StoredDocument<Shape>>;
   }
 
   private async dropIndexes(names: readonly IndexNames<Indexes>[]): Promise<void> {
