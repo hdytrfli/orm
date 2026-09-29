@@ -69,10 +69,18 @@ describe('schema inference', () => {
     const validator: CoercedOf<typeof database.users> = userSchema.coerced;
     const parsed = validator.parse({ age: '42', active: 'false' });
     const partial = validator.partial().parse({ age: '42' });
+    const picked = validator.pick({ age: true }).parse({ age: '43' });
+    const extended = validator.extend({ name: orm.string() }).parse({
+      age: '44',
+      active: 'true',
+      name: 'Ada',
+    });
 
     expectTypeOf(parsed.age).toEqualTypeOf<number>();
     expectTypeOf(parsed.active).toEqualTypeOf<boolean>();
     expectTypeOf(partial.age).toEqualTypeOf<number | undefined>();
     expectTypeOf(partial.active).toEqualTypeOf<boolean | undefined>();
+    expectTypeOf(picked.age).toEqualTypeOf<number>();
+    expectTypeOf(extended.name).toEqualTypeOf<string>();
   });
 });
