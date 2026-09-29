@@ -41,6 +41,10 @@ export const schemas = orm
     },
     projects: { tasks: { ref: 'tasks', via: 'project' } },
   })
+  .defineSearches({
+    users: ['name', 'profile.location.city', 'company.name', 'group.name'],
+    projects: ['name', 'company.name', 'owner.name'],
+  })
   .defineScopes({
     users: {
       detail: [

@@ -68,6 +68,117 @@ describe('query integration scenarios', () => {
     expect(firstUser).not.toHaveProperty('password');
   });
 
+  it('searches configured local string fields case-insensitively', async () => {
+    expect(() => db.groups.find().search('team')).toThrow('not configured');
+    expect(() => db.users.find().search('  ')).toThrow('must not be empty');
+    const { company, group } = await createDirectory();
+    await db.users.create({
+      name: 'Maya Chen',
+      age: 32,
+      role: 'admin',
+      password: 'hidden',
+      group: group._id,
+      company: company._id,
+      profile: {
+        email: 'maya@example.test',
+        website: 'https://example.test',
+        location: { city: 'Seattle', country: 'US' },
+      },
+    });
+    await db.users.create({
+      name: 'Other Person',
+      age: 32,
+      role: 'member',
+      password: 'hidden',
+      group: group._id,
+      company: company._id,
+      profile: {
+        email: 'other@example.test',
+        website: 'https://example.test',
+        location: { city: 'Seattle', country: 'US' },
+      },
+    });
+
+    const results = await db.users.find({ role: 'admin' }).search('maya');
+    expect(results.map(({ name }) => name)).toEqual(['Maya Chen']);
+    expect((await db.users.find({ role: 'admin' }).search('seat')).map(({ name }) => name)).toEqual(
+      ['Maya Chen'],
+    );
+    expect(await db.users.find().search('Maya.*')).toEqual([]);
+  });
+
+  it('searches related fields with filters, sorting, limits, and exact counts', async () => {
+    const company = await db.companies.create({
+      slug: 'search-acme',
+      name: 'Acme Research',
+      plan: 'growth',
+      settings: { timezone: 'UTC', weeklyDigest: true, maxMembers: 20 },
+    });
+    const group = await db.groups.create({
+      company: company._id,
+      name: 'Research',
+      permissions: { canInvite: true, canManageBilling: false, canExportData: true },
+    });
+    for (const name of ['Zoe', 'Ada'])
+      await db.users.create({
+        name,
+        age: 30,
+        role: 'admin',
+        password: 'hidden',
+        group: group._id,
+        company: company._id,
+        profile: {
+          email: `${name}@example.test`,
+          website: 'https://example.test',
+          location: { city: 'Seattle', country: 'US' },
+        },
+      });
+    const otherCompany = await db.companies.create({
+      slug: 'search-other',
+      name: 'Other Company',
+      plan: 'starter',
+      settings: { timezone: 'UTC', weeklyDigest: false, maxMembers: 5 },
+    });
+    const otherGroup = await db.groups.create({
+      company: otherCompany._id,
+      name: 'Acme Taskforce',
+      permissions: { canInvite: false, canManageBilling: false, canExportData: false },
+    });
+    await db.users.create({
+      name: 'Una',
+      age: 30,
+      role: 'admin',
+      password: 'hidden',
+      group: otherGroup._id,
+      company: otherCompany._id,
+      profile: {
+        email: 'una@example.test',
+        website: 'https://example.test',
+        location: { city: 'Seattle', country: 'US' },
+      },
+    });
+
+    const results = await db.users
+      .find({ role: 'admin' })
+      .search('acme')
+      .sort({ name: 'asc' })
+      .limit(1);
+    expect(results.map(({ name }) => name)).toEqual(['Ada']);
+    expect(await db.users.find({ role: 'admin' }).search('acme').count()).toBe(3);
+    const groupMatches = await db.users.find().search('taskforce');
+    expect(groupMatches.map(({ name }) => name)).toEqual(['Una']);
+    expect(await db.users.find().search('never-matches')).toEqual([]);
+    await expect(db.users.find().search('acme').count(true)).rejects.toThrow(
+      'do not support filters',
+    );
+    const populated = await db.users
+      .find({ name: 'Ada' })
+      .search('acme')
+      .populate([{ ref: 'company', fields: ['name'] }])
+      .first();
+    expect(populated?.company?.name).toBe('Acme Research');
+  });
+
   it('negative: returns no documents for a valid filter with no matches', async () => {
     const { company } = await createDirectory();
 

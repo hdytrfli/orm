@@ -54,6 +54,30 @@ type ScalarFieldPaths<Value, Prefix extends string = ''> = Value extends object
     }[Extract<keyof Value, string>]
   : never;
 
+type SearchableStringPaths<Value, Prefix extends string = ''> = Value extends object
+  ? {
+      [Key in Extract<keyof Value, string>]-?: NonNullable<Value[Key]> extends string
+        ? `${Prefix}${Key}`
+        : NonNullable<Value[Key]> extends ObjectId | Date | readonly unknown[]
+          ? never
+          : NonNullable<Value[Key]> extends object
+            ? SearchableStringPaths<NonNullable<Value[Key]>, `${Prefix}${Key}.`>
+            : never;
+    }[Extract<keyof Value, string>]
+  : never;
+
+type SearchablePaths<SchemaType> =
+  | SearchableStringPaths<InferShape<SchemaType>>
+  | {
+      [
+        Relation in Extract<keyof SchemaRelationsOf<SchemaType>, string>
+      ]: SchemaRelationsOf<SchemaType>[Relation] extends {
+        resolve: () => infer Target;
+      }
+        ? `${Relation}.${SearchableStringPaths<InferShape<Target>>}`
+        : never;
+    }[Extract<keyof SchemaRelationsOf<SchemaType>, string>];
+
 export type RelationDefinitions<Registry extends Record<string, SchemaLike>> = {
   [Name in keyof Registry]?: Partial<
     Record<
@@ -278,4 +302,11 @@ export type SchemaRegistryBuilder<
   defineScopes<const Definitions extends ScopeDefinitionsBySchema<Registry>>(
     definitions: Definitions,
   ): SchemaRegistryBuilder<RegistryWithScopes<Registry, Definitions>, Relations>;
+  defineSearches<
+    const Definitions extends {
+      [Name in keyof Registry]?: readonly SearchablePaths<Registry[Name]>[];
+    },
+  >(
+    definitions: Definitions,
+  ): SchemaRegistryBuilder<Registry, Relations>;
 };

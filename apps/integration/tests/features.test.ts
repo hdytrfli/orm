@@ -16,6 +16,7 @@ const schemas = orm
   .defineSchemas({ owners: ownerSchema, entries: entrySchema })
   .defineRelations({ entries: { owner: { ref: 'owners' } } })
   .defineVirtuals({ owners: { entries: { ref: 'entries', via: 'owner' } } })
+  .defineSearches({ owners: ['name'], entries: ['title'] })
   .defineScopes({ entries: { detail: [{ ref: 'owner', fields: ['name'] }] } });
 
 const db = createDatabase({
@@ -35,6 +36,7 @@ describe('model feature metadata', () => {
       scopes: [],
       virtuals: ['entries'],
       indexes: ownerIndexes,
+      searchables: ['name'],
     });
 
     expect(db.entries.features).toEqual({
@@ -44,6 +46,7 @@ describe('model feature metadata', () => {
       scopes: ['detail'],
       virtuals: [],
       indexes: [],
+      searchables: ['title'],
     });
   });
 
@@ -55,6 +58,7 @@ describe('model feature metadata', () => {
     expect(Object.isFrozen(features.scopes)).toBe(true);
     expect(Object.isFrozen(features.virtuals)).toBe(true);
     expect(Object.isFrozen(features.indexes)).toBe(true);
+    expect(Object.isFrozen(features.searchables)).toBe(true);
   });
 
   it('preserves literal feature types from the schema registry', () => {

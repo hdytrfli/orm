@@ -1,4 +1,10 @@
-import { ObjectId, type Collection, type Filter as MongoFilter, type Sort } from 'mongodb';
+import {
+  ObjectId,
+  type Collection,
+  type Document,
+  type Filter as MongoFilter,
+  type Sort,
+} from 'mongodb';
 
 import type { SchemaRelationMap, SchemaShape } from '../../schema/index.js';
 import { CursorQueryError, EstimatedCountError } from '../../validation/errors.js';
@@ -27,6 +33,15 @@ export interface QueryExecutionContext<
   softDelete: SoftDeleteState<Shape>;
   population: PopulationExecutor<Relations>;
   populateSpecs: readonly RuntimePopulateSpec[];
+  searchableFields: readonly string[];
+  searchTerm: string | undefined;
+  searchRelations: readonly {
+    relationPath: string;
+    from: string;
+    localField: string;
+    foreignField: string;
+    targetFields: readonly string[];
+  }[];
 }
 
 /** Execute a list query or MongoDB's estimated collection count. */
@@ -34,9 +49,20 @@ export const countQuery = async <Shape extends SchemaShape, Relations extends Sc
   context: QueryExecutionContext<Shape, Relations>,
   estimate: boolean,
 ): Promise<number> => {
+  if (estimate && context.searchTerm) throw new EstimatedCountError();
+  if (
+    context.searchTerm &&
+    context.searchRelations.some((relation) => relation.targetFields.length)
+  ) {
+    if (estimate) throw new EstimatedCountError();
+    const result = await context.collection
+      .aggregate([...searchPipeline(context, false), { $count: 'count' }])
+      .toArray();
+    return (result[0] as { count?: number } | undefined)?.count ?? 0;
+  }
   if (!estimate) {
     return context.collection.countDocuments(
-      context.effectiveFilter as MongoFilter<StoredDocument<Shape>>,
+      searchFilter(context) as MongoFilter<StoredDocument<Shape>>,
     );
   }
 
@@ -54,6 +80,7 @@ export const createCursorPage = <
   context: QueryExecutionContext<Shape, Relations>,
   after?: ObjectId,
 ): ModelCursor<Shape, Result> => {
+  if (context.searchTerm) throw new CursorQueryError('Cursor queries do not support search');
   const pageSize = context.limitCount;
   if (pageSize === 0) {
     throw new CursorQueryError('Cursor queries require a positive limit');
@@ -116,18 +143,98 @@ const executeFindResults = async <
   context: QueryExecutionContext<Shape, Relations>,
   limit?: number,
 ): Promise<Result[]> => {
+  if (
+    context.searchTerm &&
+    context.searchRelations.some((relation) => relation.targetFields.length)
+  ) {
+    const pipeline = searchPipeline(context);
+    if (limit !== undefined) pipeline.push({ $limit: limit });
+    const projection = projectionFor(context.fields, context.hiddenFields, context.fieldSelection);
+    if (projection) pipeline.push({ $project: projection });
+    const documents = (await context.collection.aggregate<Result>(pipeline).toArray()) as Result[];
+    return context.population.apply(documents, context.populateSpecs);
+  }
   let cursor = createFindCursor(context);
   if (limit !== undefined) cursor = cursor.limit(limit);
   const documents = (await cursor.toArray()) as unknown as Result[];
   return context.population.apply(documents, context.populateSpecs);
 };
 
+const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const searchFilter = <Shape extends SchemaShape, Relations extends SchemaRelationMap>(
+  context: QueryExecutionContext<Shape, Relations>,
+): Document => {
+  if (!context.searchTerm) return context.effectiveFilter as Document;
+  const relatedPrefixes = context.searchRelations
+    .filter((relation) => relation.targetFields.length)
+    .map((relation) => `${relation.relationPath}.`);
+  const localPaths = context.searchableFields.filter(
+    (path) => !relatedPrefixes.some((prefix) => path.startsWith(prefix)),
+  );
+  return {
+    $and: [
+      context.effectiveFilter,
+      {
+        $or: localPaths.map((path) => ({
+          [path]: { $regex: escapeRegex(context.searchTerm!), $options: 'i' },
+        })),
+      },
+    ],
+  };
+};
+
+const searchPipeline = <Shape extends SchemaShape, Relations extends SchemaRelationMap>(
+  context: QueryExecutionContext<Shape, Relations>,
+  paginate = true,
+): Document[] => {
+  const pipeline: Document[] = [{ $match: context.effectiveFilter }];
+  const related = context.searchRelations.filter((relation) => relation.targetFields.length);
+  for (const [index, relation] of related.entries()) {
+    pipeline.push({
+      $lookup: {
+        from: relation.from,
+        localField: relation.localField,
+        foreignField: relation.foreignField,
+        pipeline: [
+          { $project: Object.fromEntries(relation.targetFields.map((field) => [field, 1])) },
+        ],
+        as: `__mongorm_search_${index}`,
+      },
+    });
+  }
+  const regex = { $regex: escapeRegex(context.searchTerm ?? ''), $options: 'i' };
+  const clauses: Document[] = [];
+  const prefixes = related.map((relation) => `${relation.relationPath}.`);
+  for (const path of context.searchableFields) {
+    if (!prefixes.some((prefix) => path.startsWith(prefix))) clauses.push({ [path]: regex });
+  }
+  for (const [index, relation] of related.entries()) {
+    for (const targetField of relation.targetFields) {
+      clauses.push({ [`__mongorm_search_${index}.${targetField}`]: regex });
+    }
+  }
+  pipeline.push({ $match: { $or: clauses } });
+  for (const [index] of related.entries()) pipeline.push({ $unset: `__mongorm_search_${index}` });
+  if (paginate && context.sortSpec) {
+    pipeline.push({
+      $sort: Object.fromEntries(
+        Object.entries(context.sortSpec).map(([field, direction]) => [
+          field,
+          direction === 'asc' ? 1 : -1,
+        ]),
+      ) as Sort,
+    });
+  }
+  if (paginate && context.skipCount) pipeline.push({ $skip: context.skipCount });
+  if (paginate && context.limitCount !== undefined) pipeline.push({ $limit: context.limitCount });
+  return pipeline;
+};
+
 const createFindCursor = <Shape extends SchemaShape, Relations extends SchemaRelationMap>(
   context: QueryExecutionContext<Shape, Relations>,
 ) => {
-  let cursor = context.collection.find(
-    context.effectiveFilter as MongoFilter<StoredDocument<Shape>>,
-  );
+  let cursor = context.collection.find(searchFilter(context) as MongoFilter<StoredDocument<Shape>>);
   const sortSpec = context.sortSpec;
   if (sortSpec) cursor = cursor.sort(sortSpec as Sort);
 

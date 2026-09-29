@@ -48,9 +48,10 @@ features.relations; // declared relation names
 features.scopes; // declared population scope names
 features.virtuals; // declared virtual relation names
 features.indexes; // declared index definitions
+features.searchables; // configured local and related string paths
 ```
 
-The flags are `true` or `false`. The names in `relations`, `scopes`, and `virtuals` preserve their schema-derived literal types. `indexes` contains the declared index definitions, including definitions without an explicit name. These values describe schema configuration; they do not connect to MongoDB or report which indexes currently exist in the database.
+The flags are `true` or `false`. The names in `relations`, `scopes`, and `virtuals` preserve their schema-derived literal types. `indexes` contains the declared index definitions, including definitions without an explicit name. `searchables` lists the configured local and related string paths. These values describe schema configuration; they do not connect to MongoDB or report which indexes currently exist in the database.
 
 Use `features.indexes` to inspect declared index metadata (`fields` and optional MongoDB index options). Use `model.index.drop()` and `model.index.purge()` to perform index operations. See [Schema Indexes](/schemas/indexes) for declaration and synchronization details.
 

@@ -18,6 +18,7 @@ type RuntimeFieldSchema = {
   readonly _def?: {
     readonly type?: string;
     readonly options?: readonly RuntimeFieldSchema[];
+    readonly values?: readonly unknown[];
   };
   readonly shape?: Record<string, RuntimeFieldSchema>;
   readonly unwrap?: () => RuntimeFieldSchema;
@@ -77,6 +78,21 @@ const isScalarFieldSchema = (field: RuntimeFieldSchema): boolean => {
     });
   }
 
+  return false;
+};
+
+const isSearchableString = (field: RuntimeFieldSchema): boolean => {
+  let current = field;
+  while (current.unwrap) current = current.unwrap();
+  if (current._def?.type === 'string') return true;
+  if (current._def?.type === 'enum') return true;
+  if (current._def?.type === 'literal')
+    return (
+      (current._def.values?.length ?? 0) > 0 &&
+      current._def.values?.every((value) => typeof value === 'string') === true
+    );
+  if (current._def?.type === 'union')
+    return current._def.options?.every(isSearchableString) ?? false;
   return false;
 };
 
@@ -222,11 +238,40 @@ const attachMethods = <Registry extends Record<string, SchemaLike>, Relations = 
     return attachMethods(registry);
   };
 
+  const defineSearches = (definitions: Partial<Record<string, readonly string[]>>) => {
+    for (const [name, paths] of Object.entries(definitions)) {
+      const source = registry[name];
+      if (!source)
+        throw new SchemaConfigurationError(`Unknown schema "${name}" in search definitions.`);
+      const uniquePaths = [...new Set(paths ?? [])];
+      for (const path of uniquePaths) {
+        const relationPath = Object.keys(source.relationMap)
+          .sort((a, b) => b.length - a.length)
+          .find((key) => path.startsWith(`${key}.`));
+        const target = relationPath
+          ? (source.relationMap as SchemaRelationMap)[relationPath].resolve()
+          : source;
+        const field = fieldSchemaAtPath(
+          target,
+          relationPath ? path.slice(relationPath.length + 1) : path,
+        );
+        if (!field || !isSearchableString(field)) {
+          throw new SchemaConfigurationError(
+            `Search path "${name}.${path}" must resolve to a string field.`,
+          );
+        }
+      }
+      source.searchableFields = Object.freeze(uniquePaths);
+    }
+    return attachMethods(registry, relationDefinitions);
+  };
+
   Object.defineProperties(registry, {
     __registry: { configurable: false, enumerable: false, value: registry },
     defineRelations: { configurable: true, enumerable: false, value: defineRelations },
     defineVirtuals: { configurable: true, enumerable: false, value: defineVirtuals },
     defineScopes: { configurable: true, enumerable: false, value: defineScopes },
+    defineSearches: { configurable: true, enumerable: false, value: defineSearches },
   });
   return registry as SchemaRegistryBuilder<Registry>;
 };

@@ -55,6 +55,9 @@ export class Schema<
   /** MongoDB indexes declared for this schema. */
   indexDefinitions: readonly SchemaIndex<any>[];
 
+  /** Registry-configured searchable string field paths. */
+  searchableFields: readonly string[] = [];
+
   /** Preserve schema options through registry type transformations. */
   declare readonly __options: Options;
 
@@ -132,6 +135,7 @@ export class Schema<
       this.virtualMap,
       this.virtualDefinitions,
     );
+    next.searchableFields = this.searchableFields;
     return next as unknown as Schema<
       Shape & ManagedShape<Enabled>,
       Relations,

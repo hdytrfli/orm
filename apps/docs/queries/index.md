@@ -12,6 +12,7 @@ Mongorm queries are lazy, typed builders. A query is assembled synchronously and
 - [Selection and Projection](/queries/selection): safe field selection, nested paths, and hidden fields.
 - [Sorting, Limits, and Pagination](/queries/pagination): offset pagination and cursor pagination.
 - [Counts](/queries/counts): exact and estimated counts.
+- [Search](/queries/search): configured substring search across local and related string fields.
 - [Population](/queries/population): explicit and nested relation loading.
 - [Mutations](/queries/mutations): create, update, and delete behavior.
 - [Aggregation](/queries/aggregation): typed results from MongoDB pipelines and soft-delete behavior.
