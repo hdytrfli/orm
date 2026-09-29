@@ -73,6 +73,15 @@ type NestedFieldPaths<Value> = Value extends ObjectId | Date | readonly unknown[
 /** All persisted field paths on a model, including parents and nested paths. */
 export type FieldPathsOf<T> = Extract<NestedFieldPaths<ModelDocument<ShapeOf<T>>>, string>;
 
+/** Field paths on related documents, prefixed with their relation name. */
+export type RelationPathsOf<T> = {
+  [Relation in Extract<keyof RelationsOf<T>, string>]: RelationsOf<T>[Relation] extends {
+    resolve: () => infer Target;
+  }
+    ? `${Relation}.${Extract<FieldPathsOf<Target>, string>}`
+    : never;
+}[Extract<keyof RelationsOf<T>, string>];
+
 /** Derive the create input accepted by a model. */
 export type CreateInputOf<T> = CreateInput<ShapeOf<T>, OptionsOf<T>>;
 

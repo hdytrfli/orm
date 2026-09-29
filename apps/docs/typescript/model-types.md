@@ -12,6 +12,7 @@ import type {
   FieldPathsOf,
   FilterOf,
   PopulateOf,
+  RelationPathsOf,
   ShapeOf,
   UpdateInputOf,
 } from '@mongorm/orm';
@@ -22,19 +23,21 @@ type UserUpdate = UpdateInputOf<typeof db.user>;
 type UserFilter = FilterOf<typeof db.user>;
 type UserFieldPath = FieldPathsOf<typeof db.user>;
 type UserPopulation = PopulateOf<typeof db.user>;
+type PostRelationFieldPath = RelationPathsOf<typeof db.post>;
 ```
 
 ## Schema and operation types
 
-| Helper                 | Derived type                                                                                                           |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `AnyModel`             | Any Mongorm `Model` type; useful as a generic constraint.                                                              |
-| `ShapeOf<Model>`       | The field shape registered on the model.                                                                               |
-| `FieldPathsOf<Model>`  | Stored field paths, including parent and dotted nested paths; virtuals are excluded.                                   |
-| `CreateInputOf<Model>` | The validated input accepted by that model's `create()`.                                                               |
-| `UpdateInputOf<Model>` | The partial update input accepted by that model's update operation.                                                    |
-| `FilterOf<Model>`      | A schema-aware MongoDB filter for the model, including a direct `_id: ObjectId` lookup form.                           |
-| `ZodSchemaOf<Model>`   | A Zod schema compatible with the model's create input and with a `.partial()` schema compatible with its update input. |
+| Helper                   | Derived type                                                                                                           |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `AnyModel`               | Any Mongorm `Model` type; useful as a generic constraint.                                                              |
+| `ShapeOf<Model>`         | The field shape registered on the model.                                                                               |
+| `FieldPathsOf<Model>`    | Stored field paths, including parent and dotted nested paths; virtuals are excluded.                                   |
+| `RelationPathsOf<Model>` | Related stored field paths prefixed by their relation name, such as `author.email`; target virtuals are excluded.      |
+| `CreateInputOf<Model>`   | The validated input accepted by that model's `create()`.                                                               |
+| `UpdateInputOf<Model>`   | The partial update input accepted by that model's update operation.                                                    |
+| `FilterOf<Model>`        | A schema-aware MongoDB filter for the model, including a direct `_id: ObjectId` lookup form.                           |
+| `ZodSchemaOf<Model>`     | A Zod schema compatible with the model's create input and with a `.partial()` schema compatible with its update input. |
 
 Create and update inputs account for the model's schema options. For example, managed fields and generated `_id` are not ordinary caller-supplied create fields. Prefer these helpers over manually rebuilding input types from the schema shape.
 
@@ -56,6 +59,18 @@ const isUserFilterField = (value: string): value is UserFilterField =>
 ```
 
 Use the resulting narrow union when validating client-supplied filter paths before constructing a Mongorm filter. Keep the runtime check: the type helper only verifies that the allowlist itself uses real schema paths. It does not sanitize untrusted input automatically. Parent paths such as `profile` and `profile.location` are included as well as leaf paths, so only put paths in the application allowlist that the endpoint intends to expose.
+
+Use `RelationPathsOf<Model>` when an endpoint supports searching/filtering by fields on populated relations. It prefixes every persisted target path with its local relation key, and includes hidden fields so the application can explicitly leave sensitive ones out:
+
+```ts
+import type { RelationPathsOf } from '@mongorm/orm';
+
+const searchablePostRelations = ['author.name'] as const satisfies readonly RelationPathsOf<
+  typeof db.post
+>[];
+```
+
+This helper describes paths that exist in the related schema; it does not make the query builder accept relation-field filters directly. Your application still needs to validate the path and translate it into the appropriate query or aggregation.
 
 `ZodSchemaOf` is useful when an abstraction accepts one schema and uses it for both create and partial-update validation:
 

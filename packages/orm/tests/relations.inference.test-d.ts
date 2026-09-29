@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
-import type { createDatabase } from '../src/index.js';
+import type { createDatabase, RelationPathsOf } from '../src/index.js';
 import { ObjectId, orm } from '../src/index.js';
 
 describe('relation and schema-declared virtual inference', () => {
@@ -51,6 +51,16 @@ describe('relation and schema-declared virtual inference', () => {
       });
 
     const database = {} as ReturnType<typeof createDatabase<typeof registry>>;
+    type ProjectRelationField = RelationPathsOf<typeof database.projects>;
+    expectTypeOf<ProjectRelationField>().toEqualTypeOf<
+      'owner._id' | 'owner.name' | 'owner.email'
+    >();
+    const relatedEmailPath: ProjectRelationField = 'owner.email';
+    void relatedEmailPath;
+    // @ts-expect-error Virtual fields aren't persisted paths on the related schema.
+    const relatedVirtualPath: ProjectRelationField = 'owner.projects';
+    void relatedVirtualPath;
+
     const populated = await database.projects
       .find()
       .populate([{ ref: 'owner', fields: ['name', '+email'] }]);

@@ -52,6 +52,7 @@ export type {
   OptionsOf,
   PopulateOf,
   RelationsOf,
+  RelationPathsOf,
   ScopesOf,
   ShapeOf,
   SortOf,
