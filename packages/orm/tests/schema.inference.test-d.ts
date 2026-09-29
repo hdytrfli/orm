@@ -1,6 +1,6 @@
 import { describe, expectTypeOf, it } from 'vitest';
 
-import type { CoercedOf, Infer, createDatabase } from '../src/index.js';
+import type { Infer } from '../src/index.js';
 import { ObjectId, orm } from '../src/index.js';
 
 describe('schema inference', () => {
@@ -45,13 +45,13 @@ describe('schema inference', () => {
     void missingStatus;
   });
 
-  it('keeps the parsed output type on the coerced transport schema', () => {
+  it('infers output types for opt-in coercing field constructors', () => {
     const requestSchema = orm.schema({
-      age: orm.number(),
-      enabled: orm.boolean(),
-      id: orm.objectId(),
+      age: orm.coerce.number(),
+      enabled: orm.coerce.stringbool(),
+      id: orm.coerce.objectId(),
     });
-    const parsed = requestSchema.coerced.parse({
+    const parsed = requestSchema.parse({
       age: '38',
       enabled: 'false',
       id: new ObjectId().toHexString(),
@@ -60,27 +60,5 @@ describe('schema inference', () => {
     expectTypeOf(parsed.age).toEqualTypeOf<number>();
     expectTypeOf(parsed.enabled).toEqualTypeOf<boolean>();
     expectTypeOf(parsed.id).toEqualTypeOf<ObjectId>();
-  });
-
-  it('provides CoercedOf for model-specific coerced validators', () => {
-    const userSchema = orm.schema({ age: orm.number(), active: orm.boolean() });
-    const registry = orm.defineSchemas({ users: userSchema });
-    const database = {} as ReturnType<typeof createDatabase<typeof registry>>;
-    const validator: CoercedOf<typeof database.users> = userSchema.coerced;
-    const parsed = validator.parse({ age: '42', active: 'false' });
-    const partial = validator.partial().parse({ age: '42' });
-    const picked = validator.pick({ age: true }).parse({ age: '43' });
-    const extended = validator.extend({ name: orm.string() }).parse({
-      age: '44',
-      active: 'true',
-      name: 'Ada',
-    });
-
-    expectTypeOf(parsed.age).toEqualTypeOf<number>();
-    expectTypeOf(parsed.active).toEqualTypeOf<boolean>();
-    expectTypeOf(partial.age).toEqualTypeOf<number | undefined>();
-    expectTypeOf(partial.active).toEqualTypeOf<boolean | undefined>();
-    expectTypeOf(picked.age).toEqualTypeOf<number>();
-    expectTypeOf(extended.name).toEqualTypeOf<string>();
   });
 });

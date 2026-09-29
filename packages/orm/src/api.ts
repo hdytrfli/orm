@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { VirtualField, VirtualKind, VirtualPlaceholder } from './relations/definitions.js';
 import type { SchemaLike } from './relations/definitions.js';
 import { createSchemaRegistry } from './relations/registry.js';
-import { objectId } from './schema/object-id.js';
+import { coerceObjectId, objectId } from './schema/object-id.js';
 import { Schema } from './schema/schema.js';
 import { withZodNamespace } from './schema/zod-namespace.js';
 
@@ -31,6 +31,10 @@ type ZodConstructorKey = {
 }[keyof typeof z];
 
 type ZodConstructors = Pick<typeof z, ZodConstructorKey>;
+type CoerceNamespace = typeof z.coerce & {
+  stringbool: typeof z.stringbool;
+  objectId: typeof coerceObjectId;
+};
 
 const isZodConstructor = ([name, value]: [string, unknown]): boolean => {
   return name === name.toLowerCase() && typeof value === 'function';
@@ -50,12 +54,17 @@ export type OrmApi = ZodConstructors & {
   ): ReturnType<typeof createSchemaRegistry<Registry>>;
   /** Create a MongoDB ObjectId field. */
   objectId: typeof objectId;
+  /** Zod coercing constructors; use stringbool for boolean strings. */
+  coerce: CoerceNamespace;
 };
 
 /** The ORM schema API with the complete native Zod namespace. */
 const zodEntries = Object.entries(z);
 const constructorEntries = zodEntries.filter(isZodConstructor);
 const zodConstructors = Object.fromEntries(constructorEntries) as ZodConstructors;
+const coerceNamespace = withZodNamespace(
+  Object.assign({}, z.coerce, { stringbool: z.stringbool, objectId: coerceObjectId }),
+) as CoerceNamespace;
 
 export const orm: OrmApi = Object.assign({}, withZodNamespace(zodConstructors), {
   schema: <const Input extends SchemaInput>(shape: Input) => {
@@ -79,4 +88,5 @@ export const orm: OrmApi = Object.assign({}, withZodNamespace(zodConstructors), 
   }),
   defineSchemas: createSchemaRegistry,
   objectId,
+  coerce: coerceNamespace,
 });

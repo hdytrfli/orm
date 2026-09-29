@@ -6,18 +6,17 @@ import { orm } from '../src/api.js';
 import { Schema } from '../src/schema/schema.js';
 
 describe('schema runtime parsing', () => {
-  it('coerces transport strings with schema.coerced while keeping definition strict', () => {
+  it('uses opt-in coercing field constructors for transport strings and typed values', () => {
     const schema = orm.schema({
-      age: orm.number().int(),
-      active: orm.boolean(),
-      profile: orm.object({ height: orm.number() }),
-      scores: orm.array(orm.number()),
-      id: orm.objectId(),
+      age: orm.coerce.number().int(),
+      active: orm.coerce.stringbool(),
+      profile: orm.object({ height: orm.coerce.number() }),
+      scores: orm.array(orm.coerce.number()),
+      id: orm.coerce.objectId(),
     });
 
-    expect(() => schema.definition.parse({ age: '42', active: 'false' })).toThrow('Invalid input');
     expect(
-      schema.coerced.parse({
+      schema.definition.parse({
         age: '42',
         active: 'false',
         profile: { height: '1.75' },
@@ -32,7 +31,7 @@ describe('schema runtime parsing', () => {
       id: expect.any(ObjectId),
     });
     expect(() =>
-      schema.coerced.parse({
+      schema.definition.parse({
         age: '5',
         active: 'false',
         profile: { height: '1' },
@@ -41,10 +40,10 @@ describe('schema runtime parsing', () => {
       }),
     ).toThrow('Invalid input');
 
-    expect(schema.coerced.partial().parse({ age: '27' })).toEqual({ age: 27 });
-    expect(schema.coerced.pick({ age: true }).parse({ age: '31' })).toEqual({ age: 31 });
+    expect(schema.definition.partial().parse({ age: '27' })).toEqual({ age: 27 });
+    expect(schema.definition.pick({ age: true }).parse({ age: '31' })).toEqual({ age: 31 });
     expect(
-      schema.coerced.extend({ label: orm.string() }).parse({
+      schema.definition.extend({ label: orm.string() }).parse({
         age: '33',
         active: 'true',
         profile: { height: '2' },
@@ -53,6 +52,16 @@ describe('schema runtime parsing', () => {
         label: 'test',
       }),
     ).toMatchObject({ age: 33, label: 'test' });
+
+    expect(
+      schema.definition.parse({
+        age: 42,
+        active: 'false',
+        profile: { height: 1.75 },
+        scores: [3, 7],
+        id: new ObjectId(),
+      }),
+    ).toMatchObject({ age: 42, active: false });
   });
 
   it('reuses partial parsing behavior for successive update payloads', () => {
