@@ -168,6 +168,35 @@ describe('query integration scenarios', () => {
     const groupMatches = await db.users.find().search('taskforce');
     expect(groupMatches.map(({ name }) => name)).toEqual(['Una']);
     expect(await db.users.find().search('never-matches')).toEqual([]);
+
+    await db.users.create({
+      name: 'Aardvark',
+      age: 30,
+      role: 'admin',
+      password: 'hidden',
+      group: otherGroup._id,
+      company: otherCompany._id,
+      profile: {
+        email: 'aardvark@example.test',
+        website: 'https://example.test',
+        location: { city: 'Seattle', country: 'US' },
+      },
+    });
+    const searchBeforePagination = await db.users
+      .find({ role: 'admin' })
+      .search('acme research')
+      .sort({ name: 'asc' })
+      .skip(1)
+      .limit(1);
+    const paginationBeforeSearch = await db.users
+      .find({ role: 'admin' })
+      .limit(1)
+      .skip(1)
+      .sort({ name: 'asc' })
+      .search('acme research');
+    expect(searchBeforePagination.map(({ name }) => name)).toEqual(['Zoe']);
+    expect(paginationBeforeSearch.map(({ name }) => name)).toEqual(['Zoe']);
+
     await expect(db.users.find().search('acme').count(true)).rejects.toThrow(
       'do not support filters',
     );
