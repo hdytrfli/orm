@@ -77,6 +77,22 @@ const user = orm
 
 These are the supported schema options. Configure them together in a single `.options({...})` call; calling `.options()` again on the same schema throws. See [Schema Fundamentals](/schemas/fundamentals#managed-persistence-options) for lifecycle behavior.
 
+## `schema.coerced`
+
+`schema.definition` and Mongorm writes remain strict. For transport data such as HTTP request bodies, `schema.coerced` provides a separate Zod parser that converts common string representations before validating with the original schema:
+
+```ts
+const userSchema = orm.schema({
+  age: orm.number(),
+  active: orm.boolean(),
+});
+
+const input = userSchema.coerced.parse({ age: '42', active: 'false' });
+// { age: 42, active: false }
+```
+
+It handles numeric strings, `stringbool()` boolean strings, date strings, ObjectId hex strings, and nested values in objects and arrays. The original field validators still run on the converted values. Use this explicitly at the transport boundary; `create()`, `update()`, `schema.parse()`, and `.definition.parse()` continue to reject values that do not match their strict schema inputs.
+
 ## `schema.indexes(definitions)`
 
 Declares indexes for explicit creation by `db.sync()`. Each definition has `fields` (a non-empty map of schema field names to MongoDB index directions) and optional `options` (MongoDB index options, including a schema-checked `partialFilterExpression`). Index declarations do not create indexes until synchronization. See [Schema Indexes](/schemas/indexes) for examples and index lifecycle methods.

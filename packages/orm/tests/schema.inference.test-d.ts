@@ -44,4 +44,21 @@ describe('schema inference', () => {
     };
     void missingStatus;
   });
+
+  it('keeps the parsed output type on the coerced transport schema', () => {
+    const requestSchema = orm.schema({
+      age: orm.number(),
+      enabled: orm.boolean(),
+      id: orm.objectId(),
+    });
+    const parsed = requestSchema.coerced.parse({
+      age: '38',
+      enabled: 'false',
+      id: new ObjectId().toHexString(),
+    });
+
+    expectTypeOf(parsed.age).toEqualTypeOf<number>();
+    expectTypeOf(parsed.enabled).toEqualTypeOf<boolean>();
+    expectTypeOf(parsed.id).toEqualTypeOf<ObjectId>();
+  });
 });
