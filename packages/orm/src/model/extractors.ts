@@ -3,6 +3,7 @@ import type { ZodType } from 'zod';
 
 import type { ModelFilter, ModelSort, PopulateSpecs } from '../query/index.js';
 import type { ModelDocument } from '../query/types/document.js';
+import type { SchemaDefinition } from '../schema/contracts.js';
 import type {
   SchemaIndex,
   SchemaRelationMap,
@@ -92,6 +93,12 @@ export type UpdateInputOf<T> = UpdateInput<ShapeOf<T>, OptionsOf<T>>;
 export type ZodSchemaOf<T extends AnyModel> = ZodType<CreateInputOf<T>> & {
   partial: () => ZodType<UpdateInputOf<T>>;
 };
+
+/** A coerced Zod parser whose output matches the model's parsed schema shape. */
+export type CoercedOf<T extends AnyModel> = ZodType<
+  import('zod').output<SchemaDefinition<ShapeOf<T>>>,
+  unknown
+>;
 
 /** Derive valid population specifications from a model's relations and virtuals. */
 export type PopulateOf<T> = PopulateSpecs<RelationsOf<T>, VirtualsOf<T>>;

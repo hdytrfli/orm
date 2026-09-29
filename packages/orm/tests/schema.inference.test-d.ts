@@ -1,6 +1,6 @@
 import { describe, expectTypeOf, it } from 'vitest';
 
-import type { Infer } from '../src/index.js';
+import type { CoercedOf, Infer, createDatabase } from '../src/index.js';
 import { ObjectId, orm } from '../src/index.js';
 
 describe('schema inference', () => {
@@ -60,5 +60,16 @@ describe('schema inference', () => {
     expectTypeOf(parsed.age).toEqualTypeOf<number>();
     expectTypeOf(parsed.enabled).toEqualTypeOf<boolean>();
     expectTypeOf(parsed.id).toEqualTypeOf<ObjectId>();
+  });
+
+  it('provides CoercedOf for model-specific coerced validators', () => {
+    const userSchema = orm.schema({ age: orm.number(), active: orm.boolean() });
+    const registry = orm.defineSchemas({ users: userSchema });
+    const database = {} as ReturnType<typeof createDatabase<typeof registry>>;
+    const validator: CoercedOf<typeof database.users> = userSchema.coerced;
+    const parsed = validator.parse({ age: '42', active: 'false' });
+
+    expectTypeOf(parsed.age).toEqualTypeOf<number>();
+    expectTypeOf(parsed.active).toEqualTypeOf<boolean>();
   });
 });
