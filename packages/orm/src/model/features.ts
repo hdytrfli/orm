@@ -20,6 +20,7 @@ export type ModelFeaturesOf<SchemaType> = SchemaType extends {
       readonly scopes: readonly Extract<keyof Scopes, string>[];
       readonly virtuals: readonly Extract<keyof Virtuals, string>[];
       readonly indexes: readonly Indexes[number][];
+      readonly searchables: readonly string[];
     }
   : never;
 
@@ -34,4 +35,5 @@ export const createModelFeatures = <SchemaType extends Schema<any, any, any, any
     scopes: Object.freeze(Object.keys(schema.scopeMap)),
     virtuals: Object.freeze(Object.keys(schema.virtualMap)),
     indexes: Object.freeze([...schema.indexDefinitions]),
+    searchables: Object.freeze([...schema.searchableFields]),
   }) as ModelFeaturesOf<SchemaType>;

@@ -3,6 +3,29 @@ import { describe, expect, it } from 'vitest';
 import { orm } from '../src/api.js';
 
 describe('schema registry virtual bindings', () => {
+  it('rejects non-string and unknown search paths', () => {
+    const registry = orm
+      .defineSchemas({
+        people: orm.schema({
+          name: orm.string(),
+          status: orm.enum(['active', 'archived']),
+          age: orm.number(),
+          company: orm.objectId(),
+        }),
+        companies: orm.schema({ name: orm.string() }),
+      })
+      .defineRelations({ people: { company: { ref: 'companies' } } });
+
+    expect(() => registry.defineSearches({ people: ['age'] } as never)).toThrow(
+      'must resolve to a string field',
+    );
+    expect(() => registry.defineSearches({ people: ['company.unknown'] } as never)).toThrow(
+      'must resolve to a string field',
+    );
+    registry.defineSearches({ people: ['name', 'status', 'company.name'] });
+    expect(registry.people.searchableFields).toEqual(['name', 'status', 'company.name']);
+  });
+
   it('rejects removed relation properties at runtime', () => {
     const registry = orm.defineSchemas({
       owners: orm.schema({

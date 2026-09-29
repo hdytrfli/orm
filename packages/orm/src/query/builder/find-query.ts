@@ -83,6 +83,7 @@ export class ModelQuery<
   private sortSpec: ModelSort<Shape> | undefined;
   private skipCount: number | undefined;
   private limitCount: number | undefined;
+  private searchTerm: string | undefined;
   private fieldSelection: readonly string[] | undefined;
   private populateSpecs: PopulateSpecs<Relations, Virtuals> = [];
   private populationMode: PopulationMode = 'none';
@@ -104,6 +105,8 @@ export class ModelQuery<
     private readonly scopes: Scopes,
     virtuals: Virtuals,
     softdeleteEnabled: boolean,
+    private readonly searchableFields: readonly string[],
+    private readonly searchRelations: QueryExecutionContext<Shape, Relations>['searchRelations'],
   ) {
     this.softDelete = new SoftDeleteState(softdeleteEnabled);
     this.population = new PopulationExecutor(db, relations, virtuals);
@@ -135,6 +138,7 @@ export class ModelQuery<
     const getSkipCount = () => this.skipCount;
     const getLimitCount = () => this.limitCount;
     const getPopulateSpecs = () => this.populateSpecs;
+    const getSearchTerm = () => this.searchTerm;
     return {
       collection: this.collection,
       filter: this.filterSpec,
@@ -157,10 +161,26 @@ export class ModelQuery<
       },
       softDelete: this.softDelete,
       population: this.population,
+      searchableFields: this.searchableFields,
+      searchRelations: this.searchRelations,
+      get searchTerm() {
+        return getSearchTerm();
+      },
       get populateSpecs() {
         return getPopulateSpecs();
       },
     };
+  }
+
+  /** Search explicitly configured string fields using case-insensitive substring matching. */
+  search(term: string): this {
+    if (this.searchableFields.length === 0) {
+      throw new InvalidQueryError('Search is not configured for this model.');
+    }
+    const normalized = term.trim();
+    if (!normalized) throw new RangeError('Search term must not be empty');
+    this.searchTerm = normalized;
+    return this;
   }
 
   /** Sort results by one or more schema fields. */

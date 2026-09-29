@@ -14,7 +14,7 @@ const user = orm.schema({
 });
 ```
 
-The returned schema supports parsing and carries the field metadata used by models and query types. Configure persistence behavior with `.options()` and indexes with `.indexes()`. Define relations, virtual bindings, and population scopes on a schema registry with `defineRelations()`, `defineVirtuals()`, and `defineScopes()`.
+The returned schema supports parsing and carries the field metadata used by models and query types. Configure persistence behavior with `.options()` and indexes with `.indexes()`. Define relations, virtual bindings, population scopes, and search paths on a schema registry with `defineRelations()`, `defineVirtuals()`, `defineScopes()`, and `defineSearches()`.
 
 The underlying Zod object is available as `schema.definition` for advanced Zod composition. A derived Zod schema does not change the schema registered with a model; see [Escape Hatches](/guides/escape-hatches) for details.
 
@@ -130,6 +130,18 @@ schemas
 ```
 
 Each binding has required `ref` and `via` properties. Aggregate bindings also require `field`: numeric for `sum`, `avg`, `min`, `max`, and `median`, scalar for `count` and `distinct`. The `via` relation must point back to the virtual's owner. Every declared virtual must be bound; undeclared, missing, duplicate, or invalid bindings fail validation. See [Virtual Fields](/schemas/virtuals) and [Aggregate Virtuals](/schemas/virtual-aggregates) for kinds and query usage.
+
+## `.defineSearches(definitions)`
+
+Opt schemas into substring search by listing scalar string field paths. It is declared after `defineRelations()` so relation paths can be checked:
+
+```ts
+schemas
+  .defineRelations({ users: { company: { ref: 'companies' } } })
+  .defineSearches({ users: ['name', 'profile.city', 'company.name'] });
+```
+
+Unknown schemas, non-string fields, and invalid relation paths are rejected. Models not included have no searchable paths. See [Search](/queries/search) for matching semantics and query execution.
 
 ## `.defineScopes(definitions)`
 

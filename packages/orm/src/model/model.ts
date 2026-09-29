@@ -182,6 +182,17 @@ export class Model<
     SoftDeleteEnabled<Options>,
     Virtuals
   > {
+    const searchRelations = Object.entries(this.schema.relationMap).map(
+      ([relationPath, relation]) => ({
+        relationPath,
+        from: this.db.collectionFor(relation.resolve()).collectionName,
+        localField: relation.localField,
+        foreignField: relation.foreignField,
+        targetFields: this.schema.searchableFields
+          .filter((path) => path.startsWith(`${relationPath}.`))
+          .map((path) => path.slice(relationPath.length + 1)),
+      }),
+    );
     return new ModelQuery(
       this.collection,
       filter,
@@ -192,6 +203,8 @@ export class Model<
       this.schema.scopeMap,
       this.schema.virtualMap as Virtuals,
       hasSoftDelete(this.schema.optionsConfig),
+      this.schema.searchableFields,
+      searchRelations,
     );
   }
 

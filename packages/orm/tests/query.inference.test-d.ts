@@ -17,6 +17,26 @@ describe('query inference', () => {
     profile: orm.object({ location: orm.object({ city: orm.string() }) }),
     projects: orm.virtual('many'),
   });
+  const searchableSchemas = orm
+    .defineSchemas({
+      users: orm.schema({
+        name: orm.string(),
+        profile: orm.object({ city: orm.string(), company: orm.objectId() }),
+      }),
+      companies: orm.schema({ name: orm.string() }),
+    })
+    .defineRelations({ users: { 'profile.company': { ref: 'companies' } } })
+    .defineSearches({ users: ['name', 'profile.city', 'profile.company.name'] });
+  searchableSchemas.defineSearches({
+    users: [
+      'name',
+      // @ts-expect-error Search paths must name declared string fields.
+      'unknown',
+    ],
+  });
+  const searchableDatabase = {} as ReturnType<typeof createDatabase<typeof searchableSchemas>>;
+  const runtimeSearchables: readonly string[] = searchableDatabase.users.features.searchables;
+  void runtimeSearchables;
 
   const registry = orm
     .defineSchemas({ users: userSchema })
