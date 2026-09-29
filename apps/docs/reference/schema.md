@@ -91,7 +91,7 @@ userSchema.parse({ age: '42', active: 'false' }); // { age: 42, active: false }
 userSchema.parse({ age: 42, active: false }); // { age: 42, active: false }
 ```
 
-Use `orm.coerce.stringbool()` for textual booleans; `orm.coerce.boolean()` follows JavaScript `Boolean()` semantics, where a non-empty string such as `"false"` is truthy. Coercing constructors are ordinary Zod schemas, so standard schema methods such as `.int()`, `.min()`, `.partial()`, `.pick()`, and `.extend()` remain available. Nested objects and arrays compose naturally:
+`orm.coerce.stringbool()` accepts an existing boolean or recognized boolean strings such as `"true"` and `"false"`, and always outputs a boolean. By contrast, `orm.coerce.boolean()` follows JavaScript `Boolean()` semantics, where a non-empty string such as `"false"` is truthy. Coercing constructors are ordinary Zod schemas, so standard schema methods such as `.int()`, `.min()`, `.partial()`, `.pick()`, and `.extend()` remain available. Nested objects and arrays compose naturally:
 
 ```ts
 const inputSchema = orm.schema({

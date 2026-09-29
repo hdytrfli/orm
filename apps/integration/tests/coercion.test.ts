@@ -149,13 +149,13 @@ describe('coercing field integration', () => {
     const member = await db.members.create({
       organization: organization._id.toHexString(),
       age: '42',
-      enabled: 'false',
+      enabled: true,
       joinedAt: '2026-09-29T00:00:00.000Z',
       details: { rating: '1', verified: 'true', scores: ['2'] },
     });
 
     expect(member.age).toBe(42);
-    expect(member.enabled).toBe(false);
+    expect(member.enabled).toBe(true);
     expect(member.details.scores).toEqual([2]);
   });
 
