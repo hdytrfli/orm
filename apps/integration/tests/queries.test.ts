@@ -70,7 +70,7 @@ describe('query integration scenarios', () => {
 
   it('searches configured local string fields case-insensitively', async () => {
     expect(() => db.groups.find().search('team')).toThrow('not configured');
-    expect(() => db.users.find().search('  ')).toThrow('must not be empty');
+    await expect(db.groups.find().search('').search(null).search(undefined)).resolves.toEqual([]);
     const { company, group } = await createDirectory();
     await db.users.create({
       name: 'Maya Chen',
@@ -101,6 +101,11 @@ describe('query integration scenarios', () => {
 
     const results = await db.users.find({ role: 'admin' }).search('maya');
     expect(results.map(({ name }) => name)).toEqual(['Maya Chen']);
+    expect(
+      (await db.users.find({ role: 'admin' }).search('').search(null).search(undefined)).map(
+        ({ name }) => name,
+      ),
+    ).toEqual(['Maya Chen']);
     expect((await db.users.find({ role: 'admin' }).search('seat')).map(({ name }) => name)).toEqual(
       ['Maya Chen'],
     );

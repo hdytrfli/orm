@@ -173,12 +173,16 @@ export class ModelQuery<
   }
 
   /** Search explicitly configured string fields using case-insensitive substring matching. */
-  search(term: string): this {
+  search(term?: string | null): this {
+    if (term == null) return this;
+    if (typeof term !== 'string') {
+      throw new TypeError('Search term must be a string, null, or undefined');
+    }
+    const normalized = term.trim();
+    if (!normalized) return this;
     if (this.searchableFields.length === 0) {
       throw new InvalidQueryError('Search is not configured for this model.');
     }
-    const normalized = term.trim();
-    if (!normalized) throw new RangeError('Search term must not be empty');
     this.searchTerm = normalized;
     return this;
   }

@@ -37,6 +37,9 @@ describe('query inference', () => {
   const searchableDatabase = {} as ReturnType<typeof createDatabase<typeof searchableSchemas>>;
   const runtimeSearchables: readonly string[] = searchableDatabase.users.features.searchables;
   void runtimeSearchables;
+  searchableDatabase.users.find().search('').search(null).search(undefined);
+  // @ts-expect-error Search accepts only a string, null, or undefined.
+  searchableDatabase.users.find().search(123);
 
   const registry = orm
     .defineSchemas({ users: userSchema })
