@@ -9,7 +9,6 @@ Mongorm exports type helpers for cases where a type needs to be named or passed 
 ```ts
 import type {
   CreateInputOf,
-  CoercedOf,
   FieldPathsOf,
   FilterOf,
   PopulateOf,
@@ -20,7 +19,6 @@ import type {
 
 type UserShape = ShapeOf<typeof db.user>;
 type NewUser = CreateInputOf<typeof db.user>;
-type UserRequestSchema = CoercedOf<typeof db.user>;
 type UserUpdate = UpdateInputOf<typeof db.user>;
 type UserFilter = FilterOf<typeof db.user>;
 type UserFieldPath = FieldPathsOf<typeof db.user>;
@@ -40,7 +38,6 @@ type PostRelationFieldPath = RelationPathsOf<typeof db.post>;
 | `UpdateInputOf<Model>`   | The partial update input accepted by that model's update operation.                                                    |
 | `FilterOf<Model>`        | A schema-aware MongoDB filter for the model, including a direct `_id: ObjectId` lookup form.                           |
 | `ZodSchemaOf<Model>`     | A Zod schema compatible with the model's create input and with a `.partial()` schema compatible with its update input. |
-| `CoercedOf<Model>`       | A Zod parser compatible with the model's coerced schema and parsed output type.                                        |
 
 Create and update inputs account for the model's schema options. For example, managed fields and generated `_id` are not ordinary caller-supplied create fields. Prefer these helpers over manually rebuilding input types from the schema shape.
 
@@ -88,19 +85,6 @@ function registerCrudSchema<Model extends AnyModel>(schema: ZodSchemaOf<Model>) 
 ```
 
 The model type is explicit in that generic example. In regular application code, use the concrete schema directly and let TypeScript infer inputs from the model methods.
-
-Use `CoercedOf<Model>` to type a transport validator that parses string-heavy input with the model's `schema.coerced` parser:
-
-```ts
-import type { AnyModel, CoercedOf } from '@mongorm/orm';
-
-function parseRequest<Model extends AnyModel>(schema: CoercedOf<Model>, input: unknown) {
-  return schema.parse(input);
-}
-
-const parsedUser = parseRequest<typeof db.user>(userSchema.coerced, request.body);
-// Parsed field values have the model schema's output types.
-```
 
 ## Relations, scopes, and population
 

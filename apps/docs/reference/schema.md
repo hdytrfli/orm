@@ -77,31 +77,31 @@ const user = orm
 
 These are the supported schema options. Configure them together in a single `.options({...})` call; calling `.options()` again on the same schema throws. See [Schema Fundamentals](/schemas/fundamentals#managed-persistence-options) for lifecycle behavior.
 
-## `schema.coerced`
+## Coercing fields with `orm.coerce`
 
-`schema.definition` and Mongorm writes remain strict. For transport data such as HTTP request bodies, `schema.coerced` provides a separate Zod parser that converts common string representations before validating with the original schema:
+Opt into coercion on individual fields when defining the schema. Zod coercing constructors accept both already-typed values and transport representations, so the schema definition itself handles either input:
 
 ```ts
 const userSchema = orm.schema({
-  age: orm.number(),
-  active: orm.boolean(),
+  age: orm.coerce.number(),
+  active: orm.coerce.stringbool(),
 });
 
-const input = userSchema.coerced.parse({ age: '42', active: 'false' });
-// { age: 42, active: false }
+userSchema.parse({ age: '42', active: 'false' }); // { age: 42, active: false }
+userSchema.parse({ age: 42, active: false }); // { age: 42, active: false }
 ```
 
-It handles numeric strings, `stringbool()` boolean strings, date strings, ObjectId hex strings, and nested values in objects and arrays. The original field validators still run on the converted values. Use this explicitly at the transport boundary; `create()`, `update()`, `schema.parse()`, and `.definition.parse()` continue to reject values that do not match their strict schema inputs.
-
-`schema.coerced` is a Zod object, so the normal object-schema methods remain available:
+Use `orm.coerce.stringbool()` for textual booleans; `orm.coerce.boolean()` follows JavaScript `Boolean()` semantics, where a non-empty string such as `"false"` is truthy. Coercing constructors are ordinary Zod schemas, so standard schema methods such as `.int()`, `.min()`, `.partial()`, `.pick()`, and `.extend()` remain available. Nested objects and arrays compose naturally:
 
 ```ts
-const patch = userSchema.coerced.pick({ age: true }).partial();
-const input = patch.parse({ age: '42' });
-// { age: 42 }
+const inputSchema = orm.schema({
+  settings: orm.object({ retries: orm.coerce.number().int().min(0) }),
+  scores: orm.array(orm.coerce.number()),
+  organizationId: orm.coerce.objectId(),
+});
 ```
 
-You can also use methods such as `.omit()`, `.extend()`, and `.shape`. Fields added with `.extend()` use the schema you supply; apply coercion explicitly to those fields if needed.
+Only fields declared with `orm.coerce` are coerced; ordinary `orm.number()`, `orm.boolean()`, and other strict constructors keep their normal validation behavior. Mongorm writes use the schema's regular Zod parsing, so these declared coercions apply there as well.
 
 ## `schema.indexes(definitions)`
 
