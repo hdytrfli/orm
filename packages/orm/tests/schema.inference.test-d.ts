@@ -68,8 +68,11 @@ describe('schema inference', () => {
     const database = {} as ReturnType<typeof createDatabase<typeof registry>>;
     const validator: CoercedOf<typeof database.users> = userSchema.coerced;
     const parsed = validator.parse({ age: '42', active: 'false' });
+    const partial = validator.partial().parse({ age: '42' });
 
     expectTypeOf(parsed.age).toEqualTypeOf<number>();
     expectTypeOf(parsed.active).toEqualTypeOf<boolean>();
+    expectTypeOf(partial.age).toEqualTypeOf<number | undefined>();
+    expectTypeOf(partial.active).toEqualTypeOf<boolean | undefined>();
   });
 });
