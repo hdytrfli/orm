@@ -98,7 +98,9 @@ export type ZodSchemaOf<T extends AnyModel> = ZodType<CreateInputOf<T>> & {
 export type CoercedOf<T extends AnyModel> = ZodType<
   import('zod').output<SchemaDefinition<ShapeOf<T>>>,
   unknown
->;
+> & {
+  partial: () => ZodType<Partial<import('zod').output<SchemaDefinition<ShapeOf<T>>>>, unknown>;
+};
 
 /** Derive valid population specifications from a model's relations and virtuals. */
 export type PopulateOf<T> = PopulateSpecs<RelationsOf<T>, VirtualsOf<T>>;
