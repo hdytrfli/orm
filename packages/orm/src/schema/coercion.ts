@@ -1,6 +1,13 @@
 import { ObjectId } from 'mongodb';
 import { z } from 'zod';
 
+import type { SchemaShape } from './contracts.js';
+
+/** Field types used to build a composable coerced Zod object. */
+export type CoercedSchemaShape<Shape extends SchemaShape> = {
+  [Key in keyof Shape]: z.ZodType<z.output<Shape[Key]>, unknown>;
+};
+
 type RuntimeSchema = {
   readonly _def?: {
     readonly type?: string;
@@ -86,3 +93,14 @@ export const coerceSchemaInput = (schema: RuntimeSchema, value: unknown): unknow
 
   return value;
 };
+
+/** Wrap each field in preprocessing while preserving the outer ZodObject API. */
+export const coerceSchemaShape = <Shape extends SchemaShape>(
+  shape: Shape,
+): CoercedSchemaShape<Shape> =>
+  Object.fromEntries(
+    Object.entries(shape).map(([key, field]) => [
+      key,
+      z.preprocess((input) => coerceSchemaInput(field as RuntimeSchema, input), field),
+    ]),
+  ) as unknown as CoercedSchemaShape<Shape>;

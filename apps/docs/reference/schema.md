@@ -93,6 +93,16 @@ const input = userSchema.coerced.parse({ age: '42', active: 'false' });
 
 It handles numeric strings, `stringbool()` boolean strings, date strings, ObjectId hex strings, and nested values in objects and arrays. The original field validators still run on the converted values. Use this explicitly at the transport boundary; `create()`, `update()`, `schema.parse()`, and `.definition.parse()` continue to reject values that do not match their strict schema inputs.
 
+`schema.coerced` is a Zod object, so the normal object-schema methods remain available:
+
+```ts
+const patch = userSchema.coerced.pick({ age: true }).partial();
+const input = patch.parse({ age: '42' });
+// { age: 42 }
+```
+
+You can also use methods such as `.omit()`, `.extend()`, and `.shape`. Fields added with `.extend()` use the schema you supply; apply coercion explicitly to those fields if needed.
+
 ## `schema.indexes(definitions)`
 
 Declares indexes for explicit creation by `db.sync()`. Each definition has `fields` (a non-empty map of schema field names to MongoDB index directions) and optional `options` (MongoDB index options, including a schema-checked `partialFilterExpression`). Index declarations do not create indexes until synchronization. See [Schema Indexes](/schemas/indexes) for examples and index lifecycle methods.

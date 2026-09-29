@@ -3,7 +3,7 @@ import type { ZodType } from 'zod';
 
 import type { ModelFilter, ModelSort, PopulateSpecs } from '../query/index.js';
 import type { ModelDocument } from '../query/types/document.js';
-import type { SchemaDefinition } from '../schema/contracts.js';
+import type { CoercedSchemaShape } from '../schema/coercion.js';
 import type {
   SchemaIndex,
   SchemaRelationMap,
@@ -95,12 +95,7 @@ export type ZodSchemaOf<T extends AnyModel> = ZodType<CreateInputOf<T>> & {
 };
 
 /** A coerced Zod parser whose output matches the model's parsed schema shape. */
-export type CoercedOf<T extends AnyModel> = ZodType<
-  import('zod').output<SchemaDefinition<ShapeOf<T>>>,
-  unknown
-> & {
-  partial: () => ZodType<Partial<import('zod').output<SchemaDefinition<ShapeOf<T>>>>, unknown>;
-};
+export type CoercedOf<T extends AnyModel> = import('zod').ZodObject<CoercedSchemaShape<ShapeOf<T>>>;
 
 /** Derive valid population specifications from a model's relations and virtuals. */
 export type PopulateOf<T> = PopulateSpecs<RelationsOf<T>, VirtualsOf<T>>;

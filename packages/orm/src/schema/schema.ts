@@ -6,7 +6,7 @@ import type {
   SchemaVirtualDeclarations,
 } from '../relations/definitions.js';
 import { SchemaConfigurationError } from '../validation/errors.js';
-import { coerceSchemaInput } from './coercion.js';
+import { coerceSchemaShape, type CoercedSchemaShape } from './coercion.js';
 import type { SchemaDefinition, SchemaShape, ScopeDefinitions } from './contracts.js';
 import type { SchemaIndex, ValidateIndexDefinitions } from './indexes.js';
 import type { InferShape } from './inference.js';
@@ -31,9 +31,7 @@ export class Schema<
   /** The underlying Zod object for advanced validation use cases. */
   readonly definition: SchemaDefinition<Shape>;
   /** A transport-input parser that coerces common string representations before strict validation. */
-  readonly coerced: z.ZodType<z.infer<SchemaDefinition<Shape>>, unknown> & {
-    partial: () => z.ZodType<Partial<z.infer<SchemaDefinition<Shape>>>, unknown>;
-  };
+  readonly coerced: z.ZodObject<CoercedSchemaShape<Shape>>;
   private partialDefinition: { parse(input: unknown): unknown } | undefined;
 
   /** One-way relation metadata declared for this schema. */
@@ -77,16 +75,7 @@ export class Schema<
     virtualDefinitions = {} as SchemaVirtualDeclarations,
   ) {
     this.definition = z.object(shape);
-    const createCoerced = (definition: SchemaDefinition<Shape>) => {
-      const parser = z.preprocess(
-        (input) => coerceSchemaInput(definition as never, input),
-        definition,
-      );
-      return Object.assign(parser, {
-        partial: () => createCoerced(definition.partial() as unknown as SchemaDefinition<Shape>),
-      });
-    };
-    this.coerced = createCoerced(this.definition) as typeof this.coerced;
+    this.coerced = z.object(coerceSchemaShape(shape));
     this.relationMap = relations;
     this.virtualMap = virtualMap as Virtuals extends SchemaVirtualMap ? Virtuals : {};
     this.virtualDefinitions = virtualDefinitions;

@@ -40,6 +40,19 @@ describe('schema runtime parsing', () => {
         id: 'not-an-object-id',
       }),
     ).toThrow('Invalid input');
+
+    expect(schema.coerced.partial().parse({ age: '27' })).toEqual({ age: 27 });
+    expect(schema.coerced.pick({ age: true }).parse({ age: '31' })).toEqual({ age: 31 });
+    expect(
+      schema.coerced.extend({ label: orm.string() }).parse({
+        age: '33',
+        active: 'true',
+        profile: { height: '2' },
+        scores: ['1'],
+        id: new ObjectId(),
+        label: 'test',
+      }),
+    ).toMatchObject({ age: 33, label: 'test' });
   });
 
   it('reuses partial parsing behavior for successive update payloads', () => {
