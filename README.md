@@ -6,6 +6,8 @@
   TypeScript-first MongoDB ORM with a small, strongly typed API.
 </p>
 
+> **Project status: archived for now.** I’m taking a break from Mongorm because I’m running into a lot of problems with it, and it isn’t as easy to use as I’d hoped. I may come back to it with a rewrite from scratch, but there are no current plans for active development.
+
 <p align="center">
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
